@@ -1,0 +1,738 @@
+{
+    "juego_siluetas": [
+        {
+            "id": "perro",
+            "silueta_archivo": "Silueta_Perro.png",
+            "imagen_archivo": "Imagen_Perro.png",
+            "respuestas": [
+                "perro",
+                "perrito",
+                "cachorro"
+            ],
+            "pistas": [
+                "Tiene cuatro patas y mueve la cola cuando está feliz.",
+                "Hace 'guau guau'."
+            ]
+        },
+        {
+            "id": "gato",
+            "silueta_archivo": "Silueta_Gato.png",
+            "imagen_archivo": "Imagen_Gato.png",
+            "respuestas": [
+                "gato",
+                "gatito"
+            ],
+            "pistas": [
+                "Le encanta atrapar ratones.",
+                "Hace 'miau'."
+            ]
+        },
+        {
+            "id": "pez",
+            "silueta_archivo": "Silueta_Pez.png",
+            "imagen_archivo": "Imagen_Pez.png",
+            "respuestas": [
+                "pez",
+                "pescado",
+                "pecesito",
+                "pescadito"
+            ],
+            "pistas": [
+                "Vive en el agua.",
+                "Nada moviendo sus aletas."
+            ]
+        },
+        {
+            "id": "pajaro",
+            "silueta_archivo": "Silueta_Pajaro.png",
+            "imagen_archivo": "Imagen_Pajaro.png",
+            "respuestas": [
+                "pájaro",
+                "pajarito",
+                "ave"
+            ],
+            "pistas": [
+                "Tiene alas, plumas y un pico.",
+                "Vuela por el cielo y canta por las mañanas."
+            ]
+        },
+        {
+            "id": "mariposa",
+            "silueta_archivo": "Silueta_Mariposa.png",
+            "imagen_archivo": "Imagen_Mariposa.png",
+            "respuestas": [
+                "mariposa"
+            ],
+            "pistas": [
+                "Tiene alas de muchos colores hermosos.",
+                "Antes de volar, era una pequeña oruga."
+            ]
+        },
+        {
+            "id": "chancho",
+            "silueta_archivo": "Silueta_Chancho.png",
+            "imagen_archivo": "Imagen_Chancho.png",
+            "respuestas": [
+                "chancho",
+                "cerdo",
+                "cerdito",
+                "chanchito"
+            ],
+            "pistas": [
+                "Es de color rosado y tiene una colita enrulada.",
+                "Hace 'oink oink'."
+            ]
+        },
+        {
+            "id": "caballo",
+            "silueta_archivo": "Silueta_Caballo.png",
+            "imagen_archivo": "Imagen_Caballo.png",
+            "respuestas": [
+                "caballo",
+                "caballito",
+                "potrillo",
+                "yegua",
+                "poni"
+            ],
+            "pistas": [
+                "Puedes subirte a su lomo para dar un paseo.",
+                "Relincha y corre muy rápido."
+            ]
+        },
+        {
+            "id": "vaca",
+            "silueta_archivo": "Silueta_Vaca.png",
+            "imagen_archivo": "Imagen_Vaca.png",
+            "respuestas": [
+                "vaca",
+                "vaquita"
+            ],
+            "pistas": [
+                "Come pasto y nos da leche para tomar.",
+                "Hace 'muuu'."
+            ]
+        },
+        {
+            "id": "oveja",
+            "silueta_archivo": "Silueta_Oveja.png",
+            "imagen_archivo": "Imagen_Oveja.png",
+            "respuestas": [
+                "oveja",
+                "ovejita"
+            ],
+            "pistas": [
+                "Su cuerpo está cubierto de lana muy suavecita.",
+                "Hace 'beee'."
+            ]
+        },
+        {
+            "id": "pato",
+            "silueta_archivo": "Silueta_Pato.png",
+            "imagen_archivo": "Imagen_Pato.png",
+            "respuestas": [
+                "pato",
+                "patito"
+            ],
+            "pistas": [
+                "Le encanta nadar en la laguna.",
+                "Hace 'cuac cuac'."
+            ]
+        },
+        {
+            "id": "leon",
+            "silueta_archivo": "Silueta_Leon.png",
+            "imagen_archivo": "Imagen_Leon.png",
+            "respuestas": [
+                "león",
+                "leon",
+                "leoncito"
+            ],
+            "pistas": [
+                "Es conocido como el rey de la selva.",
+                "Tiene una gran melena y ruge muy fuerte."
+            ]
+        },
+        {
+            "id": "elefante",
+            "silueta_archivo": "Silueta_Elefante.png",
+            "imagen_archivo": "Imagen_Elefante.png",
+            "respuestas": [
+                "elefante",
+                "elefantito"
+            ],
+            "pistas": [
+                "Es un animal enorme y de color gris.",
+                "Tiene orejas gigantes y una larga trompa."
+            ]
+        },
+        {
+            "id": "jirafa",
+            "silueta_archivo": "Silueta_Jirafa.png",
+            "imagen_archivo": "Imagen_Jirafa.png",
+            "respuestas": [
+                "jirafa"
+            ],
+            "pistas": [
+                "Tiene manchitas amarillas y marrones.",
+                "Su cuello es súper largo para alcanzar las hojas de los árboles."
+            ]
+        },
+        {
+            "id": "mono",
+            "silueta_archivo": "Silueta_Mono.png",
+            "imagen_archivo": "Imagen_Mono.png",
+            "respuestas": [
+                "mono",
+                "monito"
+            ],
+            "pistas": [
+                "Le encanta colgarse y trepar por los árboles.",
+                "Su comida favorita son las bananas."
+            ]
+        },
+        {
+            "id": "oso",
+            "silueta_archivo": "Silueta_Oso.png",
+            "imagen_archivo": "Imagen_Oso.png",
+            "respuestas": [
+                "oso",
+                "osito"
+            ],
+            "pistas": [
+                "Es grande, peludo y le encanta comer miel.",
+                "Duerme un montón durante todo el invierno."
+            ]
+        },
+        {
+            "id": "rana-sapo",
+            "silueta_archivo": "Silueta_Rana-Sapo.png",
+            "imagen_archivo": "Imagen_Rana-Sapo.png",
+            "respuestas": [
+                "sapo",
+                "rana",
+                "sapito",
+                "ranita"
+            ],
+            "pistas": [
+                "Es de color verde y atrapa moscas con su lengua.",
+                "Vive cerca del agua, salta mucho y hace 'croac croac'."
+            ]
+        },
+        {
+            "id": "conejo",
+            "silueta_archivo": "Silueta_Conejo.png",
+            "imagen_archivo": "Imagen_Conejo.png",
+            "respuestas": [
+                "conejo",
+                "conejito"
+            ],
+            "pistas": [
+                "Tiene orejas largas y da muchos saltos.",
+                "Le encanta comer zanahorias."
+            ]
+        },
+        {
+            "id": "tortuga",
+            "silueta_archivo": "Silueta_Tortuga.png",
+            "imagen_archivo": "Imagen_Tortuga.png",
+            "respuestas": [
+                "tortuga",
+                "tortuguita"
+            ],
+            "pistas": [
+                "Lleva su casa en la espalda (se llama caparazón).",
+                "Camina muy, pero muy despacito."
+            ]
+        },
+        {
+            "id": "serpiente-vibora",
+            "silueta_archivo": "Silueta_Serpiente-Vibora.png",
+            "imagen_archivo": "Imagen_Serpiente-Vibora.png",
+            "respuestas": [
+                "serpiente",
+                "víbora",
+                "vibora"
+            ],
+            "pistas": [
+                "No tiene patas, así que se arrastra por el suelo.",
+                "Hace un sonido de siseo: 'ssss'."
+            ]
+        },
+        {
+            "id": "delfin",
+            "silueta_archivo": "Silueta_Delfin.png",
+            "imagen_archivo": "Imagen_Delfin.png",
+            "respuestas": [
+                "delfín",
+                "delfin"
+            ],
+            "pistas": [
+                "Es muy inteligente y le gusta saltar sobre las olas.",
+                "Es un animal marino muy amigable y divertido."
+            ]
+        },
+        {
+            "id": "manzana",
+            "silueta_archivo": "Silueta_Manzana.png",
+            "imagen_archivo": "Imagen_Manzana.png",
+            "respuestas": [
+                "manzana"
+            ],
+            "pistas": [
+                "Es una fruta que puede ser roja o verde.",
+                "Es la fruta que comió Blancanieves en el cuento."
+            ]
+        },
+        {
+            "id": "banana",
+            "silueta_archivo": "Silueta_Banana.png",
+            "imagen_archivo": "Imagen_Banana.png",
+            "respuestas": [
+                "banana"
+            ],
+            "pistas": [
+                "Es una fruta alargada y de color amarillo.",
+                "Es la favorita de los monos."
+            ]
+        },
+        {
+            "id": "frutilla",
+            "silueta_archivo": "Silueta_Frutilla.png",
+            "imagen_archivo": "Imagen_Frutilla.png",
+            "respuestas": [
+                "frutilla"
+            ],
+            "pistas": [
+                "Es pequeña, roja y tiene semillitas por fuera.",
+                "Queda riquísima si la comes con crema."
+            ]
+        },
+        {
+            "id": "uva",
+            "silueta_archivo": "Silueta_Uva.png",
+            "imagen_archivo": "Imagen_Uva.png",
+            "respuestas": [
+                "uvas",
+                "uva",
+                "racimo de uvas",
+                "racimo de uva",
+                "racimo"
+            ],
+            "pistas": [
+                "Crecen todas juntas formando un racimo.",
+                "Pueden ser de color verde o morado."
+            ]
+        },
+        {
+            "id": "zanahoria",
+            "silueta_archivo": "Silueta_Zanahoria.png",
+            "imagen_archivo": "Imagen_Zanahoria.png",
+            "respuestas": [
+                "zanahoria"
+            ],
+            "pistas": [
+                "Es una verdura alargada y de color naranja.",
+                "A los conejos les fascina comerla."
+            ]
+        },
+        {
+            "id": "helado",
+            "silueta_archivo": "Silueta_Helado.png",
+            "imagen_archivo": "Imagen_Helado.png",
+            "respuestas": [
+                "helado",
+                "cucurucho"
+            ],
+            "pistas": [
+                "Se come mucho en verano porque es muy frío y dulce.",
+                "Suele venir en un cucurucho."
+            ]
+        },
+        {
+            "id": "hamburguesa",
+            "silueta_archivo": "Silueta_Hamburguesa.png",
+            "imagen_archivo": "Imagen_Hamburguesa.png",
+            "respuestas": [
+                "hamburguesa"
+            ],
+            "pistas": [
+                "Es redonda y lleva carne adentro de dos panes.",
+                "Es muy común comerla con papas fritas."
+            ]
+        },
+        {
+            "id": "torta",
+            "silueta_archivo": "Silueta_Torta.png",
+            "imagen_archivo": "Imagen_Torta.png",
+            "respuestas": [
+                "torta",
+                "pastel"
+            ],
+            "pistas": [
+                "Es dulce, grande y se comparte en las fiestas.",
+                "Le ponemos velitas para pedir un deseo de cumpleaños."
+            ]
+        },
+        {
+            "id": "chocolate",
+            "silueta_archivo": "Silueta_Chocolate.png",
+            "imagen_archivo": "Imagen_Chocolate.png",
+            "respuestas": [
+                "chocolate",
+                "barra de chocolate",
+                "tableta de chocolate"
+            ],
+            "pistas": [
+                "Es un alimento muy dulce que se come en forma de barra o tableta.",
+                "Puede ser negro, blanco o con leche."
+            ]
+        },
+        {
+            "id": "caramelo",
+            "silueta_archivo": "Silueta_Caramelo.png",
+            "imagen_archivo": "Imagen_Caramelo.png",
+            "respuestas": [
+                "caramelo",
+                "caramelito",
+                "dulce",
+                "golosina"
+            ],
+            "pistas": [
+                "Es un dulce que que viene envuelta en un papelito de colores.",
+                "Puede ser de diferentes colores y sabores."
+            ]
+        },
+        {
+            "id": "auto",
+            "silueta_archivo": "Silueta_Auto.png",
+            "imagen_archivo": "Imagen_Auto.png",
+            "respuestas": [
+                "auto",
+                "coche",
+                "automóvil",
+                "autito",
+                "cochecito"
+            ],
+            "pistas": [
+                "Tiene cuatro ruedas y un volante.",
+                "Nos sirve para viajar por la calle o la ruta."
+            ]
+        },
+        {
+            "id": "avion",
+            "silueta_archivo": "Silueta_Avion.png",
+            "imagen_archivo": "Imagen_Avion.png",
+            "respuestas": [
+                "avión",
+                "avion",
+                "avioncito"
+            ],
+            "pistas": [
+                "Vuela muy alto por el cielo entre las nubes.",
+                "Tiene alas enormes y nos lleva a otros países."
+            ]
+        },
+        {
+            "id": "tren",
+            "silueta_archivo": "Silueta_Tren.png",
+            "imagen_archivo": "Imagen_Tren.png",
+            "respuestas": [
+                "tren",
+                "locomotora",
+                "trencito"
+            ],
+            "pistas": [
+                "Viaja por unas vías largas de hierro.",
+                "Hace 'chu chu' y arrastra muchos vagones."
+            ]
+        },
+        {
+            "id": "barco",
+            "silueta_archivo": "Silueta_Barco.png",
+            "imagen_archivo": "Imagen_Barco.png",
+            "respuestas": [
+                "barco",
+                "velero",
+                "bote",
+                "barquito",
+                "velerito",
+                "botecito",
+                "crucero"
+            ],
+            "pistas": [
+                "Sirve para viajar por el agua.",
+                "Puede moverse con velas, remos o un motor."
+            ]
+        },
+        {
+            "id": "bicicleta",
+            "silueta_archivo": "Silueta_Bicicleta.png",
+            "imagen_archivo": "Imagen_Bicicleta.png",
+            "respuestas": [
+                "bicicleta",
+                "bici"
+            ],
+            "pistas": [
+                "Tiene dos ruedas y un manubrio.",
+                "Para avanzar hay que mover los pedales con los pies."
+            ]
+        },
+        {
+            "id": "helicoptero",
+            "silueta_archivo": "Silueta_Helicoptero.png",
+            "imagen_archivo": "Imagen_Helicoptero.png",
+            "respuestas": [
+                "helicóptero",
+                "helicoptero"
+            ],
+            "pistas": [
+                "Vuela por el aire, pero no tiene alas quietas como el avión.",
+                "Tiene una gran hélice que gira rapidísimo en el techo."
+            ]
+        },
+        {
+            "id": "cohete",
+            "silueta_archivo": "Silueta_Cohete.png",
+            "imagen_archivo": "Imagen_Cohete.png",
+            "respuestas": [
+                "cohete",
+                "nave espacial",
+                "ovni",
+                "nave"
+            ],
+            "pistas": [
+                "Viaja rapidísimo hacia el cielo.",
+                "Lo usan los astronautas para viajar al espacio."
+            ]
+        },
+        {
+            "id": "sol",
+            "silueta_archivo": "Silueta_Sol.png",
+            "imagen_archivo": "Imagen_Sol.png",
+            "respuestas": [
+                "sol"
+            ],
+            "pistas": [
+                "Es un círculo, amarillo y nos da mucho calor.",
+                "Aparece de día para iluminar el cielo."
+            ]
+        },
+        {
+            "id": "luna",
+            "silueta_archivo": "Silueta_Luna.png",
+            "imagen_archivo": "Imagen_Luna.png",
+            "respuestas": [
+                "luna"
+            ],
+            "pistas": [
+                "Aparece en el cielo cuando se hace de noche.",
+                "A veces es redonda y a veces tiene forma de medialuna."
+            ]
+        },
+        {
+            "id": "estrella",
+            "silueta_archivo": "Silueta_Estrella.png",
+            "imagen_archivo": "Imagen_Estrella.png",
+            "respuestas": [
+                "estrella"
+            ],
+            "pistas": [
+                "Hay muchísimas brillando en el cielo nocturno.",
+                "Suelen dibujarse con cinco puntas."
+            ]
+        },
+        {
+            "id": "nube",
+            "silueta_archivo": "Silueta_Nube.png",
+            "imagen_archivo": "Imagen_Nube.png",
+            "respuestas": [
+                "nube",
+                "nubecita"
+            ],
+            "pistas": [
+                "Flotan en el cielo y parecen de algodón esponjoso.",
+                "Cuando se ponen de color gris, significa que va a llover."
+            ]
+        },
+        {
+            "id": "arbol",
+            "silueta_archivo": "Silueta_Arbol.png",
+            "imagen_archivo": "Imagen_Arbol.png",
+            "respuestas": [
+                "árbol",
+                "arbol",
+                "arbolito"
+            ],
+            "pistas": [
+                "Tiene un tronco de madera y muchísimas hojas verdes.",
+                "Nos da sombra en verano y a veces también frutas."
+            ]
+        },
+        {
+            "id": "flor",
+            "silueta_archivo": "Silueta_Flor.png",
+            "imagen_archivo": "Imagen_Flor.png",
+            "respuestas": [
+                "flor",
+                "florcita",
+                "planta"
+            ],
+            "pistas": [
+                "Crece en la tierra del jardín o en macetas y tiene un aroma muy lindo.",
+                "Tiene pétalos que pueden ser de muchos colores."
+            ]
+        },
+        {
+            "id": "copo_nieve",
+            "silueta_archivo": "Silueta_CopoNieve.png",
+            "imagen_archivo": "Imagen_CopoNieve.png",
+            "respuestas": [
+                "copo de nieve",
+                "nieve",
+                "copito de nieve",
+                "copito"
+            ],
+            "pistas": [
+                "Cae del cielo en invierno cuando hace muchísimo frío.",
+                "Es blanco, helado y tiene una forma hermosa parecida a una estrellita."
+            ]
+        },
+        {
+            "id": "casa",
+            "silueta_archivo": "Silueta_Casa.png",
+            "imagen_archivo": "Imagen_Casa.png",
+            "respuestas": [
+                "casa",
+                "casita"
+            ],
+            "pistas": [
+                "Tiene una puerta, ventanas y un techo en punta.",
+                "Es el lugar calentito donde vivimos con nuestra familia."
+            ]
+        },
+        {
+            "id": "llave",
+            "silueta_archivo": "Silueta_Llave.png",
+            "imagen_archivo": "Imagen_Llave.png",
+            "respuestas": [
+                "llave"
+            ],
+            "pistas": [
+                "Es un objeto de metal pequeño.",
+                "Se mete en la cerradura y se gira para abrir una puerta."
+            ]
+        },
+        {
+            "id": "lapiz",
+            "silueta_archivo": "Silueta_Lapiz.png",
+            "imagen_archivo": "Imagen_Lapiz.png",
+            "respuestas": [
+                "lápiz",
+                "lapiz",
+                "lápiz negro",
+                "lapicito"
+            ],
+            "pistas": [
+                "Tiene una punta negra y a veces una goma atrás.",
+                "Sirve para escribir letras o dibujar en tu cuaderno."
+            ]
+        },
+        {
+            "id": "taza",
+            "silueta_archivo": "Silueta_Taza.png",
+            "imagen_archivo": "Imagen_Taza.png",
+            "respuestas": [
+                "taza",
+                "tacita",
+                "tazón"
+            ],
+            "pistas": [
+                "Tiene una manijita al costado para poder agarrarla.",
+                "La usas en el desayuno para tomar la leche o el té."
+            ]
+        },
+        {
+            "id": "silla",
+            "silueta_archivo": "Silueta_Silla.png",
+            "imagen_archivo": "Imagen_Silla.png",
+            "respuestas": [
+                "silla",
+                "sillita"
+            ],
+            "pistas": [
+                "Tiene cuatro patas y una parte alta para apoyar la espalda.",
+                "Nos sentamos arriba cuando vamos a comer."
+            ]
+        },
+        {
+            "id": "sombrero",
+            "silueta_archivo": "Silueta_Sombrero.png",
+            "imagen_archivo": "Imagen_Sombrero.png",
+            "respuestas": [
+                "sombrero",
+                "gorro",
+                "sombrero de vaquero"
+            ],
+            "pistas": [
+                "Es una prenda de vestir que se pone en la cabeza.",
+                "Se usa para protegerse del sol, y a veces también para disfrazarse."
+            ]
+        },
+        {
+            "id": "castillo",
+            "silueta_archivo": "Silueta_Castillo.png",
+            "imagen_archivo": "Imagen_Castillo.png",
+            "respuestas": [
+                "castillo",
+                "palacio"
+            ],
+            "pistas": [
+                "Es una construcción gigante y muy fuerte, hecha con bloques de piedra y torres altas.",
+                "Es el lugar mágico donde viven los reyes, las reinas y los caballeros con armadura."
+            ]
+        },
+        {
+            "id": "regalo",
+            "silueta_archivo": "Silueta_Regalo.png",
+            "imagen_archivo": "Imagen_Regalo.png",
+            "respuestas": [
+                "regalo",
+                "regalito",
+                "obsequio",
+                "paquete",
+                "sorpresa"
+            ],
+            "pistas": [
+                "Es una caja sorpresa envuelta con un papel muy lindo y atada con un moño hermoso.",
+                "Nos lo entregan con mucha alegría en los cumpleaños o en la época de Navidad."
+            ]
+        },
+        {
+            "id": "corazon",
+            "silueta_archivo": "Silueta_Corazon.png",
+            "imagen_archivo": "Imagen_Corazon.png",
+            "respuestas": [
+                "corazón",
+                "corazon",
+                "corazoncito"
+            ],
+            "pistas": [
+                "Lo dibujamos de color rojo cuando queremos demostrar mucho amor, amistad y cariño.",
+                "Lo tenemos adentro del pecho y hace un sonido suave todo el tiempo."
+            ]
+        },
+        {
+            "id": "globo",
+            "silueta_archivo": "Silueta_Globo.png",
+            "imagen_archivo": "Imagen_Globo.png",
+            "respuestas": [
+                "globo",
+                "globito"
+            ],
+            "pistas": [
+                "Es redondito, de colores brillantes y se infla con mucho aire.",
+                "Decora las fiestas de cumpleaños y, a veces, ¡se escapa volando hacia el cielo!"
+            ]
+        }
+    ]
+}

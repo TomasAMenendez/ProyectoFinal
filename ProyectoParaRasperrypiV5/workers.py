@@ -64,7 +64,7 @@ from rps_hand import (
     rps_hand_landmarker_config,
     silhouette_rps_guess,
 )
-from stt_correct import polish_stt_text, spanish_vocab_checker
+from stt_correct import drop_whisper_hallucinations, polish_stt_text, spanish_vocab_checker
 
 APP_DIR = Path(__file__).resolve().parent
 # Por ahora no calentar el 3B en boot (~90s). El primer unknown local será más lento.
@@ -370,8 +370,12 @@ class IntentDispatcher:
                 options = [item for item in options if item != last] or options
             chosen = random.choice(options)
             self._last_canned[intent_name] = chosen
-            return chosen
-        return str(response_field or "")
+            from gender_speech import inflect_for_child
+
+            return inflect_for_child(chosen)
+        from gender_speech import inflect_for_child
+
+        return inflect_for_child(str(response_field or ""))
 
     def _similarity(self, left_doc, right_doc) -> float:
         lexical_score = self._token_overlap(left_doc.text, right_doc.text)
@@ -1541,15 +1545,13 @@ class AudioWorker:
         from conversation_memory import ConversationMemory
         self.conversation_memory = ConversationMemory()
         self._story_generation = 0
+        self._story_question_slot = None
         self._story_lock = threading.Lock()
         self._story_speak_lock = threading.Lock()
         self._stt_in_flight = False
         self._story_pipeline_active = False
         self._skip_next_stt = False
         self._pending_rps_label: str | None = None
-
-        from parent_alerts import VocabularyParentAlerter
-        self._vocab_alerter = VocabularyParentAlerter()
 
     def start(self) -> None:
         log_action("AudioWorker", f"inicio (mic={self.microphone_device_index})")
@@ -1577,7 +1579,6 @@ class AudioWorker:
                 pass
         if self._thread and self._thread.is_alive():
             self._thread.join(timeout=2)
-        self._flush_vocab_parent_alert(force_session=True)
         log_action("AudioWorker", "detenido")
 
     def _set_eyes(self, expression: str) -> None:
@@ -1602,38 +1603,7 @@ class AudioWorker:
         return True
 
     def _thinking_eyes(self, on: bool) -> None:
-        display = self.eye_display
-        if display is None or not hasattr(display, "set_expression"):
-            return
-        try:
-            if on:
-                self._eyes_before_think = display.get_expression()
-                display.set_expression("pensando")
-                return
-            prev = getattr(self, "_eyes_before_think", None)
-            self._eyes_before_think = None
-            if not prev or prev == "pensando":
-                prev = "escuchando"
-            display.set_expression(prev)
-        except Exception:
-            pass
-
-    def _notify_vocab_parent(self, message: str) -> None:
-        if not message or self._robot_state is None:
-            return
-        self._robot_state.push_notification("vocabulario", message)
-
-    def _flush_vocab_parent_alert(self, force_session: bool = False) -> None:
-        try:
-            msg = (
-                self._vocab_alerter.flush_session()
-                if force_session
-                else self._vocab_alerter.poll()
-            )
-        except Exception:
-            return
-        if msg:
-            self._notify_vocab_parent(msg)
+        del on
 
     STORY_CHECKIN_SECONDS = 6.0
     STORY_REFLECT_FALLBACK = "¿Qué parte te gustó más?"
@@ -1704,6 +1674,8 @@ class AudioWorker:
             self._story_pipeline_active = True
             self.speech_worker.set_story_guard(True)
             try:
+                if payload.get("story_full_text"):
+                    self._begin_story_question_prefetch(payload, generation)
                 intro = self._strip_unspeakable(str(payload.get("response") or ""))
                 if payload.get("intent_name") == "story_reflect_answer" and not intro:
                     intro = self.STORY_REFLECT_COMMENT_FALLBACK
@@ -1719,6 +1691,20 @@ class AudioWorker:
                         self.speech_worker.speak_and_wait(checkin, timeout=30.0, story=True)
                     if _still():
                         self._arm_story_timer()
+                elif payload.get("story_need_reflection") and _still():
+                    from story_engine import take_story_question
+
+                    question = take_story_question(
+                        self._story_question_slot, generation, timeout=8.0
+                    )
+                    if not question:
+                        question = self.STORY_REFLECT_FALLBACK
+                    if _still():
+                        spoken = self._strip_unspeakable(question)
+                        if spoken:
+                            self.speech_worker.speak_and_wait(spoken, timeout=60.0, story=True)
+                        if _still():
+                            self._arm_story_timer()
                 else:
                     closing = self._strip_unspeakable(str(payload.get("story_closing") or ""))
                     if closing and _still() and closing != intro:
@@ -1729,14 +1715,24 @@ class AudioWorker:
 
         self._publish_story_status()
 
+    def _begin_story_question_prefetch(self, payload: dict[str, Any], generation: int) -> None:
+        from story_engine import StoryQuestionSlot, store_story_question
+
+        slot = StoryQuestionSlot(generation=generation)
+        self._story_question_slot = slot
+
+        def _run() -> None:
+            question = self._story_reflection_question(payload)
+            store_story_question(slot, generation, question)
+
+        threading.Thread(target=_run, name="StoryReflectPrefetch", daemon=True).start()
+
     def _story_reflection_question(self, payload: dict[str, Any]) -> str:
+        from story_engine import prompt_story_reflection
+
         title = payload.get("story_title") or "el cuento"
-        digest = payload.get("story_digest") or ""
-        prompt = (
-            f"Leímos el cuento '{title}'. Texto: {digest}. "
-            "Hacé UNA pregunta corta para que el nene piense el cuento. "
-            "No narres. Máximo 15 palabras."
-        )
+        text = payload.get("story_full_text") or payload.get("story_digest") or ""
+        prompt = prompt_story_reflection(str(title), str(text))
         hist = self.conversation_memory.messages()
         reply = ""
         try:
@@ -1914,6 +1910,9 @@ class AudioWorker:
                 {"mic": "deshabilitado", "volume": 0},
             )
             while not self._stop_event.is_set():
+                if self._enforce_playtime(audio_queue):
+                    time.sleep(0.5)
+                    continue
                 if self._is_awake():
                     self._sync_rps_hands()
                     choice = self._take_rps_choice()
@@ -1933,6 +1932,8 @@ class AudioWorker:
                     rps_label = self._take_rps_choice()
                     if rps_label:
                         self._pending_rps_label = rps_label
+                        return None
+                    if self._enforce_playtime(audio_queue):
                         return None
                     try:
                         audio_block = audio_queue.get(timeout=0.5)
@@ -2138,6 +2139,11 @@ class AudioWorker:
 
             try:
                 while not self._stop_event.is_set():
+                    if self._enforce_playtime(audio_queue):
+                        self._drain_audio_queue(audio_queue)
+                        self._set_capture_muted(True)
+                        time.sleep(0.2)
+                        continue
                     if not self._is_awake():
                         self._drain_audio_queue(audio_queue)
                         self._set_capture_muted(True)
@@ -2332,8 +2338,52 @@ class AudioWorker:
             "log",
             f"gesto={label}",
         )
-        self._speak_rps_response(response.text, audio_queue)
+        spoken = self._strip_unspeakable(response.text)
+        if spoken:
+            self._speak_game_turn(
+                spoken,
+                audio_queue,
+                response.lcd_image,
+                response.lcd_clear_after_speech,
+            )
         self._finish_rps_committed_turn()
+
+    def _begin_game_lcd(self, path: str | None, clear_after_speech: bool) -> None:
+        self._lcd_clear_after_speech = bool(clear_after_speech)
+        display = self.eye_display
+        if display is None or not path:
+            return
+        setter = getattr(display, "set_lcd_override_path", None)
+        if callable(setter):
+            try:
+                setter(path)
+            except Exception:
+                pass
+
+    def _end_game_lcd(self) -> None:
+        if not getattr(self, "_lcd_clear_after_speech", False):
+            return
+        self._lcd_clear_after_speech = False
+        display = self.eye_display
+        if display is None:
+            return
+        try:
+            display.set_lcd_override(None)
+        except Exception:
+            pass
+
+    def _speak_game_turn(
+        self,
+        text: str,
+        audio_queue: queue.Queue,
+        lcd_image: str | None = None,
+        lcd_clear_after_speech: bool = False,
+    ) -> None:
+        self._begin_game_lcd(lcd_image, lcd_clear_after_speech)
+        try:
+            self._speak_conversational_keep_mic(text, audio_queue)
+        finally:
+            self._end_game_lcd()
 
     def _speak_rps_response(self, text: str, audio_queue: queue.Queue) -> None:
         response_text = self._strip_unspeakable(text)
@@ -2373,6 +2423,27 @@ class AudioWorker:
             return
         limit = int(getattr(state, "playtime_limit_minutes", 0) or 0)
         self.playtime_guard.limit_minutes = limit
+
+    def _enforce_playtime(self, audio_queue: queue.Queue[np.ndarray] | None) -> bool:
+        self._sync_playtime_limit()
+        awake = self._is_awake()
+        limit_on = self.playtime_guard.limit_minutes > 0
+        self.playtime_guard.set_running(awake and limit_on)
+        if not awake or not limit_on:
+            return False
+        if not self.playtime_guard.is_over_limit():
+            return False
+        if self.playtime_guard.claim_end() and self.speech_worker is not None:
+            from session_policy import PLAYTIME_DECLINE_PHRASE
+
+            self._speak_conversational_keep_mic(
+                PLAYTIME_DECLINE_PHRASE, audio_queue, timeout=30.0
+            )
+        if self._robot_state is not None:
+            self._robot_state.go_to_sleep("playtime")
+        self._set_eyes("dormido")
+        self.playtime_guard.set_running(False)
+        return True
 
     def _waiting_story_child(self) -> bool:
         return bool(self.story_engine is not None and self.story_engine.is_waiting_for_child)
@@ -2491,13 +2562,20 @@ class AudioWorker:
             raw = None
             ms = 0.0
             try:
+                from child_profile import current_prompt_section
                 from fallback_llm import (
                     FallbackLLM,
                     drop_prompt_leak,
                     drop_unsolicited_story_offer,
+                    scrub_veo_veo_speech,
                 )
 
-                messages = FallbackLLM._build_messages(user_text, emotion, history)
+                messages = FallbackLLM._build_messages(
+                    user_text,
+                    emotion,
+                    history,
+                    profile_section=current_prompt_section(),
+                )
                 self._log_pc(
                     f"[PC] enviando LLM a {url} (timeout {getattr(client, 'llm_timeout_s', 60):.0f}s)"
                 )
@@ -2512,6 +2590,7 @@ class AudioWorker:
                 cleaned = drop_prompt_leak(
                     user_text, drop_unsolicited_story_offer(user_text, cleaned)
                 )
+                cleaned = scrub_veo_veo_speech(cleaned)
                 self._log_pc(f'[PC] LLM ok {ms:.0f} ms: "{cleaned}"')
                 return cleaned
             self._log_pc(
@@ -2755,18 +2834,8 @@ class AudioWorker:
                             self.message_queue, self.message_semaphore, "log",
                             f"Vocabulario: {len(new_words)} palabras nuevas detectadas: {', '.join(new_words[:5])}",
                         )
-                    hours_prior = None
-                    if new_words:
-                        hours_prior = self.vocabulary_tracker.hours_since_prior_discovery(
-                            excluding_last_n=len(new_words),
-                        )
-                    vocab_msg = self._vocab_alerter.consider(new_words, hours_prior)
-                    if vocab_msg:
-                        self._notify_vocab_parent(vocab_msg)
                 except Exception:
                     pass
-            else:
-                self._flush_vocab_parent_alert()
 
             # 4. Emotion context
             emotion_context = getattr(self.intent_dispatcher, "current_emotion", None)
@@ -2779,6 +2848,7 @@ class AudioWorker:
                 game_keyword_while_muted,
                 is_clear_keyword_intent,
                 should_run_intent_dispatcher,
+                spoken_after_play_game,
                 spoken_text_or_unknown_fallback,
             )
 
@@ -2787,12 +2857,9 @@ class AudioWorker:
             game_kw = game_keyword_while_muted(began_muted, keyword_now)
             if game_kw:
                 self.intent_mute.note_game_keyword(sanitized_text)
-                intent_payload = {
-                    "intent_name": game_kw,
-                    "confidence": 0.95,
-                    "response": "",
-                    "pilar": "cognitivo",
-                }
+                intent_payload = self.intent_dispatcher.dispatch(
+                    sanitized_text, emotion=emotion_context
+                )
             elif should_run_intent_dispatcher(self.intent_mute.is_muted):
                 intent_payload = self.intent_dispatcher.dispatch(sanitized_text, emotion=emotion_context)
             else:
@@ -2842,6 +2909,7 @@ class AudioWorker:
                 }
                 gated = True
             elif not self.playtime_guard.allows_intent(intent_name):
+                self.playtime_guard.claim_end()
                 intent_payload = {
                     "intent_name": "playtime_rest",
                     "confidence": 1.0,
@@ -3050,7 +3118,7 @@ class AudioWorker:
                 intent_payload["response"] = self.intent_dispatcher._pick_response(
                     "unknown_fallback",
                     [
-                        "¿Querés jugar al veo veo, escuchar música, un cuento o charlar un rato?",
+                        "¿Querés adivinar el objeto, contar, sombras, piedra papel o tijera, música o un cuento?",
                         "Contame un poco más, te escucho.",
                         "No te seguí del todo. ¿Me lo decís de otra forma?",
                         "¿Seguimos charlando o preferís un juego?",
@@ -3065,6 +3133,9 @@ class AudioWorker:
                 self._execute_actions(actions, intent_payload, user_text=sanitized_text)
                 if _dlog:
                     _dlog.log_output("LLM_ACTIONS", f"actions={[a['action'] for a in actions]}")
+                clean_response = spoken_after_play_game(
+                    clean_response, intent_payload, actions
+                )
             if not clean_response and any(a["action"] == "NOTIFY_PARENT" for a in actions):
                 clean_response = "Listo, le aviso a mamá o papá."
             if not clean_response:
@@ -3075,7 +3146,7 @@ class AudioWorker:
                     self.intent_dispatcher._pick_response(
                         "unknown_fallback",
                         [
-                            "¿Querés jugar al veo veo, escuchar música, un cuento o charlar un rato?",
+                            "¿Querés adivinar el objeto, contar, sombras, piedra papel o tijera, música o un cuento?",
                             "Contame un poco más, te escucho.",
                             "No te seguí del todo. ¿Me lo decís de otra forma?",
                             "¿Seguimos charlando o preferís un juego?",
@@ -3106,21 +3177,7 @@ class AudioWorker:
 
             # 11. Telemetry logging (#EPIC-004)
             duration_s = time.monotonic() - segment_start
-            self.playtime_guard.add_seconds(duration_s)
-            if (
-                self._is_awake()
-                and self.playtime_guard.limit_minutes > 0
-                and self.playtime_guard.is_over_limit()
-            ):
-                if intent_name != "playtime_rest" and self.speech_worker is not None:
-                    from session_policy import PLAYTIME_DECLINE_PHRASE
-
-                    self._speak_conversational_keep_mic(
-                        PLAYTIME_DECLINE_PHRASE, audio_queue, timeout=30.0
-                    )
-                if self._robot_state is not None:
-                    self._robot_state.go_to_sleep("playtime")
-                self._set_eyes("dormido")
+            self._enforce_playtime(audio_queue)
             if self.telemetry is not None:
                 try:
                     self.telemetry.log_interaction(
@@ -3172,30 +3229,37 @@ class AudioWorker:
             if not skip_cut and not story_chunk and not intent_payload.get("story_need_reflection") and intent_payload.get("intent_name") != "story_reflect_answer":
                 # Truncar respuestas largas a ~25 palabras para mantener TTS < 4s.
                 response_text = self._truncate_response(response_text, max_words=25)
-            if self.speech_worker is not None:
-                _t_tts = time.monotonic()
-                if story_chunk or intent_payload.get("story_need_reflection") or intent_payload.get("intent_name") == "story_reflect_answer":
-                    if _dlog:
-                        _dlog.log_input("TTS", "cuento turno")
-                    self._speak_story_payload(intent_payload, generation=None)
-                    self._silence_mic_after_speaker(audio_queue)
-                elif response_text:
-                    if _dlog:
-                        _dlog.log_input("TTS", f"text=\"{response_text}\"")
-                    story_turn = bool(
-                        self.story_engine is not None and self.story_engine.is_active
-                    )
-                    if story_turn:
-                        self.speech_worker.speak_and_wait(
-                            response_text, timeout=60.0, story=True
-                        )
+            self._begin_game_lcd(
+                intent_payload.get("lcd_image"),
+                bool(intent_payload.get("lcd_clear_after_speech")),
+            )
+            try:
+                if self.speech_worker is not None:
+                    _t_tts = time.monotonic()
+                    if story_chunk or intent_payload.get("story_need_reflection") or intent_payload.get("intent_name") == "story_reflect_answer":
+                        if _dlog:
+                            _dlog.log_input("TTS", "cuento turno")
+                        self._speak_story_payload(intent_payload, generation=None)
                         self._silence_mic_after_speaker(audio_queue)
-                    else:
-                        self._speak_conversational_keep_mic(
-                            response_text, audio_queue, timeout=60.0
+                    elif response_text:
+                        if _dlog:
+                            _dlog.log_input("TTS", f"text=\"{response_text}\"")
+                        story_turn = bool(
+                            self.story_engine is not None and self.story_engine.is_active
                         )
-                if _dlog:
-                    _dlog.log_output("TTS", "Reproducción completada", elapsed_ms=(time.monotonic() - _t_tts) * 1000)
+                        if story_turn:
+                            self.speech_worker.speak_and_wait(
+                                response_text, timeout=60.0, story=True
+                            )
+                            self._silence_mic_after_speaker(audio_queue)
+                        else:
+                            self._speak_conversational_keep_mic(
+                                response_text, audio_queue, timeout=60.0
+                            )
+                    if _dlog:
+                        _dlog.log_output("TTS", "Reproducción completada", elapsed_ms=(time.monotonic() - _t_tts) * 1000)
+            finally:
+                self._end_game_lcd()
             if ppt_committed:
                 self._finish_rps_committed_turn()
             else:
@@ -3272,7 +3336,7 @@ class AudioWorker:
     # [NOTIFY_PARENT:razón del aviso], etc.
     _ACTION_TAG_RE = re.compile(
         r"\["
-        r"(PLAY_MUSIC|STOP_MUSIC|NOTIFY_PARENT|EXPRESSION|CELEBRATE|CALM_MODE|INTENTS_OFF|INTENTS_ON|GO_TO_SLEEP|LIST_STORIES|LIST_MUSIC|PLAY_STORY)"
+        r"(PLAY_MUSIC|STOP_MUSIC|NOTIFY_PARENT|EXPRESSION|CELEBRATE|CALM_MODE|INTENTS_OFF|INTENTS_ON|GO_TO_SLEEP|LIST_STORIES|LIST_MUSIC|PLAY_STORY|PLAY_GAME)"
         r"(?::([^\]]*))?"
         r"\]",
         re.IGNORECASE,
@@ -3368,6 +3432,17 @@ class AudioWorker:
                     elif _dlog:
                         _dlog.log_output("ACTION", f"PLAY_STORY sin match: {param!r}")
 
+                elif action == "PLAY_GAME":
+                    from game_engine import apply_play_game_tag
+
+                    if self.game_engine is not None and apply_play_game_tag(
+                        self.game_engine, param, intent_payload
+                    ):
+                        if _dlog:
+                            _dlog.log_output("ACTION", f"PLAY_GAME -> {param!r}")
+                    elif _dlog:
+                        _dlog.log_output("ACTION", f"PLAY_GAME sin match: {param!r}")
+
                 elif action in {"LIST_STORIES", "LIST_MUSIC"}:
                     if _dlog:
                         _dlog.log_output("ACTION", f"{action} (catálogo, no se habla)")
@@ -3440,7 +3515,7 @@ class AudioWorker:
     # hallucinations (e.g. injecting "mamá" into adult speech).  Uses common
     # Argentine expressions to condition the decoder for rioplatense accent.
     _WHISPER_INITIAL_PROMPT: str = (
-        "Hola. ¿Cómo estás? Quiero jugar a piedra, papel o tijera. "
+        "Hola teo. ¿Cómo estás? Quiero jugar a piedra, papel o tijera. "
         "Sí, dale. No quiero. Juguemos. Contame un cuento."
     )
 
@@ -3888,7 +3963,7 @@ class AudioWorker:
             if nsp is not None:
                 no_speech_probs.append(float(nsp))
         transcript = " ".join(part for part in text_parts if part).strip()
-        transcript = self._filter_hallucinations(transcript)
+        transcript = drop_whisper_hallucinations(transcript)
         save_named_transcript_wav(audio_segment, transcript, sample_rate=16000)
 
         from session_policy import stt_is_low_confidence
@@ -3913,66 +3988,6 @@ class AudioWorker:
             avg_logprob=avg_logprob,
             no_speech_prob=no_speech_prob,
         )
-
-    @staticmethod
-    def _filter_hallucinations(text: str) -> str:
-        """Descarta transcripciones que son alucinaciones conocidas de Whisper.
-
-        Whisper genera frases inventadas cuando recibe audio muy corto,
-        ruidoso o casi silencioso.  Las más frecuentes son:
-        - Créditos de subtítulos ("Subtítulos realizados por...", "Sous-titres...")
-        - Agradecimientos genéricos ("Gracias por ver", "Thank you...")
-        - Una sola palabra repetida N veces ("ruido ruido ruido")
-        - Texto que es eco del initial_prompt
-        """
-        if not text:
-            return ""
-
-        low = text.lower().strip()
-
-        # Frases basura conocidas (multilingüe porque Whisper a veces
-        # cambia de idioma en las alucinaciones)
-        _HALLUCINATION_PHRASES = [
-            "subtítulos realizados",
-            "subtitulos realizados",
-            "subtítulos por",
-            "sous-titres",
-            "sous titres",
-            "gracias por ver",
-            "thanks for watching",
-            "thank you for watching",
-            "suscríbete",
-            "subscribe",
-            "like and subscribe",
-            "amara.org",
-            "www.",
-            "http",
-        ]
-        for phrase in _HALLUCINATION_PHRASES:
-            if phrase in low:
-                return ""
-
-        # Palabra única repetida (ej: "ruido ruido ruido", "no no no no")
-        words = low.split()
-        if len(words) >= 3 and len(set(words)) == 1:
-            return ""
-
-        # Texto demasiado corto para ser habla real (1 carácter suelto)
-        if len(low) <= 1:
-            return ""
-
-        # Eco de prompts viejos / frases que Whisper copia del contexto.
-        _PROMPT_ECHO = (
-            "me gusta el peluche",
-            "vamos a hacer algo divertido",
-            "jugamos a las adivinanzas",
-        )
-        folded_words = " ".join(words)
-        for echo in _PROMPT_ECHO:
-            if echo in folded_words and len(words) <= 8:
-                return ""
-
-        return text
 
     def _load_vad(self, sample_rate: int):
         return SileroVadAdapter(sample_rate=sample_rate)
@@ -4166,6 +4181,9 @@ class SpeechWorker:
         if not self._speech_allowed(allow_when_asleep):
             return False
         speech_text = self._prepare_tts_text(self._strip_tts_markup((text or "").strip()))
+        from gender_speech import inflect_for_child
+
+        speech_text = inflect_for_child(speech_text)
         if not speech_text:
             return False
         if self._reject_non_story_tts(story):
@@ -4194,6 +4212,9 @@ class SpeechWorker:
         if not self._speech_allowed(allow_when_asleep):
             return
         speech_text = self._prepare_tts_text(self._strip_tts_markup((text or "").strip()))
+        from gender_speech import inflect_for_child
+
+        speech_text = inflect_for_child(speech_text)
         if not speech_text:
             return
         if self._reject_non_story_tts(story):
@@ -4382,10 +4403,6 @@ class SpeechWorker:
             audio_array = audio_array.astype(np.float32) / float(info.max)
 
         orig_channels = audio_array.shape[1] if audio_array.ndim > 1 else 1
-        from session_policy import apply_gain, effective_volume_limit, gain_from_limit
-
-        limit = effective_volume_limit(self._volume_limit, self._night_mode)
-        audio_array = apply_gain(audio_array, gain_from_limit(limit))
         playback_gen = self._playback_generation
         probed = self._find_supported_output_config(sample_rate, orig_channels)
         configs: list[tuple[int, str, int]] = []
@@ -4452,12 +4469,24 @@ class SpeechWorker:
                     start = _pos[0]
                     end = start + frames
                     chunk = _audio[start:end]
+                    from session_policy import (
+                        effective_volume_limit,
+                        gain_from_limit,
+                        scale_playback_chunk,
+                    )
+
+                    gain = gain_from_limit(
+                        effective_volume_limit(self._volume_limit, self._night_mode)
+                    )
                     if len(chunk) < frames:
-                        outdata[: len(chunk)] = chunk
-                        outdata[len(chunk) :] = 0
+                        filled = chunk
+                        if len(filled) > 0:
+                            filled = scale_playback_chunk(filled, gain)
+                        outdata[: len(filled)] = filled
+                        outdata[len(filled) :] = 0
                         _finished.set()
                         raise sd.CallbackStop()
-                    outdata[:] = chunk
+                    outdata[:] = scale_playback_chunk(chunk, gain)
                     _pos[0] = end
 
                 try:

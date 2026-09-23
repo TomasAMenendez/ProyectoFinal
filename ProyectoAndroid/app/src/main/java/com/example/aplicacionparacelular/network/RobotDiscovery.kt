@@ -151,41 +151,36 @@ object RobotDiscovery {
                 val buffer = ByteArray(1024)
                 val packet = DatagramPacket(buffer, buffer.size)
 
-                // Esperar un beacon
-                socket.receive(packet)
-
-                val data = String(packet.data, 0, packet.length, Charsets.UTF_8)
-                val json = JSONObject(data)
-
-                val deviceId = json.optString("device_id", "")
-                if (deviceId == "micompanero_robot") {
-                    // Usar la IP del paquete recibido (más confiable que la
-                    // IP que reporta el beacon, por si hay NAT o multi-homed)
-                    val ip = json.optString("local_ip", packet.address.hostAddress ?: "")
+                while (true) {
+                    socket.receive(packet)
+                    val data = String(packet.data, 0, packet.length, Charsets.UTF_8)
+                    val json = JSONObject(data)
+                    val deviceId = json.optString("device_id", "")
+                    if (deviceId != "micompanero_robot") {
+                        continue
+                    }
+                    val ip = BeaconIp.pick(
+                        json.optString("local_ip", ""),
+                        packet.address.hostAddress,
+                    )
+                    if (!BeaconIp.isUsable(ip)) {
+                        continue
+                    }
                     val port = json.optInt("api_port", DEFAULT_API_PORT)
                     val name = json.optString("device_name", "Peluche")
-
                     val robot = DiscoveredRobot(
-                        ip = ip.ifBlank { packet.address.hostAddress ?: "" },
+                        ip = ip,
                         port = port,
                         deviceName = name,
                         deviceId = deviceId,
                         pairingToken = json.optString("pairing_token", "")
                     )
-
                     mainHandler.post {
                         _discoveredRobot.value = robot
                         _isScanning.value = false
                     }
                     return@Thread
                 }
-
-                // Si el beacon no es del robot esperado
-                mainHandler.post {
-                    _scanError.value = "Dispositivo desconocido encontrado"
-                    _isScanning.value = false
-                }
-
             } catch (e: java.net.SocketTimeoutException) {
                 // Beacon UDP no recibido — puede ser AP Isolation en el router.
                 // Intentar fallback: scan HTTP paralelo sobre toda la subred /24.

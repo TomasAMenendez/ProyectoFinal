@@ -268,6 +268,65 @@ class TestEyeDisplayAnimate(unittest.TestCase):
             self.assertEqual(after_calls[0][0], 33)
 
 
+class TestEyeDisplayLcdOverride(unittest.TestCase):
+    def test_override_muestra_imagen_custom_en_lcd(self) -> None:
+        from eye_display import EyeDisplay
+
+        animator = EyeAnimator(sprites_dir=tempfile.mkdtemp())
+        display = EyeDisplay(None, animator=animator)
+
+        class FakeLcd:
+            def __init__(self) -> None:
+                self.display_width = 320
+                self.display_height = 240
+                self.frames: list = []
+
+            def display(self, frame) -> None:
+                self.frames.append(frame)
+
+        lcd = FakeLcd()
+        display.lcd = lcd
+
+        display._blit_lcd()
+        self.assertEqual(len(lcd.frames), 1)
+        animator_frame = lcd.frames[0]
+        self.assertIsInstance(animator_frame, Image.Image)
+
+        override = Image.new("RGB", (320, 240), (255, 0, 0))
+        display.set_lcd_override(override)
+        display._blit_lcd()
+        self.assertEqual(len(lcd.frames), 2)
+        override_frame = lcd.frames[1]
+        self.assertIs(override_frame, override)
+        self.assertNotEqual(override_frame.tobytes(), animator_frame.tobytes())
+
+    def test_clear_override_vuelve_al_animator(self) -> None:
+        from eye_display import EyeDisplay
+
+        animator = EyeAnimator(sprites_dir=tempfile.mkdtemp())
+        display = EyeDisplay(None, animator=animator)
+
+        class FakeLcd:
+            def __init__(self) -> None:
+                self.display_width = 320
+                self.display_height = 240
+                self.frames: list = []
+
+            def display(self, frame) -> None:
+                self.frames.append(frame)
+
+        lcd = FakeLcd()
+        display.lcd = lcd
+        override = Image.new("RGB", (320, 240), (0, 255, 0))
+        display.set_lcd_override(override)
+        display._blit_lcd()
+        display.set_lcd_override(None)
+        display._blit_lcd()
+        self.assertEqual(len(lcd.frames), 2)
+        self.assertIsInstance(lcd.frames[1], Image.Image)
+        self.assertIsNot(lcd.frames[1], override)
+
+
 class TestRgb565(unittest.TestCase):
     def test_rojo_puro_es_f800(self) -> None:
         image = Image.new("RGB", (1, 1), (255, 0, 0))

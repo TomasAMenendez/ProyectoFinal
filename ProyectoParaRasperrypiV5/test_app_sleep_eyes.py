@@ -10,6 +10,7 @@ sys.modules.setdefault("mediapipe", MagicMock())
 sys.modules.setdefault("sounddevice", MagicMock())
 
 from app import EdgeAiDesktopApp, EyeModeApp
+from workers import WorkerMessage
 
 
 class TestApplySleepUiEyes(unittest.TestCase):
@@ -30,3 +31,26 @@ class TestApplySleepUiEyes(unittest.TestCase):
         fake._eye_display = MagicMock()
         EyeModeApp._apply_sleep_ui(fake, True)
         fake._eye_display.set_expression.assert_called_with("neutral")
+
+
+class TestCameraEmotionDoesNotDriveLcd(unittest.TestCase):
+    def test_enojado_de_camara_no_cambia_ojos(self) -> None:
+        fake = MagicMock()
+        fake._eye_display = MagicMock()
+        fake.intent_dispatcher = MagicMock()
+        EyeModeApp._handle_message(
+            fake,
+            WorkerMessage(kind="emotion", payload={"label": "enojado", "score": 0.28}),
+        )
+        fake._eye_display.set_expression.assert_not_called()
+        fake.intent_dispatcher.set_current_emotion.assert_called()
+
+    def test_triste_de_camara_no_cambia_ojos(self) -> None:
+        fake = MagicMock()
+        fake._eye_display = MagicMock()
+        fake.intent_dispatcher = MagicMock()
+        EyeModeApp._handle_message(
+            fake,
+            WorkerMessage(kind="emotion", payload={"label": "triste", "score": 0.33}),
+        )
+        fake._eye_display.set_expression.assert_not_called()

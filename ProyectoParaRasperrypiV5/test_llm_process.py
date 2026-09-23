@@ -71,7 +71,7 @@ class TestUnknownUsaRespuestaLlm(unittest.TestCase):
 
         self.assertTrue(should_allow_llm("unknown"))
         canned = [
-            "¿Querés jugar al veo veo, escuchar música, un cuento o charlar un rato?",
+            "¿Querés adivinar el objeto, contar, sombras, piedra papel o tijera, música o un cuento?",
             "Contame un poco más, te escucho.",
             "No te seguí del todo. ¿Me lo decís de otra forma?",
             "¿Seguimos charlando o preferís un juego?",

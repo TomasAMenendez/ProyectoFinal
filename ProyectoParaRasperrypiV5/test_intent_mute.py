@@ -34,6 +34,22 @@ class TestDispatchHelpers(unittest.TestCase):
             game_keyword_while_muted(True, "play_piedra_papel"),
             "play_piedra_papel",
         )
+        self.assertEqual(
+            game_keyword_while_muted(True, "play_contar"),
+            "play_contar",
+        )
+        self.assertEqual(
+            game_keyword_while_muted(True, "play_sombras"),
+            "play_sombras",
+        )
+        self.assertEqual(
+            game_keyword_while_muted(True, "activity_offer"),
+            "activity_offer",
+        )
+        self.assertEqual(
+            game_keyword_while_muted(True, "play_generic"),
+            "play_generic",
+        )
         self.assertIsNone(game_keyword_while_muted(True, "emotion_angry"))
         self.assertIsNone(game_keyword_while_muted(True, "call_parent"))
         self.assertIsNone(game_keyword_while_muted(False, "play_veo_veo"))
@@ -186,6 +202,16 @@ class TestActionTagRegex(unittest.TestCase):
         self.assertEqual(actions[0]["action"], "PLAY_STORY")
         self.assertEqual(actions[0]["param"], "El sapo valiente")
         self.assertEqual(clean, "Dale.")
+
+    def test_play_game_se_parsea_y_no_se_dice(self) -> None:
+        from workers import AudioWorker
+
+        worker = AudioWorker.__new__(AudioWorker)
+        actions, clean = worker._parse_action_tags("¡Dale! [PLAY_GAME:sombras]")
+        self.assertEqual(actions[0]["action"], "PLAY_GAME")
+        self.assertEqual(actions[0]["param"], "sombras")
+        self.assertNotIn("[", clean)
+        self.assertNotIn("PLAY_GAME", clean)
 
     def test_intents_off_solo_no_tiene_texto_hablable(self) -> None:
         from session_policy import spoken_text_or_unknown_fallback

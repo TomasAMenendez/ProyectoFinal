@@ -8,12 +8,16 @@ import android.view.View
 import android.view.ViewGroup
 import androidx.fragment.app.Fragment
 import androidx.lifecycle.ViewModelProvider
+import androidx.navigation.fragment.findNavController
 import com.example.aplicacionparacelular.BuildConfig
 import com.example.aplicacionparacelular.R
 import com.example.aplicacionparacelular.databinding.FragmentConfigBinding
+import com.example.aplicacionparacelular.network.ApiResult
 import com.example.aplicacionparacelular.network.RobotApiClient
 import com.example.aplicacionparacelular.network.RobotConnectionManager
 import com.example.aplicacionparacelular.network.RobotDiscovery
+import com.example.aplicacionparacelular.onboarding.WifiProvisioningResponse
+import com.example.aplicacionparacelular.ui.onboarding.ChildProfileForm
 import com.google.android.material.snackbar.Snackbar
 import java.net.Inet4Address
 import java.net.NetworkInterface
@@ -23,6 +27,8 @@ class ConfigFragment : Fragment() {
     private var _binding: FragmentConfigBinding? = null
     private val binding get() = _binding!!
     private lateinit var viewModel: ConfigViewModel
+    private lateinit var childProfileForm: ChildProfileForm
+    private var wasConnected = false
 
     override fun onCreateView(
         inflater: LayoutInflater,
@@ -39,12 +45,17 @@ class ConfigFragment : Fragment() {
 
         setupDebugBanner()
         setupConnectionSection()
+        wasConnected = RobotConnectionManager.isConnected.value == true
+        setupChildProfileSection()
         setupSensorySection()
         setupNightModeSection()
         setupStatusObservers()
 
         if (RobotApiClient.isConfigured()) {
             viewModel.loadFromRobot()
+        }
+        if (wasConnected) {
+            viewModel.loadChildProfile()
         }
     }
 
@@ -232,7 +243,10 @@ class ConfigFragment : Fragment() {
         // Connection status
         RobotConnectionManager.isConnected.observe(viewLifecycleOwner) { connected ->
             binding.txtConnectionStatus.text = if (connected) "🟢 Conectado" else "🔴 Desconectado"
+            binding.btnChangeWifi.visibility = if (connected) View.VISIBLE else View.GONE
         }
+
+        binding.btnChangeWifi.setOnClickListener { startWifiProvisioning() }
 
         // Show last error for debugging
         RobotConnectionManager.lastError.observe(viewLifecycleOwner) { error ->
@@ -248,6 +262,47 @@ class ConfigFragment : Fragment() {
         }
     }
 
+    /**
+     * Pide al peluche que muestre un PIN nuevo y abra el BLE, y recién ahí abre
+     * la pantalla de WiFi.
+     *
+     * No alcanza con un 200: la Pi contesta el pedido igual cuando no pudo
+     * prender el BLE, y navegar ahí deja al padre en una pantalla que nunca va
+     * a avanzar. [WifiProvisioningResponse.startedOk] lee el cuerpo con
+     * tolerancia y solo toma como fracaso las señales explícitas de fracaso.
+     */
+    private fun startWifiProvisioning() {
+        binding.btnChangeWifi.isEnabled = false
+        RobotConnectionManager.setWifiProvisioning(true) { result ->
+            if (_binding == null) return@setWifiProvisioning
+            binding.btnChangeWifi.isEnabled = true
+            when (result) {
+                is ApiResult.Success ->
+                    if (WifiProvisioningResponse.startedOk(result.data)) {
+                        Snackbar.make(
+                            binding.root,
+                            R.string.config_change_wifi_starting,
+                            Snackbar.LENGTH_SHORT,
+                        ).show()
+                        findNavController().navigate(R.id.nav_wifi_setup)
+                    } else {
+                        // Nos quedamos en Config: la pantalla de WiFi no tendría
+                        // a quién hablarle.
+                        Snackbar.make(
+                            binding.root,
+                            R.string.config_change_wifi_error_ble,
+                            Snackbar.LENGTH_LONG,
+                        ).show()
+                    }
+                is ApiResult.Error -> Snackbar.make(
+                    binding.root,
+                    R.string.config_change_wifi_error,
+                    Snackbar.LENGTH_LONG,
+                ).show()
+            }
+        }
+    }
+
     private fun connectToRobot(ip: String, port: Int = 8080) {
         RobotConnectionManager.connectManually(requireContext(), ip, port)
         Snackbar.make(binding.root, "Conectando a $ip:$port...", Snackbar.LENGTH_SHORT).show()
@@ -256,6 +311,33 @@ class ConfigFragment : Fragment() {
         if (BuildConfig.DEBUG) {
             binding.txtDebugConfiguredIp.text = "🧸 IP configurada: $ip"
             fetchServerInfo(ip)
+        }
+    }
+
+    // ------------------------------------------------------------------
+    // Datos del chico
+    // ------------------------------------------------------------------
+
+    private fun setupChildProfileSection() {
+        childProfileForm = ChildProfileForm(binding.childProfileForm)
+        childProfileForm.bind { childProfileForm.refreshSaveEnabled() }
+        binding.childProfileForm.btnSave.setOnClickListener {
+            if (!childProfileForm.read().canSubmit) return@setOnClickListener
+            viewModel.saveChildProfile(childProfileForm.payload())
+        }
+        viewModel.childProfile.observe(viewLifecycleOwner) { profile ->
+            childProfileForm.populate(profile)
+        }
+        viewModel.savedChildProfile.observe(viewLifecycleOwner) { profile ->
+            childProfileForm.markClean()
+            childProfileForm.populate(profile)
+        }
+        RobotConnectionManager.isConnected.observe(viewLifecycleOwner) { connected ->
+            binding.childProfileSection.visibility = if (connected) View.VISIBLE else View.GONE
+            if (!wasConnected && connected) {
+                viewModel.loadChildProfile()
+            }
+            wasConnected = connected
         }
     }
 
@@ -288,21 +370,23 @@ class ConfigFragment : Fragment() {
             binding.txtBrightnessValue.text = "$value%"
         }
 
-        binding.sliderPlaytime.addOnChangeListener { _, value, fromUser ->
-            if (fromUser) {
-                val minutes = value.toInt()
-                viewModel.setPlaytimeLimit(minutes)
-                binding.txtPlaytimeValue.text = formatPlaytime(minutes)
-            }
-        }
         viewModel.playtimeLimit.observe(viewLifecycleOwner) { value ->
-            val stepped = (value / 10) * 10
-            binding.sliderPlaytime.value = stepped.coerceIn(0, 240).toFloat()
+            if (!binding.editPlaytimeMinutes.hasFocus()) {
+                val shown = value.coerceIn(0, 240).toString()
+                if (binding.editPlaytimeMinutes.text?.toString() != shown) {
+                    binding.editPlaytimeMinutes.setText(shown)
+                }
+            }
             binding.txtPlaytimeValue.text = formatPlaytime(value)
         }
 
-        // Apply config button
         binding.btnApplyConfig.setOnClickListener {
+            val parsed = PlaytimeLimitInput.parseMinutes(binding.editPlaytimeMinutes.text?.toString().orEmpty())
+            if (parsed == null) {
+                Snackbar.make(binding.root, getString(R.string.config_playtime_invalid), Snackbar.LENGTH_SHORT).show()
+                return@setOnClickListener
+            }
+            viewModel.setPlaytimeLimit(parsed)
             viewModel.applyConfig()
         }
     }

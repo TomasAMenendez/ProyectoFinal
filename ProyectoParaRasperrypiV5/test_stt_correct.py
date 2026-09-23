@@ -132,6 +132,16 @@ class TestFilterStt(unittest.TestCase):
         out = polish_stt_text("Me llamo Tomás.", is_known_spanish=_known_spanish)
         self.assertIn("tomás", out.lower())
 
+    def test_adios_suelto_es_alucinacion_de_whisper(self) -> None:
+        self.assertEqual(polish_stt_text("Adiós."), "")
+        self.assertEqual(polish_stt_text("¡Adiós!"), "")
+
+    def test_adios_teo_sigue_siendo_despedida(self) -> None:
+        self.assertIn("adiós", polish_stt_text("Adiós teo.").lower())
+
+    def test_hola_teo_sigue(self) -> None:
+        self.assertEqual(polish_stt_text("Hola teo.").lower(), "hola teo.")
+
 
 if __name__ == "__main__":
     unittest.main()

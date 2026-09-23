@@ -25,8 +25,18 @@ from pathlib import Path
 from typing import Any, Callable
 from urllib.parse import parse_qs, urlparse
 
+from child_profile import (
+    ChildProfileError,
+    default_profile,
+    is_complete,
+    load_profile,
+    parse_payload,
+    save_profile,
+    set_profile_path,
+)
 from debug_logger import log_action
 from pairing import load_or_create_token
+from parent_alerts import belongs_in_parent_inbox
 from session_policy import PlaytimeGuard, sanitize_notification_extra, telemetry_range_summary
 from sleep_state import SleepState
 
@@ -44,6 +54,7 @@ class RobotState:
         self.sleep = SleepState()
         self.playtime_guard = PlaytimeGuard(limit_minutes=0)
         self._prefs_path = prefs_path or (APP_DIR / "parental_prefs.json")
+        set_profile_path(APP_DIR / "child_profile.json")
         self.power_on: bool = False
         self.night_mode: bool = False
         self.volume_limit: int = 100       # 0-100
@@ -70,6 +81,9 @@ class RobotState:
         self.on_stop_music: Callable[[], None] | None = None
         self.on_play_story: Callable[[str], bool] | None = None
         self.on_stop_story: Callable[[], None] | None = None
+        self.ble_setup_active: bool = False
+        self.wifi_connected: bool = False
+        self.on_wifi_provisioning: Callable[[bool], None] | None = None
         self._load_prefs()
 
         # Referencias a subsistemas (set from app.py)
@@ -84,6 +98,7 @@ class RobotState:
         if sw is not None and getattr(sw, "_is_playing_music", False):
             playing = getattr(sw, "_current_song_name", None)
         with self._lock:
+            profile = load_profile()
             return {
                 "power_on": self.sleep.status_power_on(),
                 "models_ready": self.sleep.models_ready,
@@ -93,10 +108,15 @@ class RobotState:
                 "volume_limit": self.volume_limit,
                 "brightness": self.brightness,
                 "playtime_limit_minutes": self.playtime_limit_minutes,
+                "playtime_remaining_seconds": self.playtime_guard.remaining_seconds(),
+                "playtime_remaining_fraction": self.playtime_guard.remaining_fraction(),
                 "current_emotion": self.current_emotion,
                 "current_emotion_score": self.current_emotion_score,
                 "currently_playing": playing,
                 "currently_reading": dict(self.currently_reading) if self.currently_reading else None,
+                "has_child_profile": is_complete(profile),
+                "ble_setup_active": self.ble_setup_active,
+                "wifi_connected": self.wifi_connected,
                 "timestamp": datetime.now().isoformat(),
             }
 
@@ -113,9 +133,18 @@ class RobotState:
             return
         if "belly_wake_enabled" in data:
             self.sleep.set_belly_wake_enabled(bool(data["belly_wake_enabled"]))
+        if "playtime_limit_minutes" in data:
+            self._apply_playtime_limit(data["playtime_limit_minutes"])
+
+    def _apply_playtime_limit(self, minutes: object) -> None:
+        self.playtime_limit_minutes = max(0, min(240, int(minutes)))
+        self.playtime_guard.limit_minutes = self.playtime_limit_minutes
 
     def _save_prefs(self) -> None:
-        payload = {"belly_wake_enabled": self.sleep.belly_wake_enabled}
+        payload = {
+            "belly_wake_enabled": self.sleep.belly_wake_enabled,
+            "playtime_limit_minutes": self.playtime_limit_minutes,
+        }
         try:
             self._prefs_path.write_text(
                 json.dumps(payload, ensure_ascii=False, indent=2),
@@ -131,10 +160,10 @@ class RobotState:
             if "brightness" in data:
                 self.brightness = max(0.0, min(1.0, float(data["brightness"])))
             if "playtime_limit_minutes" in data:
-                self.playtime_limit_minutes = max(0, min(240, int(data["playtime_limit_minutes"])))
-                self.playtime_guard.limit_minutes = self.playtime_limit_minutes
+                self._apply_playtime_limit(data["playtime_limit_minutes"])
             if "belly_wake_enabled" in data:
                 self.sleep.set_belly_wake_enabled(bool(data["belly_wake_enabled"]))
+            if "playtime_limit_minutes" in data or "belly_wake_enabled" in data:
                 self._save_prefs()
         if self.on_config_changed:
             self.on_config_changed({
@@ -240,6 +269,9 @@ class RobotState:
             message: Descripción legible del evento.
             extra: Datos adicionales opcionales.
         """
+        if not belongs_in_parent_inbox(notif_type):
+            log_action("NOTIFY", f"omitido {notif_type}: {message}")
+            return
         notif = {
             "type": notif_type,
             "message": message,
@@ -378,6 +410,8 @@ class ApiRequestHandler(BaseHTTPRequestHandler):
             self._handle_get_stories()
         elif path.startswith("/api/stories/"):
             self._handle_get_story(path.split("/api/stories/", 1)[1])
+        elif path == "/api/child-profile":
+            self._handle_get_child_profile()
         elif path == "/api/notifications":
             self._handle_get_notifications()
         else:
@@ -388,20 +422,15 @@ class ApiRequestHandler(BaseHTTPRequestHandler):
 
     def _handle_get_server_info(self) -> None:
         """Devuelve información del servidor para debug de conexión."""
-        import socket as _socket
-        try:
-            s = _socket.socket(_socket.AF_INET, _socket.SOCK_DGRAM)
-            s.settimeout(0.5)
-            s.connect(("8.8.8.8", 80))
-            local_ip = s.getsockname()[0]
-            s.close()
-        except Exception:
-            local_ip = "0.0.0.0"
+        from lan_ip import current_lan_ip
+
+        local_ip = current_lan_ip() or ""
+        connect = f"http://{local_ip}:8080" if local_ip else ""
         self._send_json({
             "server_ip": local_ip,
             "server_port": 8080,
             "device_name": "MiCompañero Peluche",
-            "connect_url": f"http://{local_ip}:8080",
+            "connect_url": connect,
             "pairing_token": robot_state.pairing_token,
         })
 
@@ -556,6 +585,10 @@ class ApiRequestHandler(BaseHTTPRequestHandler):
             "text": text,
         })
 
+    def _handle_get_child_profile(self) -> None:
+        profile = load_profile() or default_profile()
+        self._send_json({**profile.to_dict(), "complete": is_complete(profile)})
+
     def _handle_get_notifications(self) -> None:
         """Devuelve y vacía las notificaciones pendientes.
 
@@ -596,6 +629,8 @@ class ApiRequestHandler(BaseHTTPRequestHandler):
             self._handle_post_stories_play()
         elif path == "/api/stories/stop":
             self._handle_post_stories_stop()
+        elif path == "/api/wifi/provisioning":
+            self._handle_post_wifi_provisioning()
         else:
             self._send_error_json(404, "Endpoint no encontrado")
 
@@ -796,6 +831,34 @@ class ApiRequestHandler(BaseHTTPRequestHandler):
         else:
             self._send_error_json(503, "Lector de cuentos no disponible")
 
+    def _handle_post_wifi_provisioning(self) -> None:
+        body = self._parse_json_body()
+        if body is None or not isinstance(body, dict):
+            self._send_error_json(400, "JSON inválido")
+            return
+        if "enabled" not in body or not isinstance(body["enabled"], bool):
+            self._send_error_json(400, "JSON inválido")
+            return
+        enabled = body["enabled"]
+        callback = robot_state.on_wifi_provisioning
+        if callback is None:
+            # Sin coordinator BLE (sin dbus/BlueZ/adaptador) no hay nada que
+            # anunciar: contestar 200 haría que la app navegue a una pantalla
+            # que nunca puede progresar.
+            self._send_error_json(503, "BLE no disponible")
+            return
+        try:
+            result = callback(enabled)
+        except Exception:
+            self._send_error_json(503, "BLE no disponible")
+            return
+        if result is False:
+            # El coordinator no logró anunciar (BlueZ rechazó el advertisement).
+            self._send_error_json(503, "BLE no disponible")
+            return
+        robot_state.ble_setup_active = enabled
+        self._send_json({"status": "ok", "enabled": enabled})
+
     # ------------------------------------------------------------------
     # PUT endpoints
     # ------------------------------------------------------------------
@@ -805,11 +868,26 @@ class ApiRequestHandler(BaseHTTPRequestHandler):
         if not self._authorized(path, mutating=True):
             return
 
-        if path.startswith("/api/stories/"):
+        if path == "/api/child-profile":
+            self._handle_put_child_profile()
+        elif path.startswith("/api/stories/"):
             story_id = path.split("/api/stories/", 1)[1]
             self._handle_put_story(story_id)
         else:
             self._send_error_json(404, "Endpoint no encontrado")
+
+    def _handle_put_child_profile(self) -> None:
+        body = self._parse_json_body()
+        if body is None or not isinstance(body, dict):
+            self._send_error_json(400, "JSON inválido")
+            return
+        try:
+            profile = parse_payload(body)
+        except ChildProfileError as exc:
+            self._send_error_json(400, str(exc))
+            return
+        saved = save_profile(profile)
+        self._send_json({**saved.to_dict(), "complete": is_complete(saved)})
 
     def _handle_put_story(self, story_id: str) -> None:
         import urllib.parse
@@ -913,21 +991,6 @@ class _DiscoveryBeacon:
         self._running = False
         self._thread: threading.Thread | None = None
 
-    def _get_local_ip(self) -> str:
-        """Intenta obtener la IP local de la interfaz de red principal."""
-        import socket as _socket
-        try:
-            s = _socket.socket(_socket.AF_INET, _socket.SOCK_DGRAM)
-            s.settimeout(0.5)
-            # No envía datos realmente; solo necesita un destino para
-            # que el OS seleccione la interfaz de red correcta.
-            s.connect(("8.8.8.8", 80))
-            ip = s.getsockname()[0]
-            s.close()
-            return ip
-        except Exception:
-            return "0.0.0.0"
-
     def start(self) -> None:
         self._running = True
         self._thread = threading.Thread(
@@ -945,54 +1008,62 @@ class _DiscoveryBeacon:
             self._thread = None
         log_action("BEACON", "detenido")
 
-    def _broadcast_loop(self) -> None:
+    def _open_broadcast_socket(self):
         import socket as _socket
         sock = _socket.socket(_socket.AF_INET, _socket.SOCK_DGRAM)
         sock.setsockopt(_socket.SOL_SOCKET, _socket.SO_BROADCAST, 1)
         sock.settimeout(1.0)
+        return sock
 
-        local_ip = self._get_local_ip()
-        beacon_data = json.dumps({
-            "device_id": "micompanero_robot",
-            "device_name": "MiCompañero Peluche",
-            "api_port": self.api_port,
-            "local_ip": local_ip,
-            "pairing_token": robot_state.pairing_token,
-        }, ensure_ascii=False).encode("utf-8")
+    def _broadcast_loop(self) -> None:
+        from lan_ip import beacon_fields, current_lan_ip
 
+        sock = self._open_broadcast_socket()
+        local_ip = current_lan_ip()
+        beacon_data = json.dumps(
+            beacon_fields(self.api_port, robot_state.pairing_token, local_ip),
+            ensure_ascii=False,
+        ).encode("utf-8")
         print(
             f"[API] Beacon de descubrimiento activo en UDP :{self.BEACON_PORT} "
-            f"(intervalo: {self.interval}s, IP local: {local_ip})",
+            f"(intervalo: {self.interval}s, IP local: {local_ip or 'pendiente'})",
             flush=True,
         )
+        log_action("BEACON", f"IP anunciada: {local_ip or 'ninguna'}")
 
         _reminder_counter = 0
-        _reminder_interval = int(60 / self.interval)  # cada ~60 segundos
+        _reminder_interval = max(1, int(60 / self.interval))
 
         while self._running:
+            current_ip = current_lan_ip()
+            if current_ip != local_ip:
+                local_ip = current_ip
+                beacon_data = json.dumps(
+                    beacon_fields(self.api_port, robot_state.pairing_token, local_ip),
+                    ensure_ascii=False,
+                ).encode("utf-8")
+                log_action("BEACON", f"IP anunciada: {local_ip or 'ninguna'}")
+                try:
+                    sock.close()
+                except Exception:
+                    pass
+                sock = self._open_broadcast_socket()
             try:
                 sock.sendto(beacon_data, ("<broadcast>", self.BEACON_PORT))
             except Exception:
-                pass
+                try:
+                    sock.close()
+                except Exception:
+                    pass
+                sock = self._open_broadcast_socket()
 
-            # Recordatorio periódico de IP en consola (cada ~60 segundos)
             _reminder_counter += 1
             if _reminder_counter >= _reminder_interval:
                 _reminder_counter = 0
-                # Re-obtener la IP por si cambió (ej: reconexión WiFi)
-                current_ip = self._get_local_ip()
-                if current_ip != local_ip:
-                    local_ip = current_ip
-                    beacon_data = json.dumps({
-                        "device_id": "micompanero_robot",
-                        "device_name": "MiCompañero Peluche",
-                        "api_port": self.api_port,
-                        "local_ip": local_ip,
-                        "pairing_token": robot_state.pairing_token,
-                    }, ensure_ascii=False).encode("utf-8")
+                shown = local_ip or "pendiente"
                 print(
                     f"\n┌─────────────────────────────────────────┐\n"
-                    f"│  🌐 IP del robot:  {local_ip:<22s}│\n"
+                    f"│  IP del robot:  {shown:<22s}│\n"
                     f"│  Puerto API:       {self.api_port:<22d}│\n"
                     f"└─────────────────────────────────────────┘",
                     flush=True,
@@ -1024,36 +1095,31 @@ class ApiServer:
         )
         self._thread.start()
 
-        # Obtain local IP for display
-        import socket as _socket
-        try:
-            s = _socket.socket(_socket.AF_INET, _socket.SOCK_DGRAM)
-            s.settimeout(0.5)
-            s.connect(("8.8.8.8", 80))
-            local_ip = s.getsockname()[0]
-            s.close()
-        except Exception:
-            local_ip = "0.0.0.0"
+        from lan_ip import current_lan_ip
 
+        local_ip = current_lan_ip() or "pendiente"
         print(flush=True)
         print("╔══════════════════════════════════════════════════╗", flush=True)
-        print("║        🧸 SERVIDOR API - MiCompañero            ║", flush=True)
+        print("║        SERVIDOR API - MiCompañero               ║", flush=True)
         print("╠══════════════════════════════════════════════════╣", flush=True)
-        print(f"║  IP local:  {local_ip:<37s}║", flush=True)
+        print(f"║  bind:      {self.host:<37s}║", flush=True)
+        print(f"║  IP LAN:    {local_ip:<37s}║", flush=True)
         print(f"║  Puerto:    {self.port:<37d}║", flush=True)
         print("╠══════════════════════════════════════════════════╣", flush=True)
-        print(f"║  👉 En la app Android, ingresá: {local_ip:<17s}║", flush=True)
-        print("║  👉 En emulador Android, usá:   10.0.2.2        ║", flush=True)
+        print(f"║  App Android: {local_ip:<35s}║", flush=True)
+        print("║  Emulador:    10.0.2.2                          ║", flush=True)
         print("╠══════════════════════════════════════════════════╣", flush=True)
-        print("║  ℹ️  La IP se repetirá en consola cada 60 seg   ║", flush=True)
+        print("║  La IP LAN se actualiza sola al conectar WiFi   ║", flush=True)
         print(f"║  Token vínculo: {robot_state.pairing_token[:12]}… (pairing_token.txt) ║", flush=True)
         print("╚══════════════════════════════════════════════════╝", flush=True)
         print(flush=True)
 
-        # UDP discovery beacon
         self._beacon = _DiscoveryBeacon(api_port=self.port)
         self._beacon.start()
-        log_action("API", f"servidor REST escuchando en {self.host}:{self.port} (IP {local_ip})")
+        log_action(
+            "API",
+            f"servidor REST bind {self.host}:{self.port} (LAN {local_ip})",
+        )
 
     def stop(self) -> None:
         """Detiene el servidor y el beacon."""

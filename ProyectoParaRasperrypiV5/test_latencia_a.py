@@ -100,9 +100,28 @@ class TestLlmNCtx(unittest.TestCase):
         self.assertGreater(parse_at, rescue_at)
         self.assertGreater(spoken_at, parse_at)
 
-    def test_mientras_piensa_pone_pensando_en_pantalla(self) -> None:
-        src = _WORKERS.read_text(encoding="utf-8")
-        self.assertIn('set_expression("pensando")', src)
+    def test_mientras_piensa_deja_ojos_default(self) -> None:
+        from workers import AudioWorker
+
+        class FakeEyes:
+            def __init__(self) -> None:
+                self.expr = "escuchando"
+
+            def get_expression(self) -> str:
+                return self.expr
+
+            def set_expression(self, expression: str) -> None:
+                self.expr = expression
+
+        worker = AudioWorker.__new__(AudioWorker)
+        worker.eye_display = FakeEyes()
+        worker._thinking_eyes(True)
+        self.assertEqual(worker.eye_display.expr, "escuchando")
+        worker.eye_display.expr = "feliz"
+        worker._thinking_eyes(True)
+        self.assertEqual(worker.eye_display.expr, "feliz")
+        worker._thinking_eyes(False)
+        self.assertEqual(worker.eye_display.expr, "feliz")
 
     def test_dormido_en_lcd_durante_boot_y_carga_llm(self) -> None:
         src = _WORKERS.read_text(encoding="utf-8")

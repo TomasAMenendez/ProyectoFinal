@@ -418,7 +418,7 @@ def test_engine_one_story_yes() -> None:
         ok("un cuento ofrece título", "sapo" in out["response"].lower() and engine.is_active)
         out2 = engine.process_or_passthrough("sí", {"intent_name": "unknown", "response": ""})
         ok("sí dispara lectura", bool(out2.get("story_chunk")), str(out2.keys()))
-        ok("quedó en check-in o esperando otro", engine.state in ("checking_in", "awaiting_more"), engine.state)
+        ok("quedó en check-in o reflejando", engine.state in ("checking_in", "reflecting"), engine.state)
 
 
 def test_engine_pick_title() -> None:
@@ -499,8 +499,6 @@ def test_engine_checkin_and_silence() -> None:
 
 
 def test_engine_last_chunk_reflection() -> None:
-    from story_engine import CLOSING_PROMPT
-
     with tempfile.TemporaryDirectory() as tmp:
         lib = StoryLibrary(Path(tmp))
         lib.save_story("Corto", _story_text())
@@ -510,20 +508,46 @@ def test_engine_last_chunk_reflection() -> None:
             {"intent_name": "story_request", "response": "", "confidence": 1.0},
         )
         first = engine.process_or_passthrough("sí", {"intent_name": "unknown", "response": ""})
+        ok(
+            "el primer bloque manda el txt al worker",
+            len(str(first.get("story_full_text") or "")) > 40,
+            str(len(str(first.get("story_full_text") or ""))),
+        )
         last = first
         guard = 0
         while engine.state == "checking_in" and guard < 20:
             last = engine.advance_silence()
             guard += 1
-        ok("no pide reflexión al terminar", not last.get("story_need_reflection"), str(last.keys()))
-        ok("termina esperando otro", engine.state == "awaiting_more", engine.state)
-        ok(
-            "cierra preguntando si otro",
-            last.get("story_closing") == CLOSING_PROMPT,
-            str(last.get("story_closing")),
-        )
-        otro = engine.process_or_passthrough("sí", {"intent_name": "unknown", "response": ""})
-        ok("sí pide otro cuento", engine.state == "offering" or bool(otro.get("response")), str(engine.state))
+        ok("pide reflexión al terminar", last.get("story_need_reflection") is True, str(last.keys()))
+        ok("queda esperando al nene", engine.state == "reflecting", engine.state)
+        ok("no cierra con otro cuento todavía", not last.get("story_closing"), str(last.get("story_closing")))
+        engine.cancel()
+        ok("cancelar (panza) no deja reflecting", not engine.is_waiting_for_child)
+        ok("cancelar deja idle", engine.state == "idle", engine.state)
+
+
+def test_prompt_usa_el_texto_completo() -> None:
+    from story_engine import prompt_story_reflection
+
+    body = "El sapo cruzó el río con sus amigos."
+    prompt = prompt_story_reflection("El sapo", body)
+    ok("el prompt incluye el txt", body in prompt)
+    ok("el prompt pide una pregunta", "pregunta" in prompt.lower())
+
+
+def test_prefetch_muere_si_cambia_generacion() -> None:
+    from story_engine import StoryQuestionSlot, store_story_question, take_story_question
+
+    slot = StoryQuestionSlot(generation=1)
+    store_story_question(slot, 1, "¿Cómo se sintió el sapo?")
+    ok(
+        "sirve la pregunta de esa lectura",
+        take_story_question(slot, 1, 0.0) == "¿Cómo se sintió el sapo?",
+    )
+    stale = StoryQuestionSlot(generation=1)
+    store_story_question(stale, 2, "¿Pregunta vieja?")
+    ok("panza descarta la pregunta", take_story_question(stale, 2, 0.0) == "")
+    ok("no deja texto stale", stale.question == "")
 
 
 def test_digest_limit() -> None:
@@ -571,9 +595,9 @@ def test_workers_story_timer_espera_stt() -> None:
     ok("TTS extra pide permiso de cuento", "story=True" in src or "story = True" in src)
     speak_fn = src[src.find("def _speak_story_payload") : src.find("def _story_reflection_question")]
     ok(
-        "no arma pregunta de reflexión al leer",
-        "_story_reflection_question" not in speak_fn,
-        "sigue llamando al LLM de reflexión",
+        "al terminar el cuento habla la pregunta",
+        "story_need_reflection" in speak_fn,
+        "el TTS del cuento no mira story_need_reflection",
     )
 
 
@@ -606,6 +630,8 @@ if __name__ == "__main__":
     test_engine_delete_missing()
     test_engine_checkin_and_silence()
     test_engine_last_chunk_reflection()
+    test_prompt_usa_el_texto_completo()
+    test_prefetch_muere_si_cambia_generacion()
     test_digest_limit()
     test_min_words_constant()
     test_drop_turn_while_story_speaks()

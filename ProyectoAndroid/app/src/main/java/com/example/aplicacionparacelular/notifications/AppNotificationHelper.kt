@@ -27,7 +27,7 @@ object AppNotificationHelper {
         val manager = context.getSystemService(Context.NOTIFICATION_SERVICE) as NotificationManager
         manager.createNotificationChannel(
             NotificationChannel(CHANNEL_PELUCHE, "Avisos del peluche", NotificationManager.IMPORTANCE_HIGH).apply {
-                description = "Crisis, pedidos, logros y vocabulario que manda TEO"
+                description = "Crisis, pedidos, logros y avisos que manda TEO"
             }
         )
         manager.createNotificationChannel(

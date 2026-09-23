@@ -9,6 +9,7 @@ from fallback_llm import (
     _SYSTEM_PROMPT,
     drop_prompt_leak,
     drop_unsolicited_story_offer,
+    scrub_veo_veo_speech,
     selected_llm_spec,
 )
 
@@ -81,9 +82,14 @@ class TestSystemPromptNoStoryTemplate(unittest.TestCase):
         self.assertIn("[INTENTS_OFF]", _SYSTEM_PROMPT)
         self.assertIn("[INTENTS_ON]", _SYSTEM_PROMPT)
         folded = _SYSTEM_PROMPT.lower()
-        self.assertIn("veo veo", folded)
+        self.assertNotIn("veo veo", folded)
+        self.assertNotIn("veoveo", folded)
+        self.assertIn("adivinar el objeto", folded)
+        self.assertIn("contar", folded)
+        self.assertIn("sombras", folded)
         self.assertIn("piedra", folded)
         self.assertIn("intents_on", folded)
+        self.assertIn("[play_game:", folded)
 
     def test_notify_solo_pedido_o_crisis(self) -> None:
         folded = _SYSTEM_PROMPT.lower()
@@ -122,6 +128,15 @@ class TestPromptNoCannedEcho(unittest.TestCase):
         out = drop_prompt_leak("Tengo una alarma.", "VEO VEO.")
         self.assertNotIn("veo", out.lower())
         self.assertGreater(len(out.split()), 2)
+
+    def test_scrub_saca_veo_veo_de_la_frase(self) -> None:
+        out = scrub_veo_veo_speech(
+            "Podemos jugar a adivinar objetos veo veo, contar o Piedra Papel o Tijera."
+        )
+        folded = out.lower()
+        self.assertNotIn("veo veo", folded)
+        self.assertNotIn("veoveo", folded.replace(" ", ""))
+        self.assertIn("adivinar", folded)
 
     def test_pantalon_no_es_me_llamo_teo(self) -> None:
         out = drop_prompt_leak("Tengo un niña del pantalón.", "Me llamo TEO.")

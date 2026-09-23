@@ -43,112 +43,107 @@ def warn(test_name: str, detail: str = ""):
 
 
 # ═══════════════════════════════════════════
-#  1. GAME ENGINE — Veo-Veo
+#  1. GAME ENGINE — Adivina el objeto
 # ═══════════════════════════════════════════
 print("\n" + "="*60)
-print("  1. GAME ENGINE — Veo-Veo")
+print("  1. GAME ENGINE — Adivina el objeto")
 print("="*60)
 
-from game_engine import (
-    GameEngine, VeoVeoSession, PiedraPapelTijeraSession,
-    GameResponse, _VEO_VEO_OBJECTS, _VEO_VEO_COLORS,
-)
+from game_catalog import GuessItem
+from game_engine import GameEngine, PiedraPapelTijeraSession, GameResponse
+from game_guess import GuessSession
 
-# 1.1 — Verificar que start_round elige color y objeto consistentes
-session = VeoVeoSession()
-random.seed(42)
-msg = session.start_round()
-ok("start_round retorna mensaje con color",
-   session.color in msg,
-   f"color={session.color!r} no en mensaje={msg!r}")
-ok("secret_object pertenece al color elegido",
-   session.secret_object in _VEO_VEO_OBJECTS.get(session.color, []),
-   f"obj={session.secret_object!r} no en color={session.color!r}")
 
-# 1.2 — BUG CORREGIDO: revelar el objeto correcto tras start_round
-random.seed(100)
-session2 = VeoVeoSession(max_attempts=1, max_rounds=5)
-session2.start_round()
-original_object = session2.secret_object
-original_color = session2.color
+def _guess_item(**overrides) -> GuessItem:
+    base = dict(
+        kind="adivina",
+        item_id="manzana",
+        answers=("manzana", "manzanita"),
+        spoken_open="Es la fruta que comió Blancanieves.",
+        follow_hints=("Es de color rojo.", "Crece en los árboles."),
+        persist_image=None,
+        reveal_image="Imagen_Manzana.png",
+    )
+    base.update(overrides)
+    return GuessItem(**base)
 
-# Fallar el intento para forzar que revele + inicie nueva ronda
+
+session = GuessSession(kind="adivina", item=_guess_item())
+open_msg = session.opening()
+ok("La apertura usa la primera pista, no el color",
+   "Blancanieves" in open_msg.text and "¿de qué color" not in open_msg.text.lower(),
+   f"msg={open_msg.text!r}")
+
+session2 = GuessSession(kind="adivina", item=_guess_item(), max_attempts=1)
 resp = session2.process_input("algo incorrecto xyz")
-ok("Revela el objeto ORIGINAL al fallar (no el de la nueva ronda)",
-   f"¡Era {original_object}!" in resp.text,
-   f"Esperaba '¡Era {original_object}!' en: {resp.text!r}")
-ok("No revela un objeto de la nueva ronda",
-   session2.secret_object != original_object or session2.color != original_color or "¡vamos con otra!" in resp.text,
-   "Puede que no haya cambiado de ronda")
+ok("Revela la primera respuesta al fallar el último intento",
+   "¡Era manzana!" in resp.text and resp.game_over,
+   f"resp={resp.text!r}")
 
-# 1.3 — BUG CORREGIDO: revelar objeto correcto al acertar + siguiente ronda
-random.seed(200)
-session3 = VeoVeoSession(max_rounds=5)
-session3.start_round()
-obj_to_guess = session3.secret_object
-resp3 = session3.process_input(obj_to_guess)
-ok("Revela el objeto ORIGINAL al acertar",
-   f"¡Era {obj_to_guess}!" in resp3.text,
-   f"Esperaba '¡Era {obj_to_guess}!' en: {resp3.text!r}")
+session3 = GuessSession(kind="adivina", item=_guess_item())
+resp3 = session3.process_input("manzanita")
+ok("Acierta con un sinónimo del JSON",
+   "¡Era manzana!" in resp3.text and resp3.game_over,
+   f"resp={resp3.text!r}")
 
-# 1.4 — Detectar exit words
-session4 = VeoVeoSession()
-session4.start_round()
 for word in ["no quiero", "basta", "salir", "parar", "chau"]:
-    s = VeoVeoSession()
-    s.start_round()
+    s = GuessSession(kind="adivina", item=_guess_item())
     resp4 = s.process_input(word)
     ok(f"Exit word '{word}' termina el juego", resp4.game_over,
        f"game_over={resp4.game_over}")
 
-# 1.5 — FIX VERIFICADO: "no" como exit word ya no es agresivo
-session5 = VeoVeoSession()
-session5.start_round()
-session5.secret_object = "noche"
-# El niño dice "noche" — ya no activa exit por contener "no"
+session5 = GuessSession(
+    kind="adivina",
+    item=_guess_item(answers=("noche",), spoken_open="x", follow_hints=("a", "b")),
+)
 resp5 = session5.process_input("noche")
 ok("Decir 'noche' NO sale del juego (fix BUG-1)",
    not resp5.game_over or "Era noche" in resp5.text,
    f"resp={resp5.text!r}, game_over={resp5.game_over}")
 
-# 1.6 — FIX VERIFICADO: "no sé" ya no sale del juego
-session6 = VeoVeoSession()
-session6.start_round()
+session6 = GuessSession(kind="adivina", item=_guess_item())
 resp6 = session6.process_input("no sé")
 ok("'no sé' NO sale del juego (fix BUG-1)",
    not resp6.game_over,
    f"game_over={resp6.game_over}, resp={resp6.text!r}")
 
-# 1.7 — FIX VERIFICADO: texto vacío no cuenta como acierto
-session7 = VeoVeoSession()
-session7.start_round()
-session7.secret_object = "sol"
-resp7 = session7.process_input("")  # vacío, no debería acertar
+session7 = GuessSession(
+    kind="adivina",
+    item=_guess_item(answers=("sol",), spoken_open="x", follow_hints=("a", "b")),
+)
+resp7 = session7.process_input("")
 is_false_positive = "Era sol" in resp7.text or "genio" in resp7.text.lower()
 ok("Texto vacío NO cuenta como acierto (fix BUG-2)",
    not is_false_positive,
    f"resp={resp7.text!r}")
 
-# 1.8 — FIX VERIFICADO: substrings cortos no matchean
-session8 = VeoVeoSession()
-session8.start_round()
-session8.secret_object = "estrella"
+session8 = GuessSession(
+    kind="adivina",
+    item=_guess_item(answers=("estrella",), spoken_open="x", follow_hints=("a", "b")),
+)
 resp8 = session8.process_input("es")
-is_bad_match = "Era estrella" in resp8.text or any(p in resp8.text for p in ["genio", "adivinaste", "crack", "podías"])
+is_bad_match = "Era estrella" in resp8.text or any(
+    p in resp8.text for p in ["genio", "adivinaste", "crack", "podías"]
+)
 ok("Decir 'es' NO acierta 'estrella' (fix BUG-3)",
    not is_bad_match,
    f"resp={resp8.text!r}")
 
-# 1.9 — Hint usa primera letra correcta del objeto actual
-session9 = VeoVeoSession(max_attempts=5)
-session9.start_round()
-session9.secret_object = "banana"
-session9.color = "amarillo"
+session9 = GuessSession(
+    kind="sombras",
+    item=_guess_item(
+        kind="sombras",
+        answers=("banana",),
+        spoken_open="Mirá la sombra.",
+        follow_hints=("Es amarilla.", "Es una fruta."),
+        persist_image="Silueta_Banana.png",
+        reveal_image="Imagen_Banana.png",
+    ),
+)
 resp9 = session9.process_input("xyz incorrecto")
-expected_letter = "B"  # banana[0].upper()
-ok("Pista muestra la letra correcta del objeto actual",
-   f"letra {expected_letter}" in resp9.text,
-   f"Esperaba 'letra {expected_letter}' en: {resp9.text!r}")
+ok("La primera pista del JSON sale en el primer fallo",
+   "Es amarilla." in resp9.text,
+   f"resp={resp9.text!r}")
 
 
 # ═══════════════════════════════════════════
@@ -180,6 +175,9 @@ resp_tiguera = ppt_stt.process_input("¡Tiguera!")
 ok("tiguera se entiende como tijera",
    "No entendí" not in resp_tiguera.text,
    f"resp={resp_tiguera.text!r}")
+ok("PPT muestra la imagen de la mano y vuelve a ojos al terminar de hablar",
+   resp_tiguera.lcd_clear_after_speech and str(resp_tiguera.lcd_image or "").endswith(".png"),
+   f"lcd={resp_tiguera.lcd_image!r} clear={resp_tiguera.lcd_clear_after_speech}")
 
 # 2.3 — El juego termina después de max_rounds
 ppt3 = PiedraPapelTijeraSession(max_rounds=2)
@@ -201,13 +199,11 @@ print("="*60)
 # 3.1 — FIX VERIFICADO: game_type guardado ANTES de process_input
 engine = GameEngine()
 engine.start_game("veo_veo")
-engine._session.secret_object = "test"
 engine._session.max_attempts = 1
-engine._session.max_rounds = 1
 
 result = engine.process_or_passthrough("xyz wrong", {"intent_name": "unknown", "confidence": 0, "response": ""})
-ok("intent_name es 'game_veo_veo' cuando el juego termina (fix BUG-4)",
-   result.get("intent_name") == "game_veo_veo",
+ok("intent_name es 'game_adivina' cuando el juego termina (fix BUG-4)",
+   result.get("intent_name") == "game_adivina",
    f"intent={result.get('intent_name')!r}")
 
 # 3.2 — Passthrough funciona cuando no hay juego activo
@@ -371,48 +367,13 @@ print("\n" + "="*60)
 print("  5b. PARENT ALERTS")
 print("="*60)
 
-from datetime import timedelta
-from parent_alerts import VocabularyParentAlerter, describe_child_achievement
+from parent_alerts import belongs_in_parent_inbox, describe_child_achievement
 
-_now = [datetime(2026, 8, 23, 12, 0, 0)]
-
-def _fake_now():
-    return _now[0]
-
-alerter = VocabularyParentAlerter(now_fn=_fake_now)
-
-msg = alerter.consider(["casa"], hours_since_prior=1.0)
-ok("Una palabra reciente no notifica al toque",
-   msg is None, f"msg={msg!r}")
-
-_now[0] = _now[0] + timedelta(seconds=120)
-msg = alerter.poll()
-ok("Tras debounce, 1 palabra en día activo sigue sin avisar",
-   msg is None, f"msg={msg!r}")
-
-msg = alerter.consider(["pelota", "auto", "helado", "parque"], hours_since_prior=1.0)
-ok("5+ palabras nuevas se juntan en un solo aviso",
-   msg is not None and "5 palabras nuevas" in msg and "casa" in msg and "parque" in msg,
-   f"msg={msg!r}")
-
-alerter2 = VocabularyParentAlerter(now_fn=_fake_now)
-msg = alerter2.consider(["mariposa"], hours_since_prior=None)
-ok("Primera palabra de la vida: no dispara al instante",
-   msg is None, f"msg={msg!r}")
-_now[0] = _now[0] + timedelta(seconds=90)
-msg = alerter2.poll()
-ok("Tras sequía/primera vez, avisa con la palabra",
-   msg is not None and "mariposa" in msg and "tiempo" in msg.lower(),
-   f"msg={msg!r}")
-
-alerter3 = VocabularyParentAlerter(now_fn=_fake_now)
-alerter3.consider(["sol"], hours_since_prior=20.0)
-alerter3.consider(["luna"], hours_since_prior=20.0)
-_now[0] = _now[0] + timedelta(seconds=90)
-msg = alerter3.poll()
-ok("Varias palabras tras sequía van en el mismo mensaje",
-   msg is not None and "sol" in msg and "luna" in msg,
-   f"msg={msg!r}")
+ok("Bandeja parental acepta aviso, logro, pedido y crisis",
+   belongs_in_parent_inbox("aviso") and belongs_in_parent_inbox("logro")
+   and belongs_in_parent_inbox("pedido") and belongs_in_parent_inbox("crisis"))
+ok("Bandeja parental no muestra vocabulario",
+   not belongs_in_parent_inbox("vocabulario"))
 
 ok("Logro describe lo que dijo el nene",
    "dijo" in describe_child_achievement("", "gané yo") and "gané yo" in describe_child_achievement("", "gané yo"))
@@ -607,69 +568,64 @@ print("\n" + "="*60)
 print("  9. EDGE CASES ADICIONALES")
 print("="*60)
 
-# 9.1 — VeoVeo: "globo azul" tiene espacio, ¿se detecta como acierto?
-session_multiword = VeoVeoSession()
-session_multiword.start_round()
-session_multiword.secret_object = "globo azul"
-session_multiword.color = "azul"
+session_multiword = GuessSession(
+    kind="adivina",
+    item=_guess_item(answers=("globo azul", "globo"), spoken_open="x", follow_hints=("a", "b")),
+)
 resp_multi = session_multiword.process_input("globo azul")
 ok("Objeto multi-palabra 'globo azul' detectado correctamente",
    any(p in resp_multi.text for p in ["genio", "adivinaste", "crack", "podías"]),
    f"resp={resp_multi.text!r}")
 
-# 9.2 — VeoVeo: "algodón de azúcar" como objeto complejo
-session_complex = VeoVeoSession()
-session_complex.start_round()
-session_complex.secret_object = "algodón de azúcar"
-session_complex.color = "rosa"
-# Niño dice solo "algodón" → ¿acierta? ("algodón" in "algodón de azúcar" → True)
+session_complex = GuessSession(
+    kind="adivina",
+    item=_guess_item(
+        answers=("algodón de azúcar", "algodon de azucar", "algodón"),
+        spoken_open="x",
+        follow_hints=("a", "b"),
+    ),
+)
 resp_partial = session_complex.process_input("algodón")
 ok("'algodón' matchea 'algodón de azúcar' (parcial)",
    any(p in resp_partial.text for p in ["genio", "adivinaste", "crack", "podías"]),
    f"resp={resp_partial.text!r}")
 
-# 9.3 — VeoVeo: "gato negro" → niño dice "gato" ¿acierta?
-session_gato = VeoVeoSession()
-session_gato.start_round()
-session_gato.secret_object = "gato negro"
-session_gato.color = "negro"
+session_gato = GuessSession(
+    kind="adivina",
+    item=_guess_item(answers=("gato negro", "gato"), spoken_open="x", follow_hints=("a", "b")),
+)
 resp_gato = session_gato.process_input("gato")
 ok("'gato' matchea 'gato negro' (parcial)",
    any(p in resp_gato.text for p in ["genio", "adivinaste", "crack", "podías"]),
    f"resp={resp_gato.text!r}")
 
-# 9.4 — VeoVeo: hint para "algodón de azúcar" → ¿primera letra correcta?
-session_hint = VeoVeoSession(max_attempts=5)
-session_hint.start_round()
-session_hint.secret_object = "algodón de azúcar"
+session_hint = GuessSession(
+    kind="adivina",
+    item=_guess_item(
+        answers=("algodón de azúcar",),
+        spoken_open="Primera pista.",
+        follow_hints=("Pista dos.", "Pista tres."),
+    ),
+)
 resp_hint = session_hint.process_input("xyz wrong")
-ok("Pista para 'algodón de azúcar' empieza con 'A'",
-   "letra A" in resp_hint.text,
+ok("Tras un fallo se dice la segunda pista",
+   "Pista dos." in resp_hint.text,
    f"resp={resp_hint.text!r}")
 
-# 9.5 — FIX VERIFICADO: hint para "árbol" → primera letra SIN acento
-session_accent = VeoVeoSession(max_attempts=5)
-session_accent.start_round()
-session_accent.secret_object = "árbol"
-resp_accent = session_accent.process_input("xyz wrong")
-ok("Pista para 'árbol' usa 'A' sin acento (fix BUG-5)",
-   "letra A" in resp_accent.text,
-   f"resp={resp_accent.text!r}")
-
-# 9.6 — FIX VERIFICADO: "a" no matchea "banana" por word-level matching
-session_a = VeoVeoSession()
-session_a.start_round()
-session_a.secret_object = "banana"
+session_a = GuessSession(
+    kind="adivina",
+    item=_guess_item(answers=("banana",), spoken_open="x", follow_hints=("a", "b")),
+)
 resp_a = session_a.process_input("a")
 is_false_match = any(p in resp_a.text for p in ["genio", "adivinaste", "crack", "podías"])
 ok("Decir 'a' NO acierta 'banana' (fix BUG-3)",
    not is_false_match,
    f"resp={resp_a.text!r}")
 
-# 9.7 — FIX VERIFICADO: "solución" ya no matchea "sol"
-session_sol = VeoVeoSession()
-session_sol.start_round()
-session_sol.secret_object = "sol"
+session_sol = GuessSession(
+    kind="adivina",
+    item=_guess_item(answers=("sol",), spoken_open="x", follow_hints=("a", "b")),
+)
 resp_sol = session_sol.process_input("solución")
 is_bad_sol = any(p in resp_sol.text for p in ["genio", "adivinaste", "crack", "podías"])
 ok("'solución' NO matchea 'sol' (fix BUG-3)",
@@ -705,12 +661,18 @@ for intent_name, intent_def in rules.items():
 
 # Verificar que los game_type en intent_rules coincidan con los del GameEngine
 game_intents = {k: v.get("game_type") for k, v in rules.items() if "game_type" in v}
-ok("play_veo_veo tiene game_type='veo_veo'",
-   game_intents.get("play_veo_veo") == "veo_veo",
+ok("play_veo_veo tiene game_type='adivina'",
+   game_intents.get("play_veo_veo") == "adivina",
    f"got={game_intents.get('play_veo_veo')}")
 ok("play_piedra_papel tiene game_type='piedra_papel_tijera'",
    game_intents.get("play_piedra_papel") == "piedra_papel_tijera",
    f"got={game_intents.get('play_piedra_papel')}")
+ok("play_contar tiene game_type='contar'",
+   game_intents.get("play_contar") == "contar",
+   f"got={game_intents.get('play_contar')}")
+ok("play_sombras tiene game_type='sombras'",
+   game_intents.get("play_sombras") == "sombras",
+   f"got={game_intents.get('play_sombras')}")
 
 
 # ═══════════════════════════════════════════

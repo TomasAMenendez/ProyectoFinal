@@ -1,6 +1,8 @@
 package com.example.aplicacionparacelular.ui.dashboard
 
 import android.os.Bundle
+import android.os.Handler
+import android.os.Looper
 import android.view.LayoutInflater
 import android.view.View
 import android.view.ViewGroup
@@ -12,12 +14,21 @@ import com.example.aplicacionparacelular.R
 import com.example.aplicacionparacelular.databinding.FragmentDashboardBinding
 import com.example.aplicacionparacelular.network.RobotConnectionManager
 import com.google.android.material.snackbar.Snackbar
+import org.json.JSONObject
 
 class DashboardFragment : Fragment() {
 
     private var _binding: FragmentDashboardBinding? = null
     private val binding get() = _binding!!
     private lateinit var viewModel: DashboardViewModel
+    private val tickHandler = Handler(Looper.getMainLooper())
+    private var playtimeClock: PlaytimeClock? = null
+    private val playtimeTicker = object : Runnable {
+        override fun run() {
+            renderPlaytimeClock()
+            tickHandler.postDelayed(this, 1000L)
+        }
+    }
 
     override fun onCreateView(
         inflater: LayoutInflater,
@@ -49,6 +60,7 @@ class DashboardFragment : Fragment() {
                 val powerOn = status.optBoolean("power_on", false)
                 updatePowerUI(powerOn)
                 viewModel.applyRobotStatus(status)
+                absorbPlaytimeFromPi(status)
             }
             refreshAlerts()
         }
@@ -70,10 +82,6 @@ class DashboardFragment : Fragment() {
 
         viewModel.moodLabel.observe(viewLifecycleOwner) { value ->
             binding.txtMoodValue.text = value
-        }
-
-        viewModel.alertMessages.observe(viewLifecycleOwner) {
-            refreshAlerts()
         }
 
         viewModel.nowPlaying.observe(viewLifecycleOwner) { name ->
@@ -148,6 +156,43 @@ class DashboardFragment : Fragment() {
         super.onResume()
         viewModel.refreshTelemetry()
         viewModel.refreshMusic()
+        tickHandler.removeCallbacks(playtimeTicker)
+        tickHandler.post(playtimeTicker)
+    }
+
+    override fun onPause() {
+        tickHandler.removeCallbacks(playtimeTicker)
+        super.onPause()
+    }
+
+    private fun absorbPlaytimeFromPi(status: JSONObject) {
+        val limit = status.optInt("playtime_limit_minutes", 0)
+        val remaining = if (status.has("playtime_remaining_seconds") && !status.isNull("playtime_remaining_seconds")) {
+            status.optInt("playtime_remaining_seconds", 0)
+        } else {
+            limit * 60
+        }
+        val running = status.optBoolean("models_ready", false) &&
+            status.optBoolean("power_on", false) &&
+            !status.optBoolean("pending_wake", false)
+        val now = System.currentTimeMillis()
+        playtimeClock = playtimeClock?.absorb(limit, remaining, now, running)
+            ?: PlaytimeClock.fromPi(limit, remaining, now, running)
+        renderPlaytimeClock()
+    }
+
+    private fun renderPlaytimeClock() {
+        val b = _binding ?: return
+        val clock = playtimeClock
+        if (clock == null || clock.limitMinutes <= 0) {
+            b.cardPlaytimeRing.visibility = View.GONE
+            return
+        }
+        val remaining = clock.remainingAt(System.currentTimeMillis())
+        val ring = PlaytimeRing.from(clock.limitMinutes, remaining)
+        b.cardPlaytimeRing.visibility = View.VISIBLE
+        b.playtimeRing.bind(ring)
+        b.txtPlaytimeRemaining.text = ring.label
     }
 
     private fun updatePowerUI(powerOn: Boolean) {
@@ -160,8 +205,7 @@ class DashboardFragment : Fragment() {
 
     private fun refreshAlerts() {
         val live = RobotConnectionManager.parentAlerts.value ?: emptyList()
-        val telemetry = viewModel.alertMessages.value ?: emptyList()
-        updateAlerts(live + telemetry)
+        updateAlerts(live)
     }
 
     private fun updateAlerts(alerts: List<String>) {
@@ -188,6 +232,7 @@ class DashboardFragment : Fragment() {
     }
 
     override fun onDestroyView() {
+        tickHandler.removeCallbacks(playtimeTicker)
         super.onDestroyView()
         _binding = null
     }

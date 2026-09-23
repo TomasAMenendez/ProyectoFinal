@@ -153,7 +153,9 @@ class RoutineScheduler:
             if routine.id == routine_id and routine._reminded_today and not routine._completed_today:
                 routine._completed_today = True
                 log_action("ROUTINE", f"completada: {routine.name}")
-                return routine.success_message
+                from gender_speech import inflect_for_child
+
+                return inflect_for_child(routine.success_message)
 
         # Si no se especifica ID, completar la primera rutina pendiente
         if routine_id == "" or routine_id == "any":
@@ -161,7 +163,9 @@ class RoutineScheduler:
                 if routine._reminded_today and not routine._completed_today:
                     routine._completed_today = True
                     log_action("ROUTINE", f"completada: {routine.name}")
-                    return routine.success_message
+                    from gender_speech import inflect_for_child
+
+                    return inflect_for_child(routine.success_message)
 
         return None
 

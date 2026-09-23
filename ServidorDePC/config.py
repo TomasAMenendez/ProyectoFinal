@@ -19,7 +19,7 @@ LLM_N_GPU_LAYERS = int(os.environ.get("PC_LLM_N_GPU_LAYERS") or "-1")
 MODELS_DIR = Path(os.environ.get("PC_MODELS_DIR") or (Path.home() / ".edge_ai_models" / "llm"))
 
 WHISPER_INITIAL_PROMPT = (
-    "Hola. ¿Cómo estás? Quiero jugar a piedra, papel o tijera. "
+    "Hola teo. ¿Cómo estás? Quiero jugar a piedra, papel o tijera. "
     "Sí, dale. No quiero. Juguemos. Contame un cuento."
 )
 

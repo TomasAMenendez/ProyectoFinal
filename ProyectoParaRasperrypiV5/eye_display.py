@@ -23,6 +23,7 @@ lineamientos del proyecto para niños con TEA.
 from __future__ import annotations
 
 import math
+import threading
 import tkinter as tk
 from typing import Any
 
@@ -42,6 +43,25 @@ _EYELID_COLOR = "#1a1a2e"   # Mismo que fondo para "cerrar" ojos
 _BROW_COLOR = "#b0bec5"     # Cejas
 
 
+def fit_image_to_lcd(path: str, width: int, height: int):
+    """Abre un PNG y lo centra en un lienzo del tamaño de la LCD."""
+    try:
+        from PIL import Image
+    except Exception:
+        return None
+    try:
+        source = Image.open(path).convert("RGB")
+    except Exception:
+        return None
+    canvas = Image.new("RGB", (max(1, int(width)), max(1, int(height))), (26, 26, 46))
+    fitted = source.copy()
+    fitted.thumbnail((canvas.width, canvas.height))
+    x = (canvas.width - fitted.width) // 2
+    y = (canvas.height - fitted.height) // 2
+    canvas.paste(fitted, (x, y))
+    return canvas
+
+
 class EyeDisplay:
     """Renderiza ojos animados expresivos en un Canvas de tkinter.
 
@@ -56,6 +76,8 @@ class EyeDisplay:
         self._anim = animator or EyeAnimator()
         self.lcd = None
         self._lcd_loop_started = False
+        self._lcd_override = None
+        self._lcd_lock = threading.Lock()
 
         # Espejo de estado para el dibujo en canvas (el animador es la fuente).
         self._params = self._anim.params
@@ -98,6 +120,28 @@ class EyeDisplay:
     def get_expression(self) -> str:
         """Retorna la expresión actual."""
         return self._anim.get_expression()
+
+    def set_lcd_override(self, image) -> None:
+        """Muestra una imagen fija en la LCD en lugar de los ojos animados."""
+        with self._lcd_lock:
+            self._lcd_override = image
+
+    def lcd_override_size(self) -> tuple[int, int]:
+        lcd = self.lcd
+        width = getattr(lcd, "display_width", None) or 240
+        height = getattr(lcd, "display_height", None) or 240
+        return int(width), int(height)
+
+    def set_lcd_override_path(self, path: str | None) -> None:
+        """Carga un PNG, lo encaja en la LCD y lo deja como override."""
+        if not path:
+            self.set_lcd_override(None)
+            return
+        width, height = self.lcd_override_size()
+        frame = fit_image_to_lcd(path, width, height)
+        if frame is None:
+            return
+        self.set_lcd_override(frame)
 
     def attach_hardware_lcd(self) -> bool:
         """Enciende la TFT ST7789 si está cableada. Devuelve True si hay LCD."""
@@ -233,8 +277,12 @@ class EyeDisplay:
         """Loop principal de animación (~30fps)."""
         self._anim.tick()
         self._sync_from_animator()
+        with self._lcd_lock:
+            override = self._lcd_override
         if self.canvas is not None:
-            if self._anim.has_sprite():
+            if override is not None:
+                self._blit_override_canvas(override)
+            elif self._anim.has_sprite():
                 try:
                     self._blit_sprite_canvas()
                 except Exception:
@@ -266,9 +314,30 @@ class EyeDisplay:
         lcd = self.lcd
         if lcd is None:
             return
+        with self._lcd_lock:
+            override = self._lcd_override
         try:
-            frame = self._anim.render(lcd.display_width, lcd.display_height)
+            if override is not None:
+                frame = override
+            else:
+                frame = self._anim.render(lcd.display_width, lcd.display_height)
             lcd.display(frame)
+        except Exception:
+            pass
+
+    def _blit_override_canvas(self, frame) -> None:
+        if self.canvas is None:
+            return
+        try:
+            from PIL import ImageTk
+
+            shown = frame
+            target = (max(1, self.width), max(1, self.height))
+            if getattr(shown, "size", None) != target:
+                shown = shown.resize(target)
+            self._tk_photo = ImageTk.PhotoImage(image=shown)
+            self.canvas.delete("all")
+            self.canvas.create_image(0, 0, image=self._tk_photo, anchor="nw")
         except Exception:
             pass
 

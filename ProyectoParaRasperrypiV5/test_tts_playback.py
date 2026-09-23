@@ -132,6 +132,46 @@ class TestPlayRetriesInt16(unittest.TestCase):
         self.assertEqual(last["dtype"], "int16")
         self.assertEqual(last["channels"], 2)
 
+    def test_tope_parental_escala_el_pcm_en_vivo(self) -> None:
+        worker = SpeechWorker(output_device_index=0)
+        worker.set_volume_limit(50)
+        audio = np.ones(800, dtype=np.float32)
+        captured: list[np.ndarray] = []
+
+        class _Stream:
+            def __init__(self, **kwargs):
+                self.callback = kwargs.get("callback")
+                self.channels = kwargs.get("channels", 1)
+                self.dtype = kwargs.get("dtype", "int16")
+
+            def __enter__(self):
+                frames = 256
+                dt = np.int16 if self.dtype == "int16" else np.float32
+                outdata = np.zeros((frames, self.channels), dtype=dt)
+                try:
+                    self.callback(outdata, frames, None, None)
+                    captured.append(outdata.copy())
+                    while True:
+                        self.callback(outdata, frames, None, None)
+                except Exception:
+                    pass
+                return self
+
+            def __exit__(self, *args):
+                return False
+
+        with patch.object(
+            worker, "_find_supported_output_config", return_value=(22050, "int16", 1)
+        ), patch("workers.sd.OutputStream", side_effect=_Stream), patch.object(
+            worker, "_log"
+        ):
+            worker._play_wav_via_output_stream(audio, 22050)
+
+        self.assertTrue(captured)
+        peak = int(np.max(np.abs(captured[0])))
+        self.assertGreater(peak, 14000)
+        self.assertLess(peak, 18000)
+
     def test_reintenta_int16_mono_si_estereo_falla(self) -> None:
         worker = SpeechWorker(output_device_index=0)
         audio = np.zeros(1000, dtype=np.float32)

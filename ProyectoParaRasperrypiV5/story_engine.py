@@ -3,7 +3,9 @@ from __future__ import annotations
 
 import random
 import re
+import threading
 import unicodedata
+from dataclasses import dataclass, field
 from typing import Any
 
 from story_library import StoryLibrary, StoryRecord
@@ -74,6 +76,41 @@ def make_digest(text: str, limit: int = DIGEST_CHARS) -> str:
     return (clipped or compact[:limit]) + "…"
 
 
+@dataclass
+class StoryQuestionSlot:
+    generation: int
+    question: str = ""
+    ready: threading.Event = field(default_factory=threading.Event)
+
+
+def prompt_story_reflection(title: str, text: str) -> str:
+    body = (text or "").strip()
+    name = (title or "el cuento").strip() or "el cuento"
+    return (
+        f"Leímos el cuento '{name}'. Texto:\n{body}\n"
+        "Hacé UNA pregunta corta para que el nene piense el cuento. "
+        "No narres. Máximo 15 palabras."
+    )
+
+
+def store_story_question(slot: StoryQuestionSlot, generation: int, question: str) -> None:
+    if slot.generation != generation:
+        return
+    slot.question = str(question or "").strip()
+    slot.ready.set()
+
+
+def take_story_question(
+    slot: StoryQuestionSlot | None, generation: int, timeout: float
+) -> str:
+    if slot is None or slot.generation != generation:
+        return ""
+    slot.ready.wait(timeout=max(0.0, float(timeout)))
+    if slot.generation != generation:
+        return ""
+    return str(slot.question or "").strip()
+
+
 class StoryEngine:
     def __init__(self, library: StoryLibrary | None = None) -> None:
         self._library = library or StoryLibrary()
@@ -85,6 +122,7 @@ class StoryEngine:
         self._reading_id: str | None = None
         self._reading_title: str | None = None
         self._digest = ""
+        self._full_text = ""
 
     @property
     def state(self) -> str:
@@ -114,6 +152,7 @@ class StoryEngine:
         self._reading_id = None
         self._reading_title = None
         self._digest = ""
+        self._full_text = ""
 
     def process_or_passthrough(
         self,
@@ -265,6 +304,7 @@ class StoryEngine:
         self._reading_id = rec.id
         self._reading_title = rec.title
         self._digest = make_digest(text)
+        self._full_text = text
         self._pending_id = None
         self._offer_retries = 0
         return self._emit_current_chunk(intro=f"Dale, te leo {rec.title}.")
@@ -283,9 +323,11 @@ class StoryEngine:
         payload["story_chunk"] = chunk
         payload["story_id"] = self._reading_id
         payload["story_title"] = self._reading_title
+        if self._index == 0 and self._full_text:
+            payload["story_full_text"] = self._full_text
         if last:
-            payload["story_closing"] = CLOSING_PROMPT
-            self._state = "awaiting_more"
+            payload["story_need_reflection"] = True
+            self._state = "reflecting"
         else:
             payload["story_checkin"] = CHECKIN_PROMPT
             self._state = "checking_in"

@@ -190,6 +190,70 @@ def _create_routine_scheduler():
         return None
 
 
+# ---------------------------------------------------------------------------
+# Setup WiFi por BLE (solo Linux; en Windows el bloque no se ejecuta)
+# ---------------------------------------------------------------------------
+
+def _wifi_ble_worker(app) -> None:
+    """Arma el coordinator y corre el loop de setup. Todo fuera de tkinter.
+
+    El constructor de `BluezGattTransport` hace D-Bus sincrónico contra
+    `bluetoothd`, que puede tardar hasta el timeout de reply si el demonio
+    está arrancando: por eso vive acá y no en el hilo de la UI.
+    """
+    try:
+        from api_server import robot_state
+        from ble_gatt_bluez import BluezGattTransport
+        from ble_setup import WifiBleCoordinator, run_wifi_ble_loop
+        from wifi_provision import WifiProvisioner
+
+        transport = BluezGattTransport()
+        if not getattr(transport, "available", False):
+            reason = getattr(transport, "unavailable_reason", "desconocido")
+            log_action("WIFI_BLE", f"setup BLE deshabilitado: {reason}")
+            return
+
+        provisioner = WifiProvisioner()
+
+        def _on_state(key: str, value: bool) -> None:
+            setattr(robot_state, key, value)
+
+        coord = WifiBleCoordinator(
+            provisioner,
+            transport,
+            getattr(app, "_eye_display", None),
+            on_state=_on_state,
+        )
+
+        def _provisioning(enabled: bool) -> bool:
+            """La API necesita saber si el setup quedó realmente anunciándose."""
+            if enabled:
+                return bool(coord.enter_setup())
+            coord.leave_setup()
+            return True
+
+        app._wifi_ble = coord
+        robot_state.on_wifi_provisioning = _provisioning
+        run_wifi_ble_loop(coord, provisioner)
+    except Exception as exc:
+        log_action("WIFI_BLE", f"no arranqué el setup WiFi BLE: {exc}")
+
+
+def _start_wifi_ble(app) -> None:
+    """Lanza el setup WiFi por BLE en su propio hilo. No bloquea el boot."""
+    if not sys.platform.startswith("linux"):
+        return
+    try:
+        threading.Thread(
+            target=_wifi_ble_worker,
+            args=(app,),
+            name="WifiBleBoot",
+            daemon=True,
+        ).start()
+    except Exception as exc:
+        log_action("WIFI_BLE", f"no pude lanzar el hilo de setup WiFi BLE: {exc}")
+
+
 # ═══════════════════════════════════════════════════════════════════════════
 # EYE MODE APP — Pantalla de ojos expresivos (modo producción)
 # ═══════════════════════════════════════════════════════════════════════════
@@ -665,7 +729,7 @@ class EyeModeApp(tk.Tk):
         robot_state.audio_worker = self.audio_worker
         robot_state.volume_limit = self._volume_limit
         robot_state.brightness = self._brightness
-        robot_state.playtime_limit_minutes = self._playtime_limit_minutes
+        self._playtime_limit_minutes = int(getattr(robot_state, "playtime_limit_minutes", 0) or 0)
 
         # Callbacks from Android app → robot
         def _on_celebrate() -> None:
@@ -729,6 +793,7 @@ class EyeModeApp(tk.Tk):
         try:
             self.api_server = ApiServer()
             self.api_server.start()
+            _start_wifi_ble(self)
         except Exception as exc:
             print(f"[EyeMode] Error al iniciar API server: {exc}", flush=True)
 
@@ -826,9 +891,6 @@ class EyeModeApp(tk.Tk):
         elif message.kind == "emotion":
             payload = message.payload or {}
             label = payload.get("label")
-            if label and self._eye_display is not None:
-                self._eye_display.set_expression(label)
-            # Update intent dispatcher
             try:
                 if self.intent_dispatcher is not None:
                     if label is None:
@@ -1394,7 +1456,7 @@ class EdgeAiDesktopApp(tk.Tk):
         robot_state.speech_worker = self.speech_worker
         robot_state.audio_worker = self.audio_worker
         robot_state.volume_limit = self._volume_var.get()
-        robot_state.playtime_limit_minutes = getattr(self, "_playtime_limit_minutes", 0)
+        self._playtime_limit_minutes = int(getattr(robot_state, "playtime_limit_minutes", 0) or 0)
         _bind_playback_callbacks(self)
 
         def _on_celebrate() -> None:
@@ -1445,6 +1507,7 @@ class EdgeAiDesktopApp(tk.Tk):
         try:
             self.api_server = ApiServer()
             self.api_server.start()
+            _start_wifi_ble(self)
             self._append_log("API Server + Beacon UDP iniciados")
         except Exception as exc:
             print(f"[Debug] Error al iniciar API server: {exc}", flush=True)

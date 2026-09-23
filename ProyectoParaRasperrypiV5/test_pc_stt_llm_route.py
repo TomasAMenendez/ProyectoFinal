@@ -148,7 +148,7 @@ class TestSttRoute(unittest.TestCase):
             stt={  # type: ignore[arg-type]
                 "text": "Qué pasa.",
                 "avg_logprob": -0.2,
-                "no_speech_prob": 0.88,
+                "no_speech_prob": 0.91,
             }
         )
         worker = _worker(pc)
@@ -157,7 +157,7 @@ class TestSttRoute(unittest.TestCase):
         )
         self.assertEqual(out.text, "Qué pasa.")
         self.assertTrue(out.low_confidence)
-        self.assertEqual(out.no_speech_prob, 0.88)
+        self.assertEqual(out.no_speech_prob, 0.91)
 
     def test_pc_fail_usa_local(self) -> None:
         pc = FakePc(stt=None)

@@ -39,11 +39,11 @@
       "no se que hacer"
     ],
     "response": [
-      "¡Hay de todo! Podemos jugar al veo veo, piedra papel o tijera, escuchar música, un cuento o charlar. ¿Cuál te copa?",
-      "¡Dale! ¿Jugamos al veo veo, ponemos una canción o te leo un cuento?",
-      "Podemos jugar al veo veo o piedra papel tijera, cantar, leer un cuento o conversar. Decime qué preferís.",
-      "Hoy hay veo veo, piedra papel o tijera, música o un cuento. ¿Cuál te copa?",
-      "¿Veo veo, piedra papel tijera, una canción o charlamos?"
+      "¡Hay de todo! Podemos adivinar el objeto, contar, sombras, piedra papel o tijera, música o un cuento. ¿Cuál te copa?",
+      "¡Dale! ¿Adivinamos el objeto, contamos, buscamos sombras o ponemos una canción?",
+      "Podemos adivinar el objeto, contar, sombras o piedra papel tijera. También hay cuento o música. Decime qué preferís.",
+      "Hoy hay adivinar el objeto, contar, sombras, piedra papel o tijera, música o un cuento. ¿Cuál te copa?",
+      "¿Adivinar el objeto, contar, sombras, piedra papel tijera, una canción o charlamos?"
     ]
   },
   "farewell": {
@@ -123,10 +123,10 @@
     ],
     "response": [
       "¡Qué bueno que estés tan feliz! Me pone contento verte así. ¿Querés que hagamos algo divertido juntos?",
-      "¡Qué alegría! Me encanta cuando estás contento. ¿Jugamos algo?",
+      "¡Qué alegría! Me encanta cuando estás {contento}. ¿Jugamos algo?",
       "¡Genial! Esa sonrisa me gusta un montón. ¿Qué hacemos ahora?",
       "¡Me contagiaste la alegría! ¿Celebramos con un jueguito?",
-      "¡Qué lindo verte así! Contame qué te puso tan contento."
+      "¡Qué lindo verte así! Contame qué te puso tan {contento}."
     ],
     "emotions": ["feliz"],
     "emotion_threshold": 0.14
@@ -196,16 +196,55 @@
       "veo veo",
       "quiero jugar veo veo",
       "dale veo veo",
-      "juguemos a veo veo"
+      "juguemos a veo veo",
+      "adivina el objeto",
+      "adiviná el objeto",
+      "juguemos a adivinar"
     ],
     "response": [
-      "¡Dale, juguemos al Veo-veo! Veo veo... una cosita... ¿De qué color será?",
-      "¡Veo veo! Yo empiezo. Veo veo una cosita... ¿de qué color?",
-      "¡Sí! Juguemos al Veo-veo. Prestá atención...",
-      "¡Me encanta el Veo-veo! Yo miro una cosa. ¿De qué color la ves?",
-      "Listo, arrancamos. Veo veo... ¿adivinás el color?"
+      "¡Dale, adiviná el objeto! Te doy una pista.",
+      "¡Adiviná el objeto! Escuchá la pista.",
+      "¡Sí! Adivinamos el objeto. Prestá atención...",
+      "¡Me encanta adivinar! Te doy una pista.",
+      "Listo, arrancamos. Escuchá la pista y adiviná."
     ],
-    "game_type": "veo_veo"
+    "game_type": "adivina"
+  },
+  "play_contar": {
+    "pilar": "cognitivo",
+    "examples": [
+      "juguemos a contar",
+      "vamos a contar",
+      "juego de contar",
+      "contar objetos",
+      "quiero contar"
+    ],
+    "response": [
+      "¡Vamos a contar! Mirá la pantalla.",
+      "¡A contar! ¿Cuántos ves?",
+      "¡Sí! Contamos juntos. Mirá la imagen.",
+      "¡Me encanta contar! Mirá la pantalla.",
+      "Listo, arrancamos. Contá lo que ves."
+    ],
+    "game_type": "contar"
+  },
+  "play_sombras": {
+    "pilar": "cognitivo",
+    "examples": [
+      "juguemos a las sombras",
+      "juego de sombras",
+      "adiviná la sombra",
+      "adivina la sombra",
+      "sombras"
+    ],
+    "response": [
+      "¡Adiviná la sombra! Mirá la pantalla.",
+      "¡Sombras! ¿Qué figura ves?",
+      "¡Sí! Adivinamos la sombra. Mirá bien.",
+      "¡Me encantan las sombras! ¿Qué es?",
+      "Listo, arrancamos. Mirá la silueta."
+    ],
+    "game_type": "sombras"
   },
   "play_piedra_papel": {
     "pilar": "cognitivo",
@@ -301,8 +340,8 @@
       "termine"
     ],
     "response": [
-      "¡Muy bien! ¡Lo hiciste solito! Eso es genial, estoy muy orgulloso de vos.",
-      "¡Genial! ¡Lo lograste! Sos un campeón.",
+      "¡Muy bien! ¡Lo hiciste {solito}! Eso es genial, estoy muy orgulloso de vos.",
+      "¡Genial! ¡Lo lograste! Sos {un} {campeon}.",
       "¡Listo! Qué bien que lo hiciste vos. ¡Chocá los cinco!",
       "¡Sí! Terminaste. Eso se celebra.",
       "¡Qué crack! Lo hiciste vos. Me encanta."
@@ -355,7 +394,7 @@
       "ese no ese si"
     ],
     "response": [
-      "¡Qué bien que elegiste vos solito! Me gusta mucho cuando decidís por vos mismo.",
+      "¡Qué bien que elegiste vos {solito}! Me gusta mucho cuando decidís por vos {mismo}.",
       "¡Buena elección! Me encanta que decidas vos.",
       "¡Genial! Elegiste vos. Eso está buenísimo.",
       "Tu elección vale. Me gusta que digas lo que querés.",
@@ -464,7 +503,7 @@
       "Descansar hace muy bien cuando tenemos sueño. Ponete cómodo y relajá un ratito.",
       "Qué rico un ratito de calma. Cerrá los ojitos despacito si querés.",
       "Cuando hay sueño, el cuerpo pide descanso. Te acompaño suave.",
-      "Cuerpo cansado, voz bajita. Te cuido un ratito.",
+      "Cuerpo {cansado}, voz bajita. Te cuido un ratito.",
       "Si hay fiaca, no pasa nada. Despacio, sin apuro."
     ],
     "emotions": ["neutral", "triste"],
@@ -656,7 +695,7 @@
       "¡A mover el esqueleto! Manos arriba y pies suaves.",
       "Bailamos: un pasito, un giro, una risa.",
       "¡Fiesta! Si querés música, pedime una canción.",
-      "Sacudimos las manitos. ¡Eso! Sos un crack del baile.",
+      "Sacudimos las manitos. ¡Eso! Sos {un} crack del baile.",
       "Caderas, hombros, sonrisa. ¿Otra ronda?"
     ]
   },
@@ -671,11 +710,11 @@
       "un juego"
     ],
     "response": [
-      "¡Juguemos! ¿Veo veo o piedra papel o tijera?",
-      "Dale, juego. ¿Veo veo o piedra papel tijera? También hay música o un cuento.",
-      "Estoy listo. Elegí: veo veo o piedra papel tijera.",
-      "¡Sí! ¿Veo veo, piedra papel tijera, o preferís una canción?",
-      "Jugar es lo mío. ¿Veo veo o piedra papel tijera?"
+      "¡Juguemos! ¿Adivinar el objeto, contar, sombras o piedra papel o tijera?",
+      "Dale, juego. ¿Adivinar el objeto, contar o sombras? También hay música o un cuento.",
+      "Estoy listo. Elegí: adivinar el objeto, contar, sombras o piedra papel tijera.",
+      "¡Sí! ¿Adivinar el objeto, contar, sombras, piedra papel tijera, o preferís una canción?",
+      "Jugar es lo mío. ¿Adivinar el objeto, contar, sombras o piedra papel tijera?"
     ]
   },
   "look_at_this": {

@@ -87,6 +87,30 @@ class TestKeywordOrUnknown(unittest.TestCase):
             "play_veo_veo",
         )
 
+    def test_adivina_el_objeto(self) -> None:
+        self.assertEqual(
+            self.d.dispatch("adivina el objeto")["intent_name"],
+            "play_veo_veo",
+        )
+
+    def test_contar_y_sombras(self) -> None:
+        self.assertEqual(self.d.dispatch("juguemos a contar")["intent_name"], "play_contar")
+        self.assertEqual(self.d.dispatch("adiviná la sombra")["intent_name"], "play_sombras")
+        self.assertEqual(self.d.dispatch("contame un cuento")["intent_name"], "story_request")
+        self.assertEqual(
+            self.d.dispatch("quiero jugar a adivinar la silueta")["intent_name"],
+            "play_sombras",
+        )
+        self.assertEqual(
+            self.d.dispatch("vamos a adivinar objetos")["intent_name"],
+            "play_veo_veo",
+        )
+        self.assertEqual(
+            self.d.dispatch("qué podemos jugar")["intent_name"],
+            "activity_offer",
+        )
+        self.assertEqual(self.d.dispatch("quiero jugar")["intent_name"], "play_generic")
+
 
 class TestNoMinilmLoad(unittest.TestCase):
     def test_from_file_no_carga_minilm(self) -> None:

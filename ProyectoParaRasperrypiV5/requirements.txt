@@ -17,3 +17,5 @@ edge-tts
 python-dotenv
 soundfile
 pypdf
+dbus-python
+PyGObject

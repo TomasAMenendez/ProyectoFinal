@@ -21,6 +21,7 @@ import urllib.request
 from pathlib import Path
 from typing import Any
 
+from child_profile import current_prompt_section
 from debug_logger import get_debug_logger
 
 # ---------------------------------------------------------------------------
@@ -91,7 +92,7 @@ _SYSTEM_PROMPT = (
     "Contestá lo que dijo el nene en 1 o 2 oraciones, máximo 25 palabras. "
     "Si no se entiende, preguntá con alegría. No inventes países ni datos. Si no sabés, decí no sé. "
     "Cuentas simples: da el resultado. Sin emojis, comillas ni asteriscos. "
-    "No arranques un juego. Si pide un juego, ofrecé veo veo o Piedra Papel o Tijera. "
+    "No juegues vos ni inventes reglas. Si pide adivinar el objeto, contar, sombras o Piedra Papel o Tijera: [PLAY_GAME:sombras] o contar, adivina, piedra. El corchete no se dice. "
     "No ofrezcas cuento ni canción si no lo pidió. No inventes títulos. "
     "Si pide cuento: [LIST_STORIES] solo, sin texto. Si pide música y querés listar: [LIST_MUSIC] solo, sin texto. "
     "[PLAY_STORY:título] para leer uno de la lista. [PLAY_MUSIC] o [PLAY_MUSIC:nombre] para una canción. [STOP_MUSIC] para parar. "
@@ -190,6 +191,16 @@ def drop_prompt_leak(user_text: str, reply: str) -> str:
     if folded == "me llamo teo" and _NAME_QUESTION.search(user_text or ""):
         return reply
     return _FOLLOW_AFTER_LEAK
+
+
+_VEO_VEO_SPEECH = re.compile(r"\bveo[\s\-]*veo\b", re.IGNORECASE)
+
+
+def scrub_veo_veo_speech(reply: str) -> str:
+    """El modelo no debe nombrar el juego viejo. Lo saca de lo que se va a decir."""
+    if not (reply or "").strip():
+        return reply
+    return _VEO_VEO_SPEECH.sub("adivinar el objeto", reply)
 
 
 class FallbackLLM:
@@ -391,8 +402,12 @@ class FallbackLLM:
         """Inferencia bloqueante. El GGUF se queda en RAM entre turnos."""
         if self._llm is None:
             return ""
+        section = current_prompt_section()
         messages = self._build_messages(
-            text, emotion, history if history is not None else self._history
+            text,
+            emotion,
+            history if history is not None else self._history,
+            profile_section=section,
         )
         result = self._llm.create_chat_completion(
             messages=messages,
@@ -416,7 +431,9 @@ class FallbackLLM:
             .get("content", "")
             .strip()
         )
-        return drop_prompt_leak(text, drop_unsolicited_story_offer(text, self._clean_response(raw_text)))
+        return scrub_veo_veo_speech(
+            drop_prompt_leak(text, drop_unsolicited_story_offer(text, self._clean_response(raw_text)))
+        )
 
     # ------------------------------------------------------------------
     # Limpieza y post-procesamiento de la respuesta
@@ -455,10 +472,17 @@ class FallbackLLM:
     # ------------------------------------------------------------------
 
     @staticmethod
-    def _build_messages(text: str, emotion: dict[str, Any] | None, history: list[dict[str, str]]) -> list[dict[str, str]]:
+    def _build_messages(
+        text: str,
+        emotion: dict[str, Any] | None,
+        history: list[dict[str, str]],
+        profile_section: str = "",
+    ) -> list[dict[str, str]]:
         """Arma los mensajes para el LLM con el sistema actualizado y el historial."""
         system_content = _SYSTEM_PROMPT
-        
+        if profile_section.strip():
+            system_content += "\n" + profile_section.strip() + "\n"
+
         if emotion:
             label = str(emotion.get("label", "")).lower()
             score = float(emotion.get("score", 0.0))

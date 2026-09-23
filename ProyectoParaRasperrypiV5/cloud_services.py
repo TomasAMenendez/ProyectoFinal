@@ -25,6 +25,7 @@ from typing import Any
 
 import numpy as np
 
+from child_profile import current_prompt_section
 from debug_logger import get_debug_logger
 from fallback_llm import _SYSTEM_PROMPT as _TEO_SYSTEM_PROMPT
 
@@ -215,8 +216,12 @@ class CloudLLM:
 
             hist = list(history if history is not None else self._history)
             user_content = user_text + emotion_hint
+            section = current_prompt_section()
+            system = self._SYSTEM_PROMPT
+            if section.strip():
+                system = system + "\n" + section.strip() + "\n"
             messages = [
-                {"role": "system", "content": self._SYSTEM_PROMPT},
+                {"role": "system", "content": system},
                 *hist,
                 {"role": "user", "content": user_content},
             ]
@@ -232,9 +237,9 @@ class CloudLLM:
             )
 
             reply = response.choices[0].message.content.strip() if response.choices else ""
-            from fallback_llm import drop_unsolicited_story_offer
+            from fallback_llm import drop_unsolicited_story_offer, scrub_veo_veo_speech
 
-            reply = drop_unsolicited_story_offer(user_text, reply)
+            reply = scrub_veo_veo_speech(drop_unsolicited_story_offer(user_text, reply))
 
             if _dlog:
                 _dlog.log_output(

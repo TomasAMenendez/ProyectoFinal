@@ -176,14 +176,63 @@ def filter_stt_tokens(
     return _tidy_spacing("".join(pieces))
 
 
+_HALLUCINATION_PHRASES = (
+    "subtítulos realizados",
+    "subtitulos realizados",
+    "subtítulos por",
+    "sous-titres",
+    "sous titres",
+    "gracias por ver",
+    "thanks for watching",
+    "thank you for watching",
+    "suscríbete",
+    "subscribe",
+    "like and subscribe",
+    "amara.org",
+    "www.",
+    "http",
+)
+_PROMPT_ECHO = (
+    "me gusta el peluche",
+    "vamos a hacer algo divertido",
+    "jugamos a las adivinanzas",
+)
+_OUTRO_ONLY = frozenset({"adios"})
+
+
+def drop_whisper_hallucinations(text: str) -> str:
+    """Tira créditos de YouTube y el «Adiós.» suelto que Whisper inventa en clips cortos."""
+    if not text:
+        return ""
+    low = text.lower().strip()
+    for phrase in _HALLUCINATION_PHRASES:
+        if phrase in low:
+            return ""
+    words = low.split()
+    if len(words) >= 3 and len(set(words)) == 1:
+        return ""
+    if len(low) <= 1:
+        return ""
+    key = re.sub(r"[¿¡!?,.;:]+", " ", _fold(text))
+    key = re.sub(r"\s+", " ", key).strip()
+    if key in _OUTRO_ONLY:
+        return ""
+    folded_words = " ".join(words)
+    for echo in _PROMPT_ECHO:
+        if echo in folded_words and len(words) <= 8:
+            return ""
+    return text
+
+
 def polish_stt_text(
     text: str,
     extra_words: Sequence[str] = (),
     is_known_spanish: Callable[[str], bool] | None = None,
 ) -> str:
-    """Pipeline STT: pegotes/juego y después filtro de vocabulario."""
+    """Pipeline STT: alucinaciones, pegotes/juego y filtro de vocabulario."""
+    cleaned = drop_whisper_hallucinations(text)
     return filter_stt_tokens(
-        correct_stt_text(text, extra_words=extra_words),
+        correct_stt_text(cleaned, extra_words=extra_words),
         is_known_spanish=is_known_spanish,
     )
 

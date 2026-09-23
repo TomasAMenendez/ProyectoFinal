@@ -110,6 +110,9 @@
     <string name="config_playtime_limit">Límite de tiempo de juego</string>
     <string name="config_playtime_limit_subtitle">Máximo diario de interacción continua. 0 = sin límite</string>
     <string name="config_playtime_unlimited">Sin límite</string>
+    <string name="config_playtime_hint">Minutos (0 = sin límite)</string>
+    <string name="config_playtime_invalid">Escribí un número entero entre 0 y 240</string>
+    <string name="dashboard_playtime_remaining">Restante</string>
 
     <!-- Medical -->
     <string name="medical_title">Agenda Médica</string>
@@ -154,6 +157,82 @@
     <string name="files_songs_upload">Subir canción</string>
     <string name="files_songs_stop">Parar canción</string>
     <string name="files_songs_delete_title">Eliminar canción</string>
+
+    <!-- Child profile / onboarding -->
+    <string name="onboarding_child_title">Datos del chico</string>
+    <string name="onboarding_child_subtitle">No podés usar la app hasta cargar el nombre y el género. Así TEO sabe cómo hablarle.</string>
+    <string name="child_profile_name_hint">Nombre</string>
+    <string name="child_profile_gender_label">Género</string>
+    <string name="child_profile_gender_nene">Nene</string>
+    <string name="child_profile_gender_nena">Nena</string>
+    <string name="child_profile_gender_no_decir">Prefiero no decir</string>
+    <string name="child_profile_interests_hint">Qué le gusta (juegos, dibujos, animales…)</string>
+    <string name="child_profile_costume_label">Disfraz</string>
+    <string name="child_profile_costume_oso">Oso</string>
+    <string name="child_profile_costume_perro">Perro</string>
+    <string name="child_profile_costume_oveja">Oveja</string>
+    <string name="child_profile_costume_dinosaurio">Dinosaurio</string>
+    <string name="child_profile_costume_chancho">Chancho</string>
+    <string name="child_profile_costume_tiburon">Tiburón</string>
+    <string name="child_profile_costume_stitch">Stitch</string>
+    <string name="child_profile_costume_spiderman">Spiderman</string>
+    <string name="child_profile_costume_chimuelo">Chimuelo</string>
+    <string name="child_profile_extra_hint">Algo más que TEO tenga que saber</string>
+    <string name="child_profile_save_ok">Listo, ya lo guardé</string>
+    <string name="child_profile_save_error">No pude guardar. Revisá la conexión e intentá de nuevo.</string>
+    <string name="child_profile_load_error">No pude cargar los datos del chico.</string>
+
+    <!-- WiFi por BLE -->
+    <string name="wifi_setup_title">Conectá TEO al WiFi</string>
+    <string name="wifi_setup_subtitle">TEO todavía no está en tu red. Miralo: en su pantallita hay un número de 6 dígitos.</string>
+    <string name="wifi_setup_pin_hint">PIN de 6 dígitos</string>
+    <string name="wifi_setup_pin_verify">Verificar PIN</string>
+    <string name="wifi_setup_searching">Buscando a TEO por Bluetooth…</string>
+    <string name="wifi_setup_connected_ble">Ya estoy hablando con TEO. Escribí el PIN de su pantallita.</string>
+    <string name="wifi_setup_networks_title">Elegí tu red</string>
+    <string name="wifi_setup_networks_empty">No encontré redes. Probá de nuevo.</string>
+    <string name="wifi_setup_networks_refresh">Buscar redes de nuevo</string>
+    <string name="wifi_setup_password_title">Contraseña de %1$s</string>
+    <string name="wifi_setup_password_hint">Contraseña</string>
+    <string name="wifi_setup_password_connect">Conectar</string>
+    <string name="wifi_setup_connecting">Conectando a %1$s…</string>
+    <string name="wifi_setup_scanning">Buscando redes…</string>
+    <string name="wifi_setup_refresh_hint">TEO está actualizando la lista. Mientras tanto podés elegir una red.</string>
+    <string name="wifi_setup_done">¡Listo! TEO se conectó. Buscándolo en tu red…</string>
+    <string name="wifi_setup_error_pin">Ese PIN no es. Fijate en la pantallita de TEO. Si fallaste 5 veces, mirá el PIN nuevo.</string>
+    <string name="wifi_setup_error_auth">La contraseña no funcionó. Probá de nuevo.</string>
+    <string name="wifi_setup_error_session">TEO cortó la sesión. Escribí el PIN otra vez.</string>
+    <string name="wifi_setup_error_timeout">Tardó demasiado. Reintentá.</string>
+    <string name="wifi_setup_error_generic">Algo salió mal con TEO. Reintentá.</string>
+    <string name="wifi_setup_error_not_found">No encontré a TEO. Acercate al peluche y fijate que esté prendido.</string>
+    <string name="wifi_setup_error_bluetooth_off">Prendé el Bluetooth del celular para hablar con TEO.</string>
+    <string name="wifi_setup_error_permission">Necesito permiso de Bluetooth para encontrar a TEO.</string>
+    <string name="wifi_setup_error_disconnected">Se cortó la conexión con TEO. Reintentá.</string>
+    <string name="wifi_setup_disconnected_checking">Se cortó el Bluetooth. Fijándome si TEO entró a la red…</string>
+    <string name="wifi_setup_retry">Reintentar</string>
+    <string name="wifi_setup_open_settings">Abrir ajustes de Bluetooth</string>
+    <string name="wifi_setup_error_permission_blocked">El permiso de Bluetooth quedó bloqueado. Abrí los ajustes de la app, activá "Dispositivos cercanos" y volvé.</string>
+    <string name="wifi_setup_app_settings">Abrir ajustes de la app</string>
+    <string name="wifi_setup_waiting_pin">Escribí el PIN de la pantallita de TEO.</string>
+    <string name="wifi_setup_connecting_generic">TEO está entrando a la red…</string>
+    <string name="wifi_setup_error_stalled">TEO dejó de contestar. Reintentá.</string>
+    <string name="wifi_setup_error_unknown_status">TEO contestó algo que no entiendo. Si no avanza, reintentá.</string>
+    <string name="wifi_setup_error_expired">Pasaron los 10 minutos y TEO apagó el PIN. Reiniciá el peluche o volvé a "Cambiar red WiFi".</string>
+    <string name="wifi_setup_secure">Con contraseña</string>
+    <string name="wifi_setup_open_network">Abierta</string>
+    <string name="wifi_setup_signal">Señal %1$d%%</string>
+
+    <!-- Onboarding: sin LAN ni BLE -->
+    <string name="onboarding_retry_title">No encuentro a TEO</string>
+    <string name="onboarding_retry_message">Acercate al peluche y activá el Bluetooth del celular. Si TEO ya está en tu WiFi, fijate que el celular esté en la misma red.</string>
+    <string name="onboarding_retry_button">Reintentar</string>
+    <string name="onboarding_retry_searching">Buscando…</string>
+
+    <!-- Config: cambiar red -->
+    <string name="config_change_wifi">📶 Cambiar red WiFi</string>
+    <string name="config_change_wifi_starting">Le pedí a TEO el PIN. Miralo en su pantallita.</string>
+    <string name="config_change_wifi_error">No pude poner a TEO en modo WiFi. Revisá la conexión.</string>
+    <string name="config_change_wifi_error_ble">TEO no pudo prender su Bluetooth. Reiniciá el peluche y probá de nuevo.</string>
 
     <!-- General -->
     <string name="fab_content_description">Acción principal</string>

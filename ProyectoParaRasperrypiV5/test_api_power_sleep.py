@@ -7,10 +7,16 @@ import unittest
 from pathlib import Path
 
 from api_server import RobotState
+from child_profile import set_profile_path
 from session_policy import PlaytimeGuard
 
 
 class TestRobotStatePower(unittest.TestCase):
+    def tearDown(self) -> None:
+        # Extra RobotState(prefs_path=tmp) llama set_profile_path(APP_DIR/...).
+        # Reset so later tests using default_path() / _api_profile are not stuck.
+        set_profile_path(None)
+
     def _fresh(self, tmp: str) -> RobotState:
         return RobotState(prefs_path=Path(tmp) / "parental_prefs.json")
 
@@ -46,6 +52,7 @@ class TestRobotStatePower(unittest.TestCase):
             self.assertTrue(rs.playtime_guard.is_over_limit())
             rs.set_power(True)
             self.assertFalse(rs.playtime_guard.is_over_limit())
+            self.assertEqual(rs.playtime_guard.remaining_seconds(), 60)
             self.assertEqual(rs.sleep.phase(), "awake")
 
     def test_belly_wake_se_persiste(self) -> None:
@@ -58,6 +65,28 @@ class TestRobotStatePower(unittest.TestCase):
             rs2 = RobotState(prefs_path=path)
             self.assertFalse(rs2.sleep.belly_wake_enabled)
             self.assertFalse(rs2.to_dict()["belly_wake_enabled"])
+
+    def test_tope_de_juego_se_persiste(self) -> None:
+        with tempfile.TemporaryDirectory() as tmp:
+            path = Path(tmp) / "parental_prefs.json"
+            rs = RobotState(prefs_path=path)
+            rs.update_config({"playtime_limit_minutes": 45})
+            saved = json.loads(path.read_text(encoding="utf-8"))
+            self.assertEqual(saved["playtime_limit_minutes"], 45)
+            rs2 = RobotState(prefs_path=path)
+            self.assertEqual(rs2.playtime_limit_minutes, 45)
+            self.assertEqual(rs2.playtime_guard.limit_minutes, 45)
+            self.assertEqual(rs2.to_dict()["playtime_limit_minutes"], 45)
+
+    def test_tope_de_juego_sobrevive_guardar_solo_panza(self) -> None:
+        with tempfile.TemporaryDirectory() as tmp:
+            path = Path(tmp) / "parental_prefs.json"
+            rs = RobotState(prefs_path=path)
+            rs.update_config({"playtime_limit_minutes": 30})
+            rs.update_config({"belly_wake_enabled": False})
+            rs2 = RobotState(prefs_path=path)
+            self.assertEqual(rs2.playtime_limit_minutes, 30)
+            self.assertFalse(rs2.sleep.belly_wake_enabled)
 
     def test_activity_allowed_solo_despierto(self) -> None:
         with tempfile.TemporaryDirectory() as tmp:

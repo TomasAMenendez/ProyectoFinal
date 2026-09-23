@@ -9,7 +9,7 @@ import re
 import unicodedata
 from collections.abc import Callable
 from dataclasses import dataclass, field
-from datetime import date, timedelta
+from datetime import date, datetime, timedelta
 from pathlib import Path
 from typing import Any
 
@@ -24,6 +24,15 @@ def gain_from_limit(volume_limit: int) -> float:
 def apply_gain(audio: np.ndarray, gain: float) -> np.ndarray:
     scaled = audio.astype(np.float32, copy=False) * float(gain)
     return np.clip(scaled, -1.0, 1.0).astype(np.float32)
+
+
+def scale_playback_chunk(chunk: np.ndarray, gain: float) -> np.ndarray:
+    """Atenuá un bloque listo para el DAC (int16 o float32) con el tope parental."""
+    g = float(gain)
+    if chunk.dtype == np.int16:
+        scaled = chunk.astype(np.float32) * g
+        return np.clip(scaled, -32767.0, 32767.0).astype(np.int16)
+    return apply_gain(chunk, g)
 
 
 def effective_volume_limit(volume_limit: int, night_mode: bool) -> int:
@@ -55,7 +64,7 @@ NIGHT_DECLINE_PHRASE = (
     "Estoy descansando. Si me necesitás, llamá a mamá o papá."
 )
 
-PLAYTIME_DECLINE_PHRASE = "Hoy ya jugamos bastante. Descansemos un rato."
+PLAYTIME_DECLINE_PHRASE = "Se terminó el tiempo de juego, nos vemos mañana."
 
 
 def night_should_engage(intent_name: str, night_mode: bool = True) -> bool:
@@ -80,16 +89,48 @@ _PLAYTIME_ALLOWED = {
 
 @dataclass
 class PlaytimeGuard:
-    """Tope diario de interacción. limit_minutes=0 significa sin límite."""
+    """Tope diario de reloj en vela. limit_minutes=0 significa sin límite."""
 
     limit_minutes: int = 0
     today: date = field(default_factory=date.today)
+    now_fn: Callable[[], datetime] = field(default=datetime.now)
     _seconds: float = 0.0
+    _running_since: datetime | None = None
+    _end_claimed: bool = False
+
+    def _now(self) -> datetime:
+        return self.now_fn()
+
+    def _elapsed_seconds(self) -> float:
+        extra = 0.0
+        if self._running_since is not None:
+            extra = (self._now() - self._running_since).total_seconds()
+        return self._seconds + extra
+
+    def _flush_run(self) -> None:
+        if self._running_since is None:
+            return
+        self._seconds += (self._now() - self._running_since).total_seconds()
+        self._running_since = None
 
     def _rollover(self) -> None:
-        if date.today() != self.today:
-            self.today = date.today()
+        current = self._now().date()
+        if current != self.today:
+            was_running = self._running_since is not None
+            self.today = current
             self._seconds = 0.0
+            self._running_since = None
+            self._end_claimed = False
+            if was_running:
+                self._running_since = self._now()
+
+    def set_running(self, running: bool) -> None:
+        self._rollover()
+        if running and self.limit_minutes > 0:
+            if self._running_since is None:
+                self._running_since = self._now()
+            return
+        self._flush_run()
 
     def add_seconds(self, duration_s: float) -> None:
         self._rollover()
@@ -98,17 +139,43 @@ class PlaytimeGuard:
     def reset_today(self) -> None:
         self._rollover()
         self._seconds = 0.0
+        self._running_since = None
+        self._end_claimed = False
 
     def is_over_limit(self) -> bool:
         self._rollover()
         if self.limit_minutes <= 0:
             return False
-        return self._seconds >= self.limit_minutes * 60.0
+        return self._elapsed_seconds() >= self.limit_minutes * 60.0
+
+    def claim_end(self) -> bool:
+        if not self.is_over_limit():
+            return False
+        if self._end_claimed:
+            return False
+        self._end_claimed = True
+        return True
 
     def allows_intent(self, intent_name: str) -> bool:
         if not self.is_over_limit():
             return True
         return (intent_name or "") in _PLAYTIME_ALLOWED
+
+    def remaining_seconds(self) -> int | None:
+        self._rollover()
+        if self.limit_minutes <= 0:
+            return None
+        cap = self.limit_minutes * 60.0
+        return int(max(0.0, round(cap - self._elapsed_seconds())))
+
+    def remaining_fraction(self) -> float | None:
+        rem = self.remaining_seconds()
+        if rem is None:
+            return None
+        cap = float(self.limit_minutes) * 60.0
+        if cap <= 0:
+            return None
+        return max(0.0, min(1.0, rem / cap))
 
 
 _NOTIF_BLOCKED_KEYS = {"text", "utterance", "response_given", "transcript"}
@@ -207,7 +274,7 @@ def keep_audio_queue_after_tts(*, is_music: bool, is_story: bool) -> bool:
 
 
 _SILENT_LLM_ACTIONS = frozenset(
-    {"LIST_STORIES", "LIST_MUSIC", "PLAY_MUSIC", "STOP_MUSIC", "PLAY_STORY"}
+    {"LIST_STORIES", "LIST_MUSIC", "PLAY_MUSIC", "STOP_MUSIC", "PLAY_STORY", "PLAY_GAME"}
 )
 
 
@@ -229,6 +296,21 @@ def spoken_text_or_unknown_fallback(
     return str(fallback or "").strip()
 
 
+def spoken_after_play_game(
+    clean_text: str,
+    payload: dict | None,
+    actions: list[dict[str, str]] | tuple[dict[str, str], ...],
+) -> str:
+    """El tag arranca el motor; no se habla el invento del LLM."""
+    names = {str(item.get("action") or "").upper() for item in actions}
+    if "PLAY_GAME" not in names:
+        return str(clean_text or "")
+    started = str((payload or {}).get("response") or "").strip()
+    if started:
+        return started
+    return str(clean_text or "")
+
+
 def mic_open_for_listen(speaker_playing: bool, now: float, echo_mute_until: float) -> bool:
     """Half-duplex: el mic no escucha mientras el parlante suena ni en la cola de eco."""
     if speaker_playing:
@@ -242,9 +324,9 @@ def stt_looks_like_garbage(text: str) -> bool:
     return len(words) >= 8
 
 
-MIN_ACTIVE_SPEECH_SECONDS = 0.30
-STT_LOW_LOGPROB = -0.9
-STT_HIGH_NO_SPEECH = 0.75
+MIN_ACTIVE_SPEECH_SECONDS = 0.15
+STT_LOW_LOGPROB = -1.2
+STT_HIGH_NO_SPEECH = 0.90
 
 
 def skip_stt_for_weak_speech(
@@ -315,8 +397,31 @@ def is_clear_keyword_intent(text: str) -> str | None:
         normalized,
     ):
         return "play_piedra_papel"
-    if re.search(r"\bveo[\s\-]?veo\b", normalized):
+    if re.search(
+        r"juego de sombras|juguem\w*.{0,24}sombra|adivin[áa](?:r)?.{0,16}(sombra|silueta)|juego de siluetas",
+        normalized,
+    ) or (
+        re.search(r"\bsombras?\b", normalized) and len(normalized.split()) <= 4
+    ):
+        return "play_sombras"
+    if re.search(
+        r"juguem\w*.{0,24}contar(?!.{0,16}cuento)|vamos a contar(?!.{0,16}cuento)"
+        r"|\bjuego de contar\b|contar objetos|jugar.{0,40}contar|volver.{0,20}contar",
+        normalized,
+    ):
+        return "play_contar"
+    if re.search(
+        r"\bveo[\s\-]?veo\b|adivin[áa](?:r)?.{0,12}objeto|vamos a adivinar|juguem\w*.{0,24}adivin",
+        normalized,
+    ):
         return "play_veo_veo"
+    if re.search(
+        r"que podemos (hacer|jugar)|a que jugamos|\bque jugamos\b",
+        normalized,
+    ):
+        return "activity_offer"
+    if key in {"quiero jugar", "juguemos", "vamos a jugar", "un juego", "a jugar"}:
+        return "play_generic"
     if re.search(
         r"(cont(a|ame)|lee(me)?|narra(me)?).{0,24}cuento|\b(un|el)\s+cuento\b|\bcuentos\b",
         normalized,
@@ -358,7 +463,16 @@ def is_clear_keyword_intent(text: str) -> str | None:
 
 
 MUTE_FAILSAFE_TURNS = 3
-_GAME_KEYWORDS_WHILE_MUTED = frozenset({"play_veo_veo", "play_piedra_papel"})
+_GAME_KEYWORDS_WHILE_MUTED = frozenset(
+    {
+        "play_veo_veo",
+        "play_piedra_papel",
+        "play_contar",
+        "play_sombras",
+        "play_generic",
+        "activity_offer",
+    }
+)
 _CHILD_TEXT_LOG_MAX = 80
 LogFn = Callable[..., None]
 

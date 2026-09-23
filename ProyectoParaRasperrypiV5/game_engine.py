@@ -1,95 +1,40 @@
-"""game_engine.py — Motor de juegos interactivos multi-turno.
+"""Motor de juegos interactivos multi-turno.
 
-Implementa juegos conversacionales (Veo-veo, Piedra-papel-tijera) con
-máquina de estados que mantiene contexto entre turnos.  Cuando hay un
-juego activo, el input del niño se redirige aquí en vez del dispatcher
-de intenciones normal.
-
-Diseñado para Edge Computing: sin dependencias extra, lógica pura Python.
+Cuando hay un juego activo, el input del niño se redirige aquí en vez del
+dispatcher de intenciones.
 """
 from __future__ import annotations
 
 import random
 import re
-import unicodedata
-from dataclasses import dataclass, field
+from dataclasses import dataclass
 from typing import Any
 
 from debug_logger import log_action
+from game_catalog import resolve_media
 from stt_correct import correct_stt_text
 
 
-def _normalize_letter(char: str) -> str:
-    """Quita acentos de una letra para las pistas (á → a, ñ se preserva)."""
-    nfkd = unicodedata.normalize("NFKD", char)
-    return "".join(c for c in nfkd if not unicodedata.combining(c)).upper()
-
-
-def _words_match(guess: str, secret: str) -> bool:
-    """Verifica si la respuesta del niño contiene al menos una palabra
-    significativa del objeto secreto, o viceversa.
-
-    Usa coincidencia por palabras completas (no substrings) para evitar
-    falsos positivos como 'es' → 'estrella' o 'a' → 'banana'.
-    Requiere que las palabras coincidentes tengan al menos 3 caracteres.
-    """
-    if not guess or not secret:
-        return False
-    guess_words = set(re.findall(r"\w+", guess.lower()))
-    secret_words = set(re.findall(r"\w+", secret.lower()))
-    # Filtrar palabras muy cortas (artículos, preposiciones)
-    MIN_WORD_LEN = 3
-    meaningful_guess = {w for w in guess_words if len(w) >= MIN_WORD_LEN}
-    meaningful_secret = {w for w in secret_words if len(w) >= MIN_WORD_LEN}
-    if not meaningful_guess:
-        return False
-    # Match si alguna palabra significativa del guess coincide con el secret,
-    # o si el guess completo es igual al secret completo
-    return bool(meaningful_guess & meaningful_secret) or guess.lower().strip() == secret.lower().strip()
-
-
 def _wants_to_exit(text: str) -> bool:
-    """Detecta si el niño quiere salir del juego usando match por palabras completas.
-
-    Evita falsos positivos como 'noche' (contiene 'no') o 'dinosaurio' (contiene 'no').
-    """
+    """Detecta si el niño quiere salir del juego usando match por palabras completas."""
     normalized = text.lower().strip()
-    # Frases exactas que indican salida (match por substring está OK para frases)
     exit_phrases = {"no quiero", "no quiero jugar", "no quiero más", "me aburro", "me aburrí"}
     if any(phrase in normalized for phrase in exit_phrases):
         return True
-    # Palabras exactas con word boundary (evita 'noche' → 'no', 'rebasta' → 'basta')
     exit_exact_words = {"basta", "salir", "parar", "chau"}
     words_in_text = set(re.findall(r"\w+", normalized))
     return bool(words_in_text & exit_exact_words)
 
 
-# ---------------------------------------------------------------------------
-# Respuestas y datos de juego
-# ---------------------------------------------------------------------------
-
-_VEO_VEO_COLORS = [
-    "rojo", "azul", "verde", "amarillo", "naranja",
-    "rosa", "blanco", "negro", "marrón", "violeta",
-]
-
-_VEO_VEO_OBJECTS: dict[str, list[str]] = {
-    "rojo": ["manzana", "corazón", "tomate", "frutilla"],
-    "azul": ["cielo", "mar", "agua", "globo azul"],
-    "verde": ["pasto", "árbol", "hoja", "rana"],
-    "amarillo": ["sol", "banana", "pollito", "estrella"],
-    "naranja": ["naranja", "zanahoria", "calabaza"],
-    "rosa": ["flor", "flamenco", "algodón de azúcar"],
-    "blanco": ["nube", "nieve", "leche", "algodón"],
-    "negro": ["noche", "gato negro", "hormiga"],
-    "marrón": ["chocolate", "oso", "tronco", "tierra"],
-    "violeta": ["uva", "berenjena", "flor violeta"],
+_PIEDRA_PAPEL_CHOICES = ["piedra", "papel", "tijera"]
+_RPS_IMAGE_FILES = {
+    "piedra": "Imagen_Piedra.png",
+    "papel": "Imagen_Papel.png",
+    "tijera": "Imagen_Tijera.png",
 }
 
-_PIEDRA_PAPEL_CHOICES = ["piedra", "papel", "tijera"]
-
 _CELEBRATION_PHRASES = [
-    "¡Muy bien! ¡Sos un genio!",
+    "¡Muy bien! ¡Sos {un} {genio}!",
     "¡Excelente! ¡Lo adivinaste!",
     "¡Bravo! ¡Qué crack que sos!",
     "¡Increíble! ¡Sabía que podías!",
@@ -102,8 +47,8 @@ _ENCOURAGEMENT_PHRASES = [
 ]
 
 _WIN_PHRASES = [
-    "¡Ganaste vos! ¡Felicitaciones, campeón!",
-    "¡Me ganaste! Sos muy bueno en esto.",
+    "¡Ganaste vos! ¡Felicitaciones, {campeon}!",
+    "¡Me ganaste! Sos muy {bueno} en esto.",
 ]
 
 _LOSE_PHRASES = [
@@ -123,131 +68,36 @@ _RPS_NOT_UNDERSTOOD_PHRASE = (
     "No entendí tu elección. Decí piedra, papel o tijera. ¡Uno, dos, tres!"
 )
 
+_INTENT_TO_GAME = {
+    "play_veo_veo": "adivina",
+    "play_adivina": "adivina",
+    "play_contar": "contar",
+    "play_sombras": "sombras",
+    "play_piedra_papel": "piedra_papel_tijera",
+}
 
-# ---------------------------------------------------------------------------
-# Datos de respuesta de juego
-# ---------------------------------------------------------------------------
+_GUESS_KINDS = frozenset({"adivina", "contar", "sombras"})
+
 
 @dataclass
 class GameResponse:
     """Resultado de procesar un turno de juego."""
-    text: str               # Texto para TTS
-    game_over: bool = False # True si el juego terminó
+    text: str
+    game_over: bool = False
     pilar: str = "cognitivo"
+    lcd_image: str | None = None
+    lcd_clear_after_speech: bool = False
 
+    def __post_init__(self) -> None:
+        from gender_speech import inflect_for_child
 
-# ---------------------------------------------------------------------------
-# Sesiones de juego
-# ---------------------------------------------------------------------------
-
-@dataclass
-class VeoVeoSession:
-    """Juego Veo-veo con múltiples rondas.
-
-    Flujo:
-    1. Robot elige color secreto + objeto.
-    2. Robot dice: "Veo veo una cosita de color {color}. ¿Qué será?"
-    3. Niño responde.
-    4. Si acierta → celebración + nueva ronda o fin.
-    5. Si falla → ánimo + pista + retry (máx 3 intentos por ronda).
-    """
-    color: str = ""
-    secret_object: str = ""
-    attempts: int = 0
-    max_attempts: int = 3
-    rounds_played: int = 0
-    max_rounds: int = 3
-    state: str = "waiting_answer"  # waiting_answer
-
-    def start_round(self) -> str:
-        """Inicia una nueva ronda eligiendo color y objeto."""
-        self.color = random.choice(_VEO_VEO_COLORS)
-        objects = _VEO_VEO_OBJECTS.get(self.color, ["algo misterioso"])
-        self.secret_object = random.choice(objects)
-        self.attempts = 0
-        self.state = "waiting_answer"
-        return (
-            f"Veo veo... una cosita de color {self.color}. "
-            f"¿Qué será, qué será?"
-        )
-
-    def process_input(self, text: str) -> GameResponse:
-        """Procesa la respuesta del niño."""
-        normalized = text.lower().strip()
-
-        # Detectar si quiere salir del juego (BUG-1 fix: word boundary match)
-        if _wants_to_exit(normalized):
-            return GameResponse(
-                text="¡Fue muy divertido jugar al Veo-veo con vos! "
-                     "Cuando quieras jugamos de nuevo.",
-                game_over=True,
-            )
-
-        # BUG-2 fix: texto vacío o muy corto no cuenta como intento válido
-        if len(normalized) < 2:
-            return GameResponse(
-                text="No escuché bien. ¿Qué dijiste? Probá de nuevo.",
-            )
-
-        self.attempts += 1
-
-        # BUG-3 fix: verificar acierto por coincidencia de palabras completas
-        if _words_match(normalized, self.secret_object):
-            self.rounds_played += 1
-            celebration = random.choice(_CELEBRATION_PHRASES)
-            # Guardar el objeto actual antes de iniciar nueva ronda
-            revealed_object = self.secret_object
-
-            if self.rounds_played >= self.max_rounds:
-                return GameResponse(
-                    text=f"{celebration} ¡Era {revealed_object}! "
-                         f"Jugamos {self.max_rounds} rondas. ¡Sos increíble!",
-                    game_over=True,
-                )
-            else:
-                next_round = self.start_round()
-                return GameResponse(
-                    text=f"{celebration} ¡Era {revealed_object}! "
-                         f"¡Vamos con otra! {next_round}",
-                )
-        else:
-            if self.attempts >= self.max_attempts:
-                self.rounds_played += 1
-                # Guardar el objeto actual antes de iniciar nueva ronda
-                revealed_object = self.secret_object
-                if self.rounds_played >= self.max_rounds:
-                    return GameResponse(
-                        text=f"¡Era {revealed_object}! No te preocupes, "
-                             f"estuvo muy bien. Jugamos {self.max_rounds} rondas. "
-                             f"¡La próxima las adivinás todas!",
-                        game_over=True,
-                    )
-                else:
-                    next_round = self.start_round()
-                    return GameResponse(
-                        text=f"¡Era {revealed_object}! No pasa nada, "
-                             f"¡vamos con otra! {next_round}",
-                    )
-            else:
-                encouragement = random.choice(_ENCOURAGEMENT_PHRASES)
-                # BUG-5 fix: normalizar letra (quitar acentos) para la pista
-                hint_letter = _normalize_letter(self.secret_object[0])
-                hint = f"Te doy una pista: empieza con la letra {hint_letter}."
-                return GameResponse(
-                    text=f"{encouragement} {hint}",
-                )
+        self.text = inflect_for_child(self.text)
 
 
 @dataclass
 class PiedraPapelTijeraSession:
-    """Juego Piedra-papel-tijera.
+    """Juego Piedra-papel-tijera."""
 
-    Flujo:
-    1. Robot dice: "¡Uno, dos, tres!"
-    2. Niño elige: piedra, papel o tijera.
-    3. Robot elige al azar, resuelve y anuncia resultado.
-    4. Se juegan múltiples rondas.
-    """
     rounds_played: int = 0
     max_rounds: int = 3
     wins_child: int = 0
@@ -257,7 +107,6 @@ class PiedraPapelTijeraSession:
     round_committed: bool = False
 
     def process_input(self, text: str, *, saw_confident: bool = False) -> GameResponse:
-        """Procesa la elección del niño (voz)."""
         normalized = correct_stt_text(
             text,
             extra_words=_PIEDRA_PAPEL_CHOICES,
@@ -282,7 +131,6 @@ class PiedraPapelTijeraSession:
         return self.process_choice(child_choice)
 
     def process_choice(self, label: str) -> GameResponse:
-        """Cierra la ronda con una label ya parseada (gesto o voz)."""
         if self.round_committed:
             return GameResponse(text="")
         if label not in _PIEDRA_PAPEL_CHOICES:
@@ -305,15 +153,19 @@ class PiedraPapelTijeraSession:
             phrase = random.choice(_LOSE_PHRASES)
 
         response_text = f"Yo elegí {robot_choice}. {phrase}"
+        lcd_image = resolve_media(_RPS_IMAGE_FILES[robot_choice])
 
         if self.rounds_played >= self.max_rounds:
-            return self._end_game(prefix=response_text)
+            return self._end_game(prefix=response_text, lcd_image=lcd_image)
 
         response_text += " ¡Uno, dos, tres!"
-        return GameResponse(text=response_text)
+        return GameResponse(
+            text=response_text,
+            lcd_image=lcd_image,
+            lcd_clear_after_speech=True,
+        )
 
     def _retry_empty(self) -> GameResponse:
-        """Vacío/inseguro: 1.º pide mano; 2.º copy histórico. No suma ronda."""
         if self.empty_tries == 0:
             self.empty_tries = 1
             return GameResponse(text=_RPS_SHOW_HAND_PHRASE)
@@ -324,7 +176,6 @@ class PiedraPapelTijeraSession:
         self.state = "waiting_choice"
 
     def _resolve(self, child: str, robot: str) -> str:
-        """Resuelve quién gana."""
         if child == robot:
             return "tie"
         wins = {
@@ -334,36 +185,32 @@ class PiedraPapelTijeraSession:
         }
         return "child_wins" if (child, robot) in wins else "robot_wins"
 
-    def _end_game(self, prefix: str = "") -> GameResponse:
-        """Finaliza el juego con resumen."""
+    def _end_game(self, prefix: str = "", lcd_image: str | None = None) -> GameResponse:
         summary = (
             f"Jugamos {self.rounds_played} rondas. "
             f"Vos ganaste {self.wins_child} y yo gané {self.wins_robot}. "
         )
         if self.wins_child > self.wins_robot:
-            summary += "¡Ganaste vos! ¡Felicitaciones, campeón!"
+            summary += "¡Ganaste vos! ¡Felicitaciones, {campeon}!"
         elif self.wins_robot > self.wins_child:
             summary += "¡Gané yo esta vez! Pero jugaste increíble."
         else:
             summary += "¡Empatamos! Somos un gran equipo."
 
         full_text = f"{prefix} {summary}".strip() if prefix else summary
-        return GameResponse(text=full_text, game_over=True)
+        return GameResponse(
+            text=full_text,
+            game_over=True,
+            lcd_image=lcd_image,
+            lcd_clear_after_speech=True,
+        )
 
-
-# ---------------------------------------------------------------------------
-# Motor principal de juegos
-# ---------------------------------------------------------------------------
 
 class GameEngine:
-    """Gestiona la sesión de juego activa.
-
-    Si hay un juego en curso, el input del niño se procesa aquí.
-    Si no, el flujo normal del IntentDispatcher toma el control.
-    """
+    """Gestiona la sesión de juego activa."""
 
     def __init__(self) -> None:
-        self._session: VeoVeoSession | PiedraPapelTijeraSession | None = None
+        self._session: Any = None
 
     @property
     def is_active(self) -> bool:
@@ -371,9 +218,12 @@ class GameEngine:
 
     @property
     def game_type(self) -> str | None:
-        if isinstance(self._session, VeoVeoSession):
-            return "veo_veo"
-        if isinstance(self._session, PiedraPapelTijeraSession):
+        from game_guess import GuessSession
+
+        session = self._session
+        if isinstance(session, GuessSession):
+            return session.kind
+        if isinstance(session, PiedraPapelTijeraSession):
             return "piedra_papel_tijera"
         return None
 
@@ -385,29 +235,31 @@ class GameEngine:
             and session.state == "waiting_choice"
         )
 
-    def start_game(self, game_type: str) -> str:
-        """Inicia un juego nuevo y retorna el mensaje de bienvenida."""
-        if game_type == "veo_veo":
-            session = VeoVeoSession()
-            opening = session.start_round()
+    def start_game(self, game_type: str) -> GameResponse:
+        if game_type in _GUESS_KINDS:
+            from game_guess import GuessSession, pick_item
+
+            item = pick_item(game_type)
+            if item is None:
+                return GameResponse(text="Ahora no puedo iniciar ese juego.")
+            session = GuessSession(kind=game_type, item=item)
             self._session = session
-            log_action("GAME", "inicio veo_veo")
-            return f"¡Dale, juguemos al Veo-veo! {opening}"
-        elif game_type == "piedra_papel_tijera":
+            log_action("GAME", f"inicio {game_type}")
+            return session.opening()
+        if game_type == "piedra_papel_tijera":
             self._session = PiedraPapelTijeraSession()
             log_action("GAME", "inicio piedra_papel_tijera")
-            return (
-                "¡Dale, juguemos a Piedra, papel o tijera! "
-                "¿Listo? ¡Uno, dos, tres!"
+            return GameResponse(
+                text=(
+                    "¡Dale, juguemos a Piedra, papel o tijera! "
+                    "¿Listo? ¡Uno, dos, tres!"
+                )
             )
-        else:
-            return ""
+        if game_type == "veo_veo":
+            return self.start_game("adivina")
+        return GameResponse(text="")
 
     def process_input(self, text: str, *, saw_confident: bool = False) -> GameResponse | None:
-        """Procesa input cuando hay juego activo.
-
-        Retorna None si no hay juego activo (passthrough al dispatcher).
-        """
         if self._session is None:
             return None
 
@@ -421,7 +273,6 @@ class GameEngine:
         return response
 
     def commit_choice(self, label: str) -> GameResponse | None:
-        """Cierra la ronda PPT por gesto. None si no hay ronda abierta."""
         session = self._session
         if not isinstance(session, PiedraPapelTijeraSession):
             return None
@@ -445,49 +296,82 @@ class GameEngine:
         *,
         saw_confident: bool = False,
     ) -> dict[str, Any]:
-        """Si hay juego activo, procesa y retorna resultado de juego.
-        Si no, retorna el dispatcher_result sin modificar.
-
-        Retorna un dict compatible con el formato de intent_payload:
-        {"intent_name": str, "confidence": float, "response": str, "pilar": str}
-        """
         if not self.is_active:
-            # Verificar si el dispatcher detectó un intent de juego
             intent_name = dispatcher_result.get("intent_name", "")
-            game_type = None
-            if intent_name == "play_veo_veo":
-                game_type = "veo_veo"
-            elif intent_name == "play_piedra_papel":
-                game_type = "piedra_papel_tijera"
-
+            game_type = _INTENT_TO_GAME.get(str(intent_name))
             if game_type:
-                welcome = self.start_game(game_type)
-                return {
-                    "intent_name": intent_name,
-                    "confidence": dispatcher_result.get("confidence", 1.0),
-                    "response": welcome,
-                    "pilar": "cognitivo",
-                    "game_started": True,
-                }
+                opened = self.start_game(game_type)
+                payload = _payload_from_response(opened, str(intent_name))
+                payload["game_started"] = True
+                payload["confidence"] = dispatcher_result.get("confidence", 1.0)
+                return payload
             return dispatcher_result
 
-        # BUG-4 fix: guardar game_type ANTES de process_input, que puede
-        # poner _session=None al terminar el juego (game_over=True)
         current_game_type = self.game_type or "unknown"
-
-        # Juego activo: procesar input
         game_response = self.process_input(text, saw_confident=saw_confident)
         if game_response is None:
             return dispatcher_result
-
-        return {
-            "intent_name": f"game_{current_game_type}",
-            "confidence": 1.0,
-            "response": game_response.text,
-            "pilar": game_response.pilar,
-            "game_over": game_response.game_over,
-        }
+        return _payload_from_response(game_response, f"game_{current_game_type}")
 
     def cancel(self) -> None:
-        """Cancela cualquier juego en curso."""
         self._session = None
+
+
+_PLAY_GAME_ALIASES = {
+    "sombras": "sombras",
+    "sombra": "sombras",
+    "silueta": "sombras",
+    "siluetas": "sombras",
+    "contar": "contar",
+    "cuenta": "contar",
+    "adivina": "adivina",
+    "objeto": "adivina",
+    "adivinar": "adivina",
+    "piedra": "piedra_papel_tijera",
+    "papel": "piedra_papel_tijera",
+    "tijera": "piedra_papel_tijera",
+    "ppt": "piedra_papel_tijera",
+}
+
+
+def resolve_play_game_param(param: str) -> str | None:
+    from game_catalog import fold_text
+
+    folded = fold_text(param)
+    if not folded:
+        return None
+    if folded in _PLAY_GAME_ALIASES:
+        return _PLAY_GAME_ALIASES[folded]
+    for token in folded.split():
+        kind = _PLAY_GAME_ALIASES.get(token)
+        if kind:
+            return kind
+    return None
+
+
+def apply_play_game_tag(engine: GameEngine, param: str, payload: dict[str, Any]) -> bool:
+    kind = resolve_play_game_param(param)
+    if kind is None:
+        return False
+    opened = engine.start_game(kind)
+    if not str(opened.text or "").strip() and not engine.is_active:
+        return False
+    payload.update(_payload_from_response(opened, f"play_{kind}"))
+    payload["game_started"] = True
+    return True
+
+
+def _payload_from_response(response: GameResponse, intent_name: str) -> dict[str, Any]:
+    from gender_speech import inflect_for_child
+
+    payload: dict[str, Any] = {
+        "intent_name": intent_name,
+        "confidence": 1.0,
+        "response": inflect_for_child(response.text),
+        "pilar": response.pilar,
+        "skip_tts_truncate": True,
+        "lcd_image": response.lcd_image,
+        "lcd_clear_after_speech": response.lcd_clear_after_speech,
+        "game_over": response.game_over,
+    }
+    return payload

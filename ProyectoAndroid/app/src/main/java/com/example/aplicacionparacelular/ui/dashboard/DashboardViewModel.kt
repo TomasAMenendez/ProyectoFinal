@@ -18,15 +18,6 @@ class DashboardViewModel : ViewModel() {
     private val _moodLabel = MutableLiveData("Sin datos")
     val moodLabel: LiveData<String> = _moodLabel
 
-    private val _crisisCount = MutableLiveData(0)
-    val crisisCount: LiveData<Int> = _crisisCount
-
-    private val _newWordsToday = MutableLiveData(0)
-    val newWordsToday: LiveData<Int> = _newWordsToday
-
-    private val _alertMessages = MutableLiveData<List<String>>(emptyList())
-    val alertMessages: LiveData<List<String>> = _alertMessages
-
     private val _powerOn = MutableLiveData(false)
     val powerOn: LiveData<Boolean> = _powerOn
 
@@ -52,13 +43,6 @@ class DashboardViewModel : ViewModel() {
         val minutes = (durationSecs / 60).toInt()
         _playtimeMinutes.value = "$minutes min"
 
-        val crisis = summary.optInt("crisis_count", 0)
-        _crisisCount.value = crisis
-
-        val newWords = summary.optInt("new_words_today", 0)
-        _newWordsToday.value = newWords
-
-        // Derive mood from recent events
         val events = data.optJSONArray("events")
         var lastEmotion: String? = null
         if (events != null) {
@@ -72,23 +56,6 @@ class DashboardViewModel : ViewModel() {
             }
         }
         _moodLabel.value = translateEmotion(lastEmotion)
-
-        // Build alert messages
-        val alerts = mutableListOf<String>()
-        if (crisis > 0) {
-            alerts.add("⚠️ $crisis momento(s) difícil(es) detectado(s) hoy")
-        }
-        if (newWords > 0) {
-            alerts.add("📚 $newWords palabra(s) nueva(s) registrada(s) hoy")
-        }
-        val pillarCounts = summary.optJSONObject("pillar_counts")
-        if (pillarCounts != null) {
-            val emotional = pillarCounts.optInt("emocional", 0)
-            if (emotional > 5) {
-                alerts.add("💛 Muchas interacciones emocionales hoy ($emotional)")
-            }
-        }
-        _alertMessages.value = alerts
     }
 
     private fun translateEmotion(emotion: String?): String {

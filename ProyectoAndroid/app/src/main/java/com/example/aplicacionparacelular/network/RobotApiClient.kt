@@ -39,7 +39,7 @@ object RobotApiClient {
         val ip = prefs.getString(KEY_ROBOT_IP, "") ?: ""
         val port = prefs.getInt(KEY_ROBOT_PORT, DEFAULT_PORT)
         pairingToken = prefs.getString(KEY_TOKEN, "") ?: ""
-        if (ip.isNotBlank()) {
+        if (BeaconIp.isUsable(ip)) {
             baseUrl = "http://$ip:$port"
         }
     }
@@ -48,12 +48,24 @@ object RobotApiClient {
      * Configura la IP del robot y la persiste.
      */
     fun setRobotAddress(context: Context, ip: String, port: Int = DEFAULT_PORT) {
+        if (!BeaconIp.isUsable(ip)) return
         baseUrl = "http://$ip:$port"
         val prefs = context.getSharedPreferences(PREFS_NAME, Context.MODE_PRIVATE)
         prefs.edit()
             .putString(KEY_ROBOT_IP, ip)
             .putInt(KEY_ROBOT_PORT, port)
             .apply()
+    }
+
+    /**
+     * Olvida la IP del robot. Se usa al cambiar de red WiFi: la Pi reaparece
+     * con otra IP y reusar la vieja deja la app "conectada" a la nada.
+     * El token de emparejamiento se conserva porque es del peluche, no de la red.
+     */
+    fun clearAddress(context: Context) {
+        baseUrl = ""
+        val prefs = context.getSharedPreferences(PREFS_NAME, Context.MODE_PRIVATE)
+        prefs.edit().putString(KEY_ROBOT_IP, "").apply()
     }
 
     fun setPairingToken(context: Context, token: String) {
@@ -114,6 +126,9 @@ object RobotApiClient {
         return doGet("/api/stories/$encoded")
     }
 
+    /** Obtiene el perfil del chico. */
+    fun getChildProfile(): ApiResult<JSONObject> = doGet("/api/child-profile")
+
     // ------------------------------------------------------------------
     // POST endpoints
     // ------------------------------------------------------------------
@@ -148,6 +163,12 @@ object RobotApiClient {
     fun postBellyWake(enabled: Boolean): ApiResult<JSONObject> {
         val body = JSONObject().apply { put("belly_wake_enabled", enabled) }
         return doPost("/api/config", body)
+    }
+
+    /** Pone (o saca) al peluche en modo de provisionamiento WiFi por BLE. */
+    fun postWifiProvisioning(enabled: Boolean): ApiResult<JSONObject> {
+        val body = JSONObject().apply { put("enabled", enabled) }
+        return doPost("/api/wifi/provisioning", body)
     }
 
     /** Actualiza las rutinas en el robot. */
@@ -225,6 +246,10 @@ object RobotApiClient {
             ApiResult.Error(e.message ?: "Error de conexión")
         }
     }
+
+    /** Guarda el perfil del chico. */
+    fun putChildProfile(body: JSONObject): ApiResult<JSONObject> =
+        doPut("/api/child-profile", body)
 
     /** Actualiza título y/o texto de un cuento. */
     fun updateStory(storyId: String, title: String? = null, text: String? = null): ApiResult<JSONObject> {

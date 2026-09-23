@@ -40,4 +40,22 @@
         android:name="com.example.aplicacionparacelular.ui.stories.StoriesFragment"
         android:label="@string/menu_stories"
         tools:layout="@layout/fragment_stories" />
+
+    <fragment
+        android:id="@+id/nav_child_profile"
+        android:name="com.example.aplicacionparacelular.ui.onboarding.ChildProfileFragment"
+        android:label="@string/onboarding_child_title"
+        tools:layout="@layout/fragment_child_profile" />
+
+    <fragment
+        android:id="@+id/nav_wifi_setup"
+        android:name="com.example.aplicacionparacelular.ui.onboarding.WifiSetupFragment"
+        android:label="@string/wifi_setup_title"
+        tools:layout="@layout/fragment_wifi_setup" />
+
+    <fragment
+        android:id="@+id/nav_onboarding_retry"
+        android:name="com.example.aplicacionparacelular.ui.onboarding.OnboardingRetryFragment"
+        android:label="@string/onboarding_retry_title"
+        tools:layout="@layout/fragment_onboarding_retry" />
 </navigation>

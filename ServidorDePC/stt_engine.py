@@ -47,6 +47,10 @@ class SttEngine:
             vad_filter=False,
             beam_size=1,
             initial_prompt=WHISPER_INITIAL_PROMPT,
+            no_speech_threshold=0.6,
+            compression_ratio_threshold=2.4,
+            condition_on_previous_text=False,
+            without_timestamps=True,
         )
         parts: list[str] = []
         logprobs: list[float] = []

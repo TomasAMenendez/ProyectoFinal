@@ -135,6 +135,18 @@
                     app:trackColor="@color/card_bg_mint"
                     app:indicatorColor="@color/tertiary" />
 
+                <!-- Cambiar la red WiFi del peluche (por BLE) -->
+                <com.google.android.material.button.MaterialButton
+                    android:id="@+id/btn_change_wifi"
+                    style="?attr/materialButtonOutlinedStyle"
+                    android:layout_width="match_parent"
+                    android:layout_height="wrap_content"
+                    android:layout_marginTop="8dp"
+                    android:minHeight="48dp"
+                    android:text="@string/config_change_wifi"
+                    android:visibility="gone"
+                    app:cornerRadius="8dp" />
+
                 <!-- Discovery result -->
                 <TextView
                     android:id="@+id/txt_discovery_result"
@@ -187,6 +199,32 @@
                     app:cornerRadius="8dp" />
             </LinearLayout>
         </com.google.android.material.card.MaterialCardView>
+
+        <!-- Child profile — after Conexión, before Sobreestimulación / sensorial -->
+        <LinearLayout
+            android:id="@+id/child_profile_section"
+            android:layout_width="match_parent"
+            android:layout_height="wrap_content"
+            android:orientation="vertical"
+            android:visibility="gone">
+
+            <TextView
+                android:layout_width="wrap_content"
+                android:layout_height="wrap_content"
+                android:text="@string/onboarding_child_title"
+                android:textAppearance="@style/TextAppearance.App.SectionTitle" />
+
+            <com.google.android.material.card.MaterialCardView
+                style="@style/Widget.App.CardView"
+                android:layout_width="match_parent"
+                android:layout_height="wrap_content"
+                android:layout_marginBottom="16dp">
+
+                <include
+                    android:id="@+id/child_profile_form"
+                    layout="@layout/include_child_profile_fields" />
+            </com.google.android.material.card.MaterialCardView>
+        </LinearLayout>
 
         <!-- Sensory Configuration Section -->
         <TextView
@@ -304,16 +342,22 @@
                     android:text="@string/config_playtime_limit_subtitle"
                     android:textAppearance="@style/TextAppearance.App.CardSubtitle" />
 
-                <com.google.android.material.slider.Slider
-                    android:id="@+id/slider_playtime"
+                <com.google.android.material.textfield.TextInputLayout
+                    android:id="@+id/til_playtime"
+                    style="@style/Widget.MaterialComponents.TextInputLayout.OutlinedBox"
                     android:layout_width="match_parent"
                     android:layout_height="wrap_content"
-                    android:valueFrom="0"
-                    android:valueTo="240"
-                    android:value="0"
-                    android:stepSize="10"
-                    app:trackColorActive="@color/tertiary"
-                    app:thumbColor="@color/tertiary" />
+                    android:hint="@string/config_playtime_hint"
+                    app:suffixText="min">
+
+                    <com.google.android.material.textfield.TextInputEditText
+                        android:id="@+id/edit_playtime_minutes"
+                        android:layout_width="match_parent"
+                        android:layout_height="wrap_content"
+                        android:inputType="number"
+                        android:maxLength="3"
+                        android:minHeight="48dp" />
+                </com.google.android.material.textfield.TextInputLayout>
 
                 <com.google.android.material.button.MaterialButton
                     android:id="@+id/btn_apply_config"

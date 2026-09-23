@@ -5,31 +5,8 @@ import androidx.lifecycle.MutableLiveData
 import androidx.lifecycle.ViewModel
 import com.example.aplicacionparacelular.network.ApiResult
 import com.example.aplicacionparacelular.network.RobotConnectionManager
-import org.json.JSONObject
-import java.text.SimpleDateFormat
-import java.util.Calendar
-import java.util.Locale
 
 class MetricsViewModel : ViewModel() {
-
-    /** Pillar-based interaction counts for the selected period. */
-    data class PillarData(
-        val emocional: Int = 0,
-        val cognitivo: Int = 0,
-        val vincular: Int = 0,
-        val autonomia: Int = 0,
-        val general: Int = 0
-    )
-
-    data class DailySummary(
-        val date: String,
-        val interactions: Int,
-        val durationMinutes: Int,
-        val crisisCount: Int,
-        val newWords: Int,
-        val gamesPlayed: Int,
-        val routinesCompleted: Int
-    )
 
     private val _pillars = MutableLiveData(PillarData())
     val pillars: LiveData<PillarData> = _pillars
@@ -49,146 +26,36 @@ class MetricsViewModel : ViewModel() {
     private val _isLoading = MutableLiveData(false)
     val isLoading: LiveData<Boolean> = _isLoading
 
+    private var loadSeq = 0
+
     fun loadTodayMetrics() {
-        _isLoading.value = true
-        RobotConnectionManager.fetchTelemetryToday { result ->
-            _isLoading.value = false
-            when (result) {
-                is ApiResult.Success -> parseDailySummary(result.data, isToday = true)
-                is ApiResult.Error -> { /* Keep current values */ }
-            }
-        }
+        loadRangeMetrics(1)
     }
 
     fun loadWeekMetrics() {
-        _isLoading.value = true
-        val dateFormat = SimpleDateFormat("yyyy-MM-dd", Locale.getDefault())
-        val calendar = Calendar.getInstance()
-        val summaries = mutableListOf<DailySummary>()
-        var pendingRequests = 7
-        var totalNewWords = 0
-
-        for (i in 6 downTo 0) {
-            calendar.timeInMillis = System.currentTimeMillis()
-            calendar.add(Calendar.DAY_OF_YEAR, -i)
-            val dateStr = dateFormat.format(calendar.time)
-
-            RobotConnectionManager.fetchTelemetry(dateStr) { result ->
-                pendingRequests--
-                when (result) {
-                    is ApiResult.Success -> {
-                        val summary = extractDailySummary(result.data, dateStr)
-                        summaries.add(summary)
-                        totalNewWords += summary.newWords
-                    }
-                    is ApiResult.Error -> {
-                        summaries.add(DailySummary(dateStr, 0, 0, 0, 0, 0, 0))
-                    }
-                }
-                if (pendingRequests <= 0) {
-                    _weekSummaries.value = summaries.sortedBy { it.date }
-                    _newWordsWeek.value = totalNewWords
-                    _isLoading.value = false
-                }
-            }
-        }
+        loadRangeMetrics(7)
     }
 
     fun loadRangeMetrics(days: Int) {
+        val seq = ++loadSeq
         _isLoading.value = true
         RobotConnectionManager.fetchTelemetryRange(days) { result ->
+            if (seq != loadSeq) return@fetchTelemetryRange
             _isLoading.value = false
             when (result) {
-                is ApiResult.Success -> parseRange(result.data)
-                is ApiResult.Error -> { /* Keep current values */ }
+                is ApiResult.Success -> applySnapshot(MetricsPeriodParser.parse(result.data))
+                is ApiResult.Error -> { }
             }
         }
     }
 
-    private fun parseRange(data: JSONObject) {
-        parseDailySummary(data, isToday = true)
-        val summary = data.optJSONObject("summary") ?: return
-        val daily = summary.optJSONArray("daily") ?: return
-        val summaries = mutableListOf<DailySummary>()
-        var totalNewWords = 0
-        for (i in 0 until daily.length()) {
-            val row = daily.optJSONObject(i) ?: continue
-            val ds = DailySummary(
-                date = row.optString("date", ""),
-                interactions = row.optInt("interactions", 0),
-                durationMinutes = (row.optDouble("duration_s", 0.0) / 60).toInt(),
-                crisisCount = row.optInt("crisis_count", 0),
-                newWords = row.optInt("new_words", 0),
-                gamesPlayed = row.optInt("games_played", 0),
-                routinesCompleted = row.optInt("routines_completed", 0)
-            )
-            summaries.add(ds)
-            totalNewWords += ds.newWords
-        }
-        _weekSummaries.value = summaries
-        _newWordsWeek.value = totalNewWords
-    }
-
-    private fun parseDailySummary(data: JSONObject, isToday: Boolean) {
-        val summary = data.optJSONObject("summary") ?: return
-        val dateStr = data.optString("date", "")
-
-        val ds = DailySummary(
-            date = dateStr,
-            interactions = summary.optInt("total_interactions", 0),
-            durationMinutes = (summary.optDouble("total_duration_s", 0.0) / 60).toInt(),
-            crisisCount = summary.optInt("crisis_count", 0),
-            newWords = summary.optInt("new_words_today", 0),
-            gamesPlayed = summary.optInt("games_played", 0),
-            routinesCompleted = summary.optInt("routines_completed", 0)
-        )
-
-        if (isToday) {
-            _todaySummary.value = ds
-        }
-
-        // Parse pillar counts
-        val pillarCounts = summary.optJSONObject("pillar_counts")
-        if (pillarCounts != null) {
-            _pillars.value = PillarData(
-                emocional = pillarCounts.optInt("emocional", 0),
-                cognitivo = pillarCounts.optInt("cognitivo", 0),
-                vincular = pillarCounts.optInt("vincular", 0),
-                autonomia = pillarCounts.optInt("autonomia", 0),
-                general = pillarCounts.optInt("general", 0)
-            )
-        }
-
-        // Look for vocabulary total in events
-        val events = data.optJSONArray("events")
-        if (events != null) {
-            for (i in events.length() - 1 downTo 0) {
-                val event = events.optJSONObject(i) ?: continue
-                if (event.optString("type") == "vocabulary") {
-                    val total = event.optInt("total_known_words", 0)
-                    if (total > 0) {
-                        _vocabularyTotal.value = total
-                        break
-                    }
-                }
-            }
-        }
-    }
-
-    private fun extractDailySummary(data: JSONObject, dateStr: String): DailySummary {
-        val summary = data.optJSONObject("summary")
-        return if (summary != null) {
-            DailySummary(
-                date = dateStr,
-                interactions = summary.optInt("total_interactions", 0),
-                durationMinutes = (summary.optDouble("total_duration_s", 0.0) / 60).toInt(),
-                crisisCount = summary.optInt("crisis_count", 0),
-                newWords = summary.optInt("new_words_today", 0),
-                gamesPlayed = summary.optInt("games_played", 0),
-                routinesCompleted = summary.optInt("routines_completed", 0)
-            )
-        } else {
-            DailySummary(dateStr, 0, 0, 0, 0, 0, 0)
+    private fun applySnapshot(snap: MetricsPeriodSnapshot) {
+        _todaySummary.value = snap.headline
+        _pillars.value = snap.pillars
+        _weekSummaries.value = snap.days
+        _newWordsWeek.value = snap.newWords
+        if (snap.vocabularyTotal > 0) {
+            _vocabularyTotal.value = snap.vocabularyTotal
         }
     }
 }

@@ -2,7 +2,7 @@
 from __future__ import annotations
 
 import unittest
-from datetime import date, timedelta
+from datetime import date, datetime, timedelta
 from pathlib import Path
 import tempfile
 
@@ -43,6 +43,23 @@ class TestVolumeGain(unittest.TestCase):
         audio = np.array([0.5, -0.5], dtype=np.float32)
         out = apply_gain(audio, 0.5)
         self.assertAlmostEqual(float(out.max()), 0.25, places=5)
+
+    def test_scale_int16_respeta_el_tope_parental(self) -> None:
+        from session_policy import scale_playback_chunk
+
+        chunk = np.array([[32767], [-32767]], dtype=np.int16)
+        out = scale_playback_chunk(chunk, 0.5)
+        self.assertEqual(out.dtype, np.int16)
+        self.assertAlmostEqual(int(out[0, 0]), 16383, delta=2)
+        self.assertAlmostEqual(int(out[1, 0]), -16383, delta=2)
+
+    def test_scale_float_respeta_el_tope_parental(self) -> None:
+        from session_policy import scale_playback_chunk
+
+        chunk = np.array([[1.0], [-0.4]], dtype=np.float32)
+        out = scale_playback_chunk(chunk, 0.25)
+        self.assertAlmostEqual(float(out[0, 0]), 0.25, places=5)
+        self.assertAlmostEqual(float(out[1, 0]), -0.10, places=5)
 
     def test_noche_baja_el_tope(self) -> None:
         self.assertEqual(effective_volume_limit(100, night_mode=True), 40)
@@ -99,6 +116,43 @@ class TestPlaytimeGuard(unittest.TestCase):
         guard._seconds = 9999
         self.assertFalse(guard.is_over_limit())
 
+    def test_restante_none_sin_limite(self) -> None:
+        guard = PlaytimeGuard(limit_minutes=0)
+        guard.add_seconds(30)
+        self.assertIsNone(guard.remaining_seconds())
+        self.assertIsNone(guard.remaining_fraction())
+
+    def test_restante_decrece_con_el_uso(self) -> None:
+        guard = PlaytimeGuard(limit_minutes=2)
+        self.assertEqual(guard.remaining_seconds(), 120)
+        self.assertAlmostEqual(guard.remaining_fraction() or 0.0, 1.0)
+        guard.add_seconds(30)
+        self.assertEqual(guard.remaining_seconds(), 90)
+        self.assertAlmostEqual(guard.remaining_fraction() or 0.0, 0.75)
+
+    def test_restante_no_baja_de_cero(self) -> None:
+        guard = PlaytimeGuard(limit_minutes=1)
+        guard.add_seconds(120)
+        self.assertEqual(guard.remaining_seconds(), 0)
+        self.assertEqual(guard.remaining_fraction(), 0.0)
+
+    def test_reloj_despierto_agota_el_tope_sin_hablar(self) -> None:
+        now = datetime(2026, 9, 23, 12, 0, 0)
+
+        def clock() -> datetime:
+            return now
+
+        guard = PlaytimeGuard(limit_minutes=1, today=date(2026, 9, 23), now_fn=clock)
+        guard.set_running(True)
+        now = datetime(2026, 9, 23, 12, 0, 30)
+        self.assertEqual(guard.remaining_seconds(), 30)
+        self.assertFalse(guard.is_over_limit())
+        now = datetime(2026, 9, 23, 12, 1, 0)
+        self.assertEqual(guard.remaining_seconds(), 0)
+        self.assertTrue(guard.is_over_limit())
+        self.assertTrue(guard.claim_end())
+        self.assertFalse(guard.claim_end())
+
 
 class TestPrivacyExtra(unittest.TestCase):
     def test_saca_texto_del_nene(self) -> None:
@@ -148,6 +202,29 @@ class TestMicHalfDuplex(unittest.TestCase):
         self.assertNotEqual(is_clear_keyword_intent("como te llamas"), "call_parent")
         self.assertIsNone(is_clear_keyword_intent("quiero a mama"))
         self.assertEqual(is_clear_keyword_intent("piedra papel o tijera"), "play_piedra_papel")
+        self.assertEqual(is_clear_keyword_intent("adivina el objeto"), "play_veo_veo")
+        self.assertEqual(is_clear_keyword_intent("juguemos a contar"), "play_contar")
+        self.assertEqual(is_clear_keyword_intent("vamos a contar"), "play_contar")
+        self.assertEqual(is_clear_keyword_intent("adiviná la sombra"), "play_sombras")
+        self.assertEqual(is_clear_keyword_intent("contame un cuento"), "story_request")
+        self.assertEqual(
+            is_clear_keyword_intent("vamos a adivinar objetos"),
+            "play_veo_veo",
+        )
+        self.assertEqual(
+            is_clear_keyword_intent("Quiero jugar a adivinar la silueta."),
+            "play_sombras",
+        )
+        self.assertEqual(
+            is_clear_keyword_intent("¿Qué podemos jugar?"),
+            "activity_offer",
+        )
+        self.assertEqual(is_clear_keyword_intent("quiero jugar"), "play_generic")
+        self.assertEqual(is_clear_keyword_intent("Hola. Sombras."), "play_sombras")
+        self.assertEqual(
+            is_clear_keyword_intent("Quiero volver a jugar a contar, amigo."),
+            "play_contar",
+        )
         self.assertEqual(
             is_clear_keyword_intent("Tengo un poco más alegría. Quiero comer un zanguche."),
             "needs_basic",
@@ -198,14 +275,38 @@ class TestTtsEarlyMic(unittest.TestCase):
             spoken_text_or_unknown_fallback("greeting", "", ["INTENTS_OFF"], "rescate"),
             "",
         )
+        self.assertEqual(
+            spoken_text_or_unknown_fallback(
+                "unknown", "", ["PLAY_GAME"], "rescate"
+            ),
+            "",
+        )
+
+
+class TestSpokenAfterPlayGame(unittest.TestCase):
+    def test_tag_reemplaza_el_invento_del_llm(self) -> None:
+        from session_policy import spoken_after_play_game
+
+        self.assertEqual(
+            spoken_after_play_game(
+                "invento reglas",
+                {"response": "¡Adiviná la sombra! Mirá."},
+                [{"action": "PLAY_GAME", "param": "sombras"}],
+            ),
+            "¡Adiviná la sombra! Mirá.",
+        )
+        self.assertEqual(
+            spoken_after_play_game("hola", {"response": ""}, []),
+            "hola",
+        )
 
 
 class TestWeakSpeechSttGate(unittest.TestCase):
-    def test_menos_de_300ms_salta_stt(self) -> None:
+    def test_menos_de_150ms_salta_stt(self) -> None:
         from session_policy import skip_stt_for_weak_speech
 
-        self.assertTrue(skip_stt_for_weak_speech(0.29))
-        self.assertFalse(skip_stt_for_weak_speech(0.30))
+        self.assertTrue(skip_stt_for_weak_speech(0.14))
+        self.assertFalse(skip_stt_for_weak_speech(0.15))
         self.assertFalse(skip_stt_for_weak_speech(0.40))
 
     def test_no_speech_alto_es_baja_confianza(self) -> None:
@@ -213,12 +314,17 @@ class TestWeakSpeechSttGate(unittest.TestCase):
 
         self.assertTrue(
             stt_is_low_confidence(
-                "Qué pasa.", avg_logprob=-0.2, no_speech_prob=0.76
+                "Qué pasa.", avg_logprob=-0.2, no_speech_prob=0.91
             )
         )
         self.assertFalse(
             stt_is_low_confidence(
-                "Qué pasa.", avg_logprob=-0.2, no_speech_prob=0.75
+                "Qué pasa.", avg_logprob=-0.2, no_speech_prob=0.90
+            )
+        )
+        self.assertFalse(
+            stt_is_low_confidence(
+                "Qué pasa.", avg_logprob=-0.2, no_speech_prob=0.76
             )
         )
 
@@ -226,10 +332,13 @@ class TestWeakSpeechSttGate(unittest.TestCase):
         from session_policy import stt_is_low_confidence
 
         self.assertTrue(
-            stt_is_low_confidence("Hola.", avg_logprob=-0.91, no_speech_prob=0.1)
+            stt_is_low_confidence("Hola.", avg_logprob=-1.21, no_speech_prob=0.1)
         )
         self.assertFalse(
-            stt_is_low_confidence("Hola.", avg_logprob=-0.90, no_speech_prob=0.1)
+            stt_is_low_confidence("Hola.", avg_logprob=-1.20, no_speech_prob=0.1)
+        )
+        self.assertFalse(
+            stt_is_low_confidence("Hola.", avg_logprob=-0.91, no_speech_prob=0.1)
         )
 
     def test_texto_vacio_no_marca_confianza(self) -> None:

@@ -165,6 +165,62 @@
             android:text="@string/dashboard_today_summary"
             android:textAppearance="@style/TextAppearance.App.SectionTitle" />
 
+        <com.google.android.material.card.MaterialCardView
+            android:id="@+id/card_playtime_ring"
+            style="@style/Widget.App.CardView.Colored"
+            android:layout_width="match_parent"
+            android:layout_height="wrap_content"
+            android:layout_marginTop="8dp"
+            android:layout_marginBottom="8dp"
+            android:visibility="gone"
+            android:clipChildren="false"
+            android:clipToPadding="false"
+            app:cardBackgroundColor="@color/card_bg_mint">
+
+            <LinearLayout
+                android:layout_width="match_parent"
+                android:layout_height="wrap_content"
+                android:gravity="center"
+                android:orientation="vertical"
+                android:paddingTop="16dp"
+                android:paddingBottom="16dp"
+                android:clipChildren="false"
+                android:clipToPadding="false">
+
+                <FrameLayout
+                    android:id="@+id/playtime_ring_wrap"
+                    android:layout_width="200dp"
+                    android:layout_height="200dp"
+                    android:layout_gravity="center"
+                    android:clipChildren="false"
+                    android:clipToPadding="false"
+                    android:padding="12dp">
+
+                    <com.example.aplicacionparacelular.ui.dashboard.PlaytimeRingView
+                        android:id="@+id/playtime_ring"
+                        android:layout_width="match_parent"
+                        android:layout_height="match_parent" />
+
+                    <TextView
+                        android:id="@+id/txt_playtime_remaining"
+                        android:layout_width="wrap_content"
+                        android:layout_height="wrap_content"
+                        android:layout_gravity="center"
+                        android:textAppearance="@style/TextAppearance.App.MetricValue"
+                        android:textSize="28sp" />
+                </FrameLayout>
+
+                <TextView
+                    android:id="@+id/txt_playtime_ring_label"
+                    android:layout_width="wrap_content"
+                    android:layout_height="wrap_content"
+                    android:layout_marginTop="4dp"
+                    android:gravity="center"
+                    android:text="@string/dashboard_playtime_remaining"
+                    android:textAppearance="@style/TextAppearance.App.CardSubtitle" />
+            </LinearLayout>
+        </com.google.android.material.card.MaterialCardView>
+
         <LinearLayout
             android:layout_width="match_parent"
             android:layout_height="wrap_content"
@@ -226,6 +282,7 @@
                         android:textAppearance="@style/TextAppearance.App.MetricValue" />
 
                     <TextView
+                        android:id="@+id/txt_playtime_label"
                         android:layout_width="wrap_content"
                         android:layout_height="wrap_content"
                         android:gravity="center"

@@ -24,7 +24,11 @@ sudo apt install -y \
     libgl1 \
     libglib2.0-0 \
     libopenblas-dev \
-    curl
+    curl \
+    libdbus-1-dev \
+    libcairo2-dev \
+    libgirepository-2.0-dev \
+    pkg-config
 
 # 2. Instalar uv de forma independiente (sin pip del sistema)
 echo "[2/4] Instalando 'uv' para gestión de Python 3.11..."
@@ -58,6 +62,18 @@ if command -v usermod >/dev/null; then
     sudo usermod -aG spi,gpio "$USER" 2>/dev/null || true
 fi
 uv pip install lgpio spidev || echo "  Aviso: lgpio/spidev no se instalaron. En la Pi: sudo apt install python3-lgpio python3-spidev"
+if command -v usermod >/dev/null; then
+    sudo usermod -aG bluetooth "$USER" 2>/dev/null || true
+fi
+# btmgmt Add Advertising necesita CAP_NET_ADMIN. El grupo bluetooth no alcanza
+# (status 0x14). NOPASSWD acotado para que app.py pueda anunciarse como TEO.
+if command -v visudo >/dev/null; then
+    sudo tee /etc/sudoers.d/teo-btmgmt >/dev/null <<EOF
+$USER ALL=(ALL) NOPASSWD: /usr/bin/btmgmt
+EOF
+    sudo chmod 440 /etc/sudoers.d/teo-btmgmt
+    sudo visudo -cf /etc/sudoers.d/teo-btmgmt >/dev/null || sudo rm -f /etc/sudoers.d/teo-btmgmt
+fi
 
 # 5. llama-cpp-python se compila desde source en ARM64 (~5 min en RPi 5).
 #    Si la compilación falla, la app sigue funcionando sin el LLM de fallback.

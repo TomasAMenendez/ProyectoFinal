@@ -5,6 +5,8 @@ import androidx.lifecycle.MutableLiveData
 import androidx.lifecycle.ViewModel
 import com.example.aplicacionparacelular.network.ApiResult
 import com.example.aplicacionparacelular.network.RobotConnectionManager
+import com.example.aplicacionparacelular.onboarding.ChildProfile
+import org.json.JSONObject
 
 class ConfigViewModel : ViewModel() {
 
@@ -22,6 +24,12 @@ class ConfigViewModel : ViewModel() {
 
     private val _statusMessage = MutableLiveData<String?>()
     val statusMessage: LiveData<String?> = _statusMessage
+
+    private val _childProfile = MutableLiveData<ChildProfile>()
+    val childProfile: LiveData<ChildProfile> = _childProfile
+
+    private val _savedChildProfile = MutableLiveData<ChildProfile>()
+    val savedChildProfile: LiveData<ChildProfile> = _savedChildProfile
 
     fun loadFromRobot() {
         RobotConnectionManager.executeAsync({ com.example.aplicacionparacelular.network.RobotApiClient.getStatus() }) { result ->
@@ -78,5 +86,31 @@ class ConfigViewModel : ViewModel() {
 
     fun toggleNightMode() {
         setNightMode(!(_nightMode.value ?: false))
+    }
+
+    fun loadChildProfile() {
+        RobotConnectionManager.fetchChildProfile { result ->
+            when (result) {
+                is ApiResult.Success -> _childProfile.value = ChildProfile.parse(result.data)
+                is ApiResult.Error -> {
+                    _statusMessage.value = "⚠ No pude cargar los datos del chico."
+                }
+            }
+        }
+    }
+
+    fun saveChildProfile(body: JSONObject) {
+        RobotConnectionManager.saveChildProfile(body) { result ->
+            when (result) {
+                is ApiResult.Success -> {
+                    val profile = ChildProfile.parse(result.data)
+                    _savedChildProfile.value = profile
+                    _statusMessage.value = "Listo, ya lo guardé"
+                }
+                is ApiResult.Error -> {
+                    _statusMessage.value = "⚠ No pude guardar. Revisá la conexión e intentá de nuevo."
+                }
+            }
+        }
     }
 }

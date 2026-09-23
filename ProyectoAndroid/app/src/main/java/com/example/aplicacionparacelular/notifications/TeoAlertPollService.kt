@@ -28,7 +28,7 @@ class TeoAlertPollService : Service() {
             startForeground(FOREGROUND_ID, notification)
         }
         RobotConnectionManager.init(this)
-        RobotConnectionManager.startPolling(8)
+        RobotConnectionManager.startPolling(5)
     }
 
     override fun onStartCommand(intent: Intent?, flags: Int, startId: Int): Int = START_STICKY

@@ -6,6 +6,8 @@ import android.os.Looper
 import android.util.Log
 import androidx.lifecycle.LiveData
 import androidx.lifecycle.MutableLiveData
+import androidx.lifecycle.Observer
+import com.example.aplicacionparacelular.onboarding.OnboardingGate
 import org.json.JSONObject
 import java.util.concurrent.Executors
 import java.util.concurrent.ScheduledFuture
@@ -54,6 +56,10 @@ object RobotConnectionManager {
     private val _lastError = MutableLiveData<String?>()
     val lastError: LiveData<String?> = _lastError
 
+    // Default true: Pi vieja sin el campo no debe bloquear la app para siempre.
+    private val _hasChildProfile = MutableLiveData(true)
+    val hasChildProfile: LiveData<Boolean> = _hasChildProfile
+
     // ------------------------------------------------------------------
     // Inicialización y Polling
     // ------------------------------------------------------------------
@@ -77,6 +83,7 @@ object RobotConnectionManager {
         RobotApiClient.init(ctx)
         com.example.aplicacionparacelular.notifications.AppNotificationHelper.ensureChannels(ctx)
 
+        attachDiscoveryObserver()
         if (RobotApiClient.isConfigured()) {
             Log.d(TAG, "IP ya configurada, arrancando polling")
             executor.execute {
@@ -85,22 +92,61 @@ object RobotConnectionManager {
             }
         } else {
             Log.d(TAG, "No hay IP configurada, iniciando descubrimiento automático")
-
-            RobotDiscovery.discoveredRobot.observeForever { robot ->
-                if (robot != null && !RobotApiClient.isConfigured()) {
-                    Log.d(TAG, "Robot descubierto: ${robot.ip}:${robot.port} (${robot.deviceName})")
-                    RobotApiClient.setRobotAddress(ctx, robot.ip, robot.port)
-                    if (robot.pairingToken.isNotBlank()) {
-                        RobotApiClient.setPairingToken(ctx, robot.pairingToken)
-                    }
-                    executor.execute {
-                        RobotApiClient.refreshPairingToken(ctx)
-                        postToMain { startPolling() }
-                    }
-                }
-            }
             RobotDiscovery.startScan(ctx)
         }
+    }
+
+    private var discoveryObserverAttached = false
+
+    private val discoveryObserver = Observer<RobotDiscovery.DiscoveredRobot?> { robot ->
+        val ctx = appContext ?: return@Observer
+        val hasLan = _isConnected.value == true
+        if (robot != null && BeaconIp.isUsable(robot.ip) && OnboardingGate.shouldAdoptLanDiscovery(hasLan)) {
+            Log.d(TAG, "Robot descubierto: ${robot.ip}:${robot.port} (${robot.deviceName})")
+            RobotApiClient.setRobotAddress(ctx, robot.ip, robot.port)
+            if (robot.pairingToken.isNotBlank()) {
+                RobotApiClient.setPairingToken(ctx, robot.pairingToken)
+            }
+            executor.execute {
+                RobotApiClient.refreshPairingToken(ctx)
+                postToMain { startPolling() }
+            }
+        }
+    }
+
+    private fun attachDiscoveryObserver() {
+        if (discoveryObserverAttached) return
+        discoveryObserverAttached = true
+        RobotDiscovery.discoveredRobot.observeForever(discoveryObserver)
+    }
+
+    private fun startLanRediscovery() {
+        val ctx = appContext ?: return
+        attachDiscoveryObserver()
+        RobotDiscovery.startScan(ctx)
+    }
+
+    /**
+     * Olvida la IP guardada y vuelve a descubrir el peluche en la LAN.
+     *
+     * Tras un cambio de red WiFi la Pi casi siempre cambia de IP, así que hay
+     * que borrar la vieja **antes** de escanear o el polling sigue pegándole a
+     * una dirección muerta.
+     */
+    fun forgetAndRediscover(context: Context) {
+        val ctx = context.applicationContext
+        appContext = ctx
+        stopPolling()
+        RobotApiClient.clearAddress(ctx)
+        postToMain {
+            _isConnected.value = false
+            _robotStatus.value = null
+        }
+        attachDiscoveryObserver()
+        RobotDiscovery.stopScan()
+        // stopScan apaga isScanning con postValue; sin este post, startScan vería
+        // el scan viejo todavía en curso y se iría sin hacer nada.
+        postToMain { RobotDiscovery.startScan(ctx) }
     }
 
     /**
@@ -155,6 +201,9 @@ object RobotConnectionManager {
                     _isConnected.value = true
                     _robotStatus.value = result.data
                     _lastError.value = null
+                    // Si el JSON no trae has_child_profile (firmware viejo), true evita
+                    // dejar la app bloqueada para siempre. Tras actualizar la Pi, el campo existe.
+                    _hasChildProfile.value = result.data.optBoolean("has_child_profile", true)
                 }
                 pollNotifications()
             }
@@ -164,6 +213,7 @@ object RobotConnectionManager {
                     _isConnected.value = false
                     _robotStatus.value = null
                     _lastError.value = result.message
+                    startLanRediscovery()
                 }
             }
         }
@@ -198,6 +248,11 @@ object RobotConnectionManager {
      */
     fun setPower(powerOn: Boolean, onResult: (ApiResult<JSONObject>) -> Unit) {
         executeAsync({ RobotApiClient.postPower(powerOn) }, onResult)
+    }
+
+    /** Pone al peluche en modo de provisionamiento WiFi por BLE (PIN en el LCD). */
+    fun setWifiProvisioning(enabled: Boolean, onResult: (ApiResult<JSONObject>) -> Unit) {
+        executeAsync({ RobotApiClient.postWifiProvisioning(enabled) }, onResult)
     }
 
     fun setBellyWake(enabled: Boolean, onResult: (ApiResult<JSONObject>) -> Unit) {
@@ -345,6 +400,19 @@ object RobotConnectionManager {
         executeAsync({ RobotApiClient.deleteStory(storyId) }, onResult)
     }
 
+    fun fetchChildProfile(onResult: (ApiResult<JSONObject>) -> Unit) {
+        executeAsync({ RobotApiClient.getChildProfile() }, onResult)
+    }
+
+    fun saveChildProfile(body: JSONObject, onResult: (ApiResult<JSONObject>) -> Unit) {
+        executeAsync({ RobotApiClient.putChildProfile(body) }) { result ->
+            if (result is ApiResult.Success && result.data.optBoolean("complete", false)) {
+                _hasChildProfile.value = true
+            }
+            onResult(result)
+        }
+    }
+
     // ------------------------------------------------------------------
     // Notificaciones Raspberry → celular
     // ------------------------------------------------------------------
@@ -359,9 +427,8 @@ object RobotConnectionManager {
                     val obj = arr.optJSONObject(i) ?: continue
                     val type = obj.optString("type", "aviso")
                     val message = obj.optString("message", "")
-                    if (message.isBlank()) continue
-                    val line = formatAlert(type, message)
-                    incoming.add(line)
+                    if (!ParentInbox.accepts(type) || message.isBlank()) continue
+                    incoming.add(ParentInbox.formatLine(type, message))
                     showSystemNotification(type, message)
                 }
                 if (incoming.isEmpty()) return
@@ -377,21 +444,6 @@ object RobotConnectionManager {
                 Log.d(TAG, "Poll notificaciones falló: ${result.message}")
             }
         }
-    }
-
-    private fun formatAlert(type: String, message: String): String {
-        val prefix = when (type.lowercase()) {
-            "crisis" -> "⚠️ Crisis"
-            "pedido" -> "📞 Pedido"
-            "musica" -> "🎵 Música"
-            "logro" -> "🎉 Logro"
-            "vocabulario" -> "📚 Vocabulario"
-            "rutina" -> "🗓️ Rutina"
-            "vacuna" -> "💉 Vacuna"
-            "turno" -> "🩺 Turno"
-            else -> "ℹ️ Aviso"
-        }
-        return "$prefix: $message"
     }
 
     private fun showSystemNotification(type: String, message: String) {
