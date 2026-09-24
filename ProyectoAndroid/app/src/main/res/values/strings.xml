@@ -1,8 +1,8 @@
 <resources>
-    <string name="app_name">MiCompañero</string>
+    <string name="app_name">TEO</string>
     <string name="navigation_drawer_open">Abrir menú de navegación</string>
     <string name="navigation_drawer_close">Cerrar menú de navegación</string>
-    <string name="nav_header_title">MiCompañero</string>
+    <string name="nav_header_title">TEO</string>
     <string name="nav_header_subtitle">App para padres</string>
     <string name="nav_header_desc">Encabezado de navegación</string>
     <string name="action_settings">Configuración</string>
