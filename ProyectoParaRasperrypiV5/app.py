@@ -642,9 +642,9 @@ class EyeModeApp(tk.Tk):
 
         pc_client = None
         try:
-            from pc_server_client import PcServerClient
+            from pc_discovery import client_with_discovery
 
-            pc_client = PcServerClient.from_env()
+            pc_client = client_with_discovery()
         except Exception:
             pc_client = None
 
@@ -1332,9 +1332,9 @@ class EdgeAiDesktopApp(tk.Tk):
 
         pc_client = None
         try:
-            from pc_server_client import PcServerClient
+            from pc_discovery import client_with_discovery
 
-            pc_client = PcServerClient.from_env()
+            pc_client = client_with_discovery()
         except Exception:
             pc_client = None
 

@@ -180,6 +180,23 @@ class PcServerClient:
         self._on_success()
         return True
 
+    def raw_health(self) -> int:
+        """GET /health sin tocar el circuit. Lanza si el socket falla."""
+        if not self.base_url:
+            raise OSError("sin url")
+        with self._http_lock:
+            if self._request_fn is not None:
+                status, _raw = self._request_fn(
+                    "GET",
+                    "/health",
+                    body=None,
+                    content_type=None,
+                    timeout_s=self.health_timeout_s,
+                )
+            else:
+                status, _raw = self._http_request("GET", "/health", timeout_s=self.health_timeout_s)
+        return int(status)
+
     def transcribe(self, wav: bytes) -> dict[str, Any] | None:
         status, raw = self._call(
             "POST",

@@ -7,6 +7,7 @@ from fastapi import FastAPI, Request, Response
 from fastapi.responses import JSONResponse
 
 from config import HOST, PORT, load_or_create_token
+from discovery import DiscoveryBeacon, beacon_log, beacon_payload
 from handlers import handle_chat, handle_health, handle_speech, handle_transcribe
 from llm_engine import LlmEngine
 from stt_engine import SttEngine
@@ -34,6 +35,10 @@ def _peer(request: Any) -> str:
 
 def create_app() -> Any:
     app = FastAPI(title="TEO ServidorDePC")
+
+    @app.get("/discover")
+    async def discover() -> JSONResponse:
+        return JSONResponse(beacon_payload(PORT, TOKEN))
 
     @app.get("/health")
     async def health(request: Request) -> Response:
@@ -98,6 +103,9 @@ def main() -> None:
     print("=== TEO ServidorDePC ===", flush=True)
     print(f"Bind {HOST}:{PORT}", flush=True)
     print(f"Token: {TOKEN_PATH_HINT()}", flush=True)
+    beacon = DiscoveryBeacon(PORT, TOKEN)
+    beacon.start()
+    print(beacon_log(beacon.port, TOKEN), flush=True)
     print("Cargando modelos (puede tardar)...", flush=True)
     stt_engine.load()
     llm_engine.load()
