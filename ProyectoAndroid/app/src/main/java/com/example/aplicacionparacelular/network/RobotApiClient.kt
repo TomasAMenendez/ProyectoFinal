@@ -171,6 +171,19 @@ object RobotApiClient {
         return doPost("/api/wifi/provisioning", body)
     }
 
+    /** Redes que ve la Pi, sin cortar la WiFi actual. */
+    fun getWifiNetworks(): ApiResult<JSONObject> =
+        doGet("/api/wifi/networks", readTimeoutMs = 40_000)
+
+    /** Conecta a una red nueva. Si sale bien, la Pi olvida la anterior. */
+    fun postWifiConnect(ssid: String, password: String): ApiResult<JSONObject> {
+        val body = JSONObject().apply {
+            put("ssid", ssid)
+            put("password", password)
+        }
+        return doPost("/api/wifi/connect", body, readTimeoutMs = 60_000)
+    }
+
     /** Actualiza las rutinas en el robot. */
     fun postRoutines(routinesJson: JSONObject): ApiResult<JSONObject> =
         doPost("/api/routines", routinesJson)
@@ -284,14 +297,14 @@ object RobotApiClient {
         }
     }
 
-    private fun doGet(path: String): ApiResult<JSONObject> {
+    private fun doGet(path: String, readTimeoutMs: Int = READ_TIMEOUT): ApiResult<JSONObject> {
         if (!isConfigured()) return ApiResult.Error("Robot no configurado")
         return try {
             val url = URL("$baseUrl$path")
             val conn = (url.openConnection() as HttpURLConnection).apply {
                 requestMethod = "GET"
                 connectTimeout = CONNECT_TIMEOUT
-                readTimeout = READ_TIMEOUT
+                readTimeout = readTimeoutMs
                 applyAuth()
             }
             readResponse(conn)
@@ -300,14 +313,18 @@ object RobotApiClient {
         }
     }
 
-    private fun doPost(path: String, body: JSONObject): ApiResult<JSONObject> {
+    private fun doPost(
+        path: String,
+        body: JSONObject,
+        readTimeoutMs: Int = READ_TIMEOUT,
+    ): ApiResult<JSONObject> {
         if (!isConfigured()) return ApiResult.Error("Robot no configurado")
         return try {
             val url = URL("$baseUrl$path")
             val conn = (url.openConnection() as HttpURLConnection).apply {
                 requestMethod = "POST"
                 connectTimeout = CONNECT_TIMEOUT
-                readTimeout = READ_TIMEOUT
+                readTimeout = readTimeoutMs
                 setRequestProperty("Content-Type", "application/json; charset=utf-8")
                 applyAuth()
                 doOutput = true

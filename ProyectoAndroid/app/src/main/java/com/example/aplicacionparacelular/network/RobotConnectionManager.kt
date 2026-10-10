@@ -255,6 +255,14 @@ object RobotConnectionManager {
         executeAsync({ RobotApiClient.postWifiProvisioning(enabled) }, onResult)
     }
 
+    fun fetchWifiNetworks(onResult: (ApiResult<JSONObject>) -> Unit) {
+        executeAsync({ RobotApiClient.getWifiNetworks() }, onResult)
+    }
+
+    fun connectWifi(ssid: String, password: String, onResult: (ApiResult<JSONObject>) -> Unit) {
+        executeAsync({ RobotApiClient.postWifiConnect(ssid, password) }, onResult)
+    }
+
     fun setBellyWake(enabled: Boolean, onResult: (ApiResult<JSONObject>) -> Unit) {
         executeAsync({ RobotApiClient.postBellyWake(enabled) }, onResult)
     }

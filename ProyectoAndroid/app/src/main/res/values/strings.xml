@@ -230,9 +230,13 @@
 
     <!-- Config: cambiar red -->
     <string name="config_change_wifi">📶 Cambiar red WiFi</string>
-    <string name="config_change_wifi_starting">Le pedí a TEO el PIN. Miralo en su pantallita.</string>
-    <string name="config_change_wifi_error">No pude poner a TEO en modo WiFi. Revisá la conexión.</string>
-    <string name="config_change_wifi_error_ble">TEO no pudo prender su Bluetooth. Reiniciá el peluche y probá de nuevo.</string>
+    <string name="config_change_wifi_pick">Redes que ve TEO. Sigue en la actual hasta que la nueva conecte.</string>
+    <string name="config_change_wifi_connect">Conectar a esta red</string>
+    <string name="config_change_wifi_scanning">TEO está mirando las redes…</string>
+    <string name="config_change_wifi_ok">TEO pasó a la red nueva y olvidó la anterior.</string>
+    <string name="config_change_wifi_auth">La clave no sirvió. TEO sigue en la red de ahora.</string>
+    <string name="config_change_wifi_empty">TEO no ve otras redes.</string>
+    <string name="config_change_wifi_error">No pude hablar con TEO. Revisá que sigan en la misma red.</string>
 
     <!-- General -->
     <string name="fab_content_description">Acción principal</string>

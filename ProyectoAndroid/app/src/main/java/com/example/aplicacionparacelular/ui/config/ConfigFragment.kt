@@ -6,9 +6,10 @@ import android.os.Bundle
 import android.view.LayoutInflater
 import android.view.View
 import android.view.ViewGroup
+import android.widget.AdapterView
+import android.widget.ArrayAdapter
 import androidx.fragment.app.Fragment
 import androidx.lifecycle.ViewModelProvider
-import androidx.navigation.fragment.findNavController
 import com.example.aplicacionparacelular.BuildConfig
 import com.example.aplicacionparacelular.R
 import com.example.aplicacionparacelular.databinding.FragmentConfigBinding
@@ -16,9 +17,9 @@ import com.example.aplicacionparacelular.network.ApiResult
 import com.example.aplicacionparacelular.network.RobotApiClient
 import com.example.aplicacionparacelular.network.RobotConnectionManager
 import com.example.aplicacionparacelular.network.RobotDiscovery
-import com.example.aplicacionparacelular.onboarding.WifiProvisioningResponse
 import com.example.aplicacionparacelular.ui.onboarding.ChildProfileForm
 import com.google.android.material.snackbar.Snackbar
+import org.json.JSONObject
 import java.net.Inet4Address
 import java.net.NetworkInterface
 
@@ -29,6 +30,9 @@ class ConfigFragment : Fragment() {
     private lateinit var viewModel: ConfigViewModel
     private lateinit var childProfileForm: ChildProfileForm
     private var wasConnected = false
+    private var wifiChoices: List<WifiChoice> = emptyList()
+
+    private data class WifiChoice(val ssid: String, val secure: Boolean)
 
     override fun onCreateView(
         inflater: LayoutInflater,
@@ -246,7 +250,16 @@ class ConfigFragment : Fragment() {
             binding.btnChangeWifi.visibility = if (connected) View.VISIBLE else View.GONE
         }
 
-        binding.btnChangeWifi.setOnClickListener { startWifiProvisioning() }
+        binding.btnChangeWifi.setOnClickListener { loadWifiNetworks() }
+        binding.spinnerWifiNetworks.onItemSelectedListener = object : AdapterView.OnItemSelectedListener {
+            override fun onItemSelected(parent: AdapterView<*>?, view: View?, position: Int, id: Long) {
+                val secure = wifiChoices.getOrNull(position)?.secure != false
+                binding.tilChangeWifiPassword.visibility = if (secure) View.VISIBLE else View.GONE
+            }
+
+            override fun onNothingSelected(parent: AdapterView<*>?) = Unit
+        }
+        binding.btnConfirmWifi.setOnClickListener { confirmWifiChange() }
 
         // Show last error for debugging
         RobotConnectionManager.lastError.observe(viewLifecycleOwner) { error ->
@@ -263,42 +276,78 @@ class ConfigFragment : Fragment() {
     }
 
     /**
-     * Pide al peluche que muestre un PIN nuevo y abra el BLE, y recién ahí abre
-     * la pantalla de WiFi.
-     *
-     * No alcanza con un 200: la Pi contesta el pedido igual cuando no pudo
-     * prender el BLE, y navegar ahí deja al padre en una pantalla que nunca va
-     * a avanzar. [WifiProvisioningResponse.startedOk] lee el cuerpo con
-     * tolerancia y solo toma como fracaso las señales explícitas de fracaso.
+     * Pide las redes que ve la Pi por la LAN actual. No prende BLE y no
+     * suelta el WiFi hasta que la red nueva conecta.
      */
-    private fun startWifiProvisioning() {
+    private fun loadWifiNetworks() {
         binding.btnChangeWifi.isEnabled = false
-        RobotConnectionManager.setWifiProvisioning(true) { result ->
-            if (_binding == null) return@setWifiProvisioning
+        binding.sectionWifiChange.visibility = View.VISIBLE
+        binding.btnConfirmWifi.isEnabled = false
+        Snackbar.make(binding.root, R.string.config_change_wifi_scanning, Snackbar.LENGTH_SHORT).show()
+        RobotConnectionManager.fetchWifiNetworks { result ->
+            if (_binding == null) return@fetchWifiNetworks
             binding.btnChangeWifi.isEnabled = true
             when (result) {
-                is ApiResult.Success ->
-                    if (WifiProvisioningResponse.startedOk(result.data)) {
-                        Snackbar.make(
-                            binding.root,
-                            R.string.config_change_wifi_starting,
-                            Snackbar.LENGTH_SHORT,
-                        ).show()
-                        findNavController().navigate(R.id.nav_wifi_setup)
-                    } else {
-                        // Nos quedamos en Config: la pantalla de WiFi no tendría
-                        // a quién hablarle.
-                        Snackbar.make(
-                            binding.root,
-                            R.string.config_change_wifi_error_ble,
-                            Snackbar.LENGTH_LONG,
-                        ).show()
-                    }
-                is ApiResult.Error -> Snackbar.make(
-                    binding.root,
-                    R.string.config_change_wifi_error,
-                    Snackbar.LENGTH_LONG,
-                ).show()
+                is ApiResult.Success -> showWifiChoices(result.data)
+                is ApiResult.Error -> {
+                    binding.sectionWifiChange.visibility = View.GONE
+                    Snackbar.make(binding.root, R.string.config_change_wifi_error, Snackbar.LENGTH_LONG).show()
+                }
+            }
+        }
+    }
+
+    private fun showWifiChoices(data: JSONObject) {
+        val current = data.optString("current", "")
+        val array = data.optJSONArray("networks")
+        val choices = mutableListOf<WifiChoice>()
+        if (array != null) {
+            for (i in 0 until array.length()) {
+                val item = array.optJSONObject(i) ?: continue
+                val ssid = item.optString("ssid", "").trim()
+                if (ssid.isEmpty() || ssid == current) continue
+                choices.add(WifiChoice(ssid, item.optBoolean("secure", true)))
+            }
+        }
+        wifiChoices = choices
+        if (choices.isEmpty()) {
+            binding.sectionWifiChange.visibility = View.GONE
+            Snackbar.make(binding.root, R.string.config_change_wifi_empty, Snackbar.LENGTH_LONG).show()
+            return
+        }
+        binding.spinnerWifiNetworks.adapter = ArrayAdapter(
+            requireContext(),
+            android.R.layout.simple_spinner_dropdown_item,
+            choices.map { it.ssid },
+        )
+        binding.editChangeWifiPassword.setText("")
+        val secure = choices.first().secure
+        binding.tilChangeWifiPassword.visibility = if (secure) View.VISIBLE else View.GONE
+        binding.btnConfirmWifi.isEnabled = true
+    }
+
+    private fun confirmWifiChange() {
+        val position = binding.spinnerWifiNetworks.selectedItemPosition
+        val choice = wifiChoices.getOrNull(position) ?: return
+        val password = if (choice.secure) {
+            binding.editChangeWifiPassword.text?.toString().orEmpty()
+        } else {
+            ""
+        }
+        binding.btnConfirmWifi.isEnabled = false
+        RobotConnectionManager.connectWifi(choice.ssid, password) { result ->
+            if (_binding == null) return@connectWifi
+            binding.btnConfirmWifi.isEnabled = true
+            when (result) {
+                is ApiResult.Success -> {
+                    binding.sectionWifiChange.visibility = View.GONE
+                    Snackbar.make(binding.root, R.string.config_change_wifi_ok, Snackbar.LENGTH_LONG).show()
+                }
+                is ApiResult.Error -> {
+                    val auth = result.message.contains("clave", ignoreCase = true)
+                    val msg = if (auth) R.string.config_change_wifi_auth else R.string.config_change_wifi_error
+                    Snackbar.make(binding.root, msg, Snackbar.LENGTH_LONG).show()
+                }
             }
         }
     }

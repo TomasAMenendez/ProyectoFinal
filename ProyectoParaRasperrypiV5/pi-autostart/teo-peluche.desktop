@@ -1,0 +1,7 @@
+[Desktop Entry]
+Type=Application
+Name=TEO Peluche
+Comment=Arranca app.py al iniciar la sesion
+Exec=/home/teo/Desktop/ProyectoParaRasperrypiV5/start_peluche.sh
+Terminal=false
+X-GNOME-Autostart-enabled=true

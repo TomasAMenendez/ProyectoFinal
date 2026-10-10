@@ -84,6 +84,8 @@ class RobotState:
         self.ble_setup_active: bool = False
         self.wifi_connected: bool = False
         self.on_wifi_provisioning: Callable[[bool], None] | None = None
+        self.on_wifi_scan: Callable[[], dict] | None = None
+        self.on_wifi_switch: Callable[[str, str], str] | None = None
         self._load_prefs()
 
         # Referencias a subsistemas (set from app.py)
@@ -414,6 +416,8 @@ class ApiRequestHandler(BaseHTTPRequestHandler):
             self._handle_get_child_profile()
         elif path == "/api/notifications":
             self._handle_get_notifications()
+        elif path == "/api/wifi/networks":
+            self._handle_get_wifi_networks()
         else:
             self._send_error_json(404, "Endpoint no encontrado")
 
@@ -631,6 +635,8 @@ class ApiRequestHandler(BaseHTTPRequestHandler):
             self._handle_post_stories_stop()
         elif path == "/api/wifi/provisioning":
             self._handle_post_wifi_provisioning()
+        elif path == "/api/wifi/connect":
+            self._handle_post_wifi_connect()
         else:
             self._send_error_json(404, "Endpoint no encontrado")
 
@@ -858,6 +864,53 @@ class ApiRequestHandler(BaseHTTPRequestHandler):
             return
         robot_state.ble_setup_active = enabled
         self._send_json({"status": "ok", "enabled": enabled})
+
+    def _handle_get_wifi_networks(self) -> None:
+        """Lista las redes que ve la Pi. No corta la WiFi actual."""
+        callback = robot_state.on_wifi_scan
+        if callback is None:
+            self._send_error_json(503, "WiFi no disponible")
+            return
+        try:
+            data = callback()
+        except Exception:
+            self._send_error_json(503, "WiFi no disponible")
+            return
+        if not isinstance(data, dict):
+            self._send_error_json(503, "WiFi no disponible")
+            return
+        self._send_json(data)
+
+    def _handle_post_wifi_connect(self) -> None:
+        """Conecta a la red nueva y, si sale bien, olvida la anterior."""
+        body = self._parse_json_body()
+        if body is None or not isinstance(body, dict):
+            self._send_error_json(400, "JSON inválido")
+            return
+        ssid = str(body.get("ssid") or "").strip()
+        password = body.get("password")
+        if not ssid or not isinstance(password, str):
+            self._send_error_json(400, "JSON inválido")
+            return
+        callback = robot_state.on_wifi_switch
+        if callback is None:
+            self._send_error_json(503, "WiFi no disponible")
+            return
+        try:
+            result = callback(ssid, password)
+        except Exception:
+            self._send_error_json(503, "WiFi no disponible")
+            return
+        if result == "ok":
+            self._send_json({"status": "ok", "ssid": ssid})
+            return
+        if result == "auth":
+            self._send_error_json(400, "clave incorrecta")
+            return
+        if result == "timeout":
+            self._send_error_json(504, "timeout")
+            return
+        self._send_error_json(502, "no se pudo conectar")
 
     # ------------------------------------------------------------------
     # PUT endpoints

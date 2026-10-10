@@ -234,6 +234,23 @@ def _wifi_ble_worker(app) -> None:
 
         app._wifi_ble = coord
         robot_state.on_wifi_provisioning = _provisioning
+
+        def _scan_networks() -> dict:
+            current = provisioner.active_connection_name()
+            networks = provisioner.scan()
+            return {
+                "current": current,
+                "networks": [
+                    {"ssid": net.ssid, "signal": int(net.signal), "secure": bool(net.secure)}
+                    for net in networks
+                ],
+            }
+
+        def _switch_network(ssid: str, password: str) -> str:
+            return provisioner.switch_to(ssid, password)
+
+        robot_state.on_wifi_scan = _scan_networks
+        robot_state.on_wifi_switch = _switch_network
         run_wifi_ble_loop(coord, provisioner)
     except Exception as exc:
         log_action("WIFI_BLE", f"no arranqué el setup WiFi BLE: {exc}")

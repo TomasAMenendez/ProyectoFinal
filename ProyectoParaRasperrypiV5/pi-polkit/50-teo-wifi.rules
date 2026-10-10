@@ -1,0 +1,13 @@
+// El peluche corre como teo y tiene que poder escanear, conectar y
+// olvidar WiFi aunque el proceso no sea la sesión gráfica activa.
+polkit.addRule(function(action, subject) {
+    if (subject.user != "teo") {
+        return polkit.Result.NOT_HANDLED;
+    }
+    if (action.id == "org.freedesktop.NetworkManager.wifi.scan" ||
+        action.id == "org.freedesktop.NetworkManager.network-control" ||
+        action.id == "org.freedesktop.NetworkManager.settings.modify.system" ||
+        action.id == "org.freedesktop.NetworkManager.settings.modify.own") {
+        return polkit.Result.YES;
+    }
+});

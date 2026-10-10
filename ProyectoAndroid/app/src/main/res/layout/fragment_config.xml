@@ -135,7 +135,7 @@
                     app:trackColor="@color/card_bg_mint"
                     app:indicatorColor="@color/tertiary" />
 
-                <!-- Cambiar la red WiFi del peluche (por BLE) -->
+                <!-- Cambiar la red WiFi del peluche sin soltar la actual -->
                 <com.google.android.material.button.MaterialButton
                     android:id="@+id/btn_change_wifi"
                     style="?attr/materialButtonOutlinedStyle"
@@ -146,6 +146,53 @@
                     android:text="@string/config_change_wifi"
                     android:visibility="gone"
                     app:cornerRadius="8dp" />
+
+                <LinearLayout
+                    android:id="@+id/section_wifi_change"
+                    android:layout_width="match_parent"
+                    android:layout_height="wrap_content"
+                    android:orientation="vertical"
+                    android:visibility="gone">
+
+                    <TextView
+                        android:layout_width="match_parent"
+                        android:layout_height="wrap_content"
+                        android:paddingTop="8dp"
+                        android:text="@string/config_change_wifi_pick"
+                        android:textSize="14sp" />
+
+                    <Spinner
+                        android:id="@+id/spinner_wifi_networks"
+                        android:layout_width="match_parent"
+                        android:layout_height="wrap_content"
+                        android:minHeight="48dp" />
+
+                    <com.google.android.material.textfield.TextInputLayout
+                        android:id="@+id/til_change_wifi_password"
+                        style="@style/Widget.MaterialComponents.TextInputLayout.OutlinedBox"
+                        android:layout_width="match_parent"
+                        android:layout_height="wrap_content"
+                        android:hint="@string/wifi_setup_password_hint"
+                        app:endIconMode="password_toggle">
+
+                        <com.google.android.material.textfield.TextInputEditText
+                            android:id="@+id/edit_change_wifi_password"
+                            android:layout_width="match_parent"
+                            android:layout_height="wrap_content"
+                            android:inputType="textPassword"
+                            android:minHeight="48dp" />
+                    </com.google.android.material.textfield.TextInputLayout>
+
+                    <com.google.android.material.button.MaterialButton
+                        android:id="@+id/btn_confirm_wifi"
+                        android:layout_width="match_parent"
+                        android:layout_height="wrap_content"
+                        android:layout_marginTop="8dp"
+                        android:minHeight="48dp"
+                        android:text="@string/config_change_wifi_connect"
+                        app:backgroundTint="@color/tertiary"
+                        app:cornerRadius="8dp" />
+                </LinearLayout>
 
                 <!-- Discovery result -->
                 <TextView

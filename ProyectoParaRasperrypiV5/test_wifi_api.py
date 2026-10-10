@@ -23,6 +23,8 @@ def _api_server():
     prev_ble = api_server.robot_state.ble_setup_active
     prev_wifi = api_server.robot_state.wifi_connected
     prev_cb = api_server.robot_state.on_wifi_provisioning
+    prev_scan = api_server.robot_state.on_wifi_scan
+    prev_switch = api_server.robot_state.on_wifi_switch
     api_server.robot_state.pairing_token = ""
     httpd = HTTPServer(("127.0.0.1", 0), api_server.ApiRequestHandler)
     thread = threading.Thread(target=httpd.serve_forever, daemon=True)
@@ -37,6 +39,8 @@ def _api_server():
         api_server.robot_state.ble_setup_active = prev_ble
         api_server.robot_state.wifi_connected = prev_wifi
         api_server.robot_state.on_wifi_provisioning = prev_cb
+        api_server.robot_state.on_wifi_scan = prev_scan
+        api_server.robot_state.on_wifi_switch = prev_switch
 
 
 def _http_json(method, url, body=None, *, raw_data: bytes | None = None):
@@ -171,6 +175,64 @@ class TestWifiProvisioningApi(unittest.TestCase):
             code, body = _http_json("POST", f"{base}/api/wifi/provisioning", {"enabled": "yes"})
             self.assertEqual(code, 400)
             self.assertEqual(body.get("error"), "JSON inválido")
+
+
+class TestWifiChangeApi(unittest.TestCase):
+    def test_get_networks_no_exige_cortar_wifi(self) -> None:
+        with _api_server() as (base, state):
+            seen: list[str] = []
+
+            def scan() -> dict:
+                seen.append("scan")
+                return {
+                    "current": "Casa",
+                    "networks": [{"ssid": "Oficina", "signal": 70, "secure": True}],
+                }
+
+            state.on_wifi_scan = scan
+            code, body = _http_json("GET", f"{base}/api/wifi/networks")
+            self.assertEqual(code, 200, str(body))
+            self.assertEqual(body["current"], "Casa")
+            self.assertEqual(body["networks"][0]["ssid"], "Oficina")
+            self.assertEqual(seen, ["scan"])
+            self.assertFalse(state.ble_setup_active)
+
+    def test_post_connect_ok_y_clave_mala(self) -> None:
+        with _api_server() as (base, state):
+            calls: list[tuple[str, str]] = []
+
+            def switch(ssid: str, password: str) -> str:
+                calls.append((ssid, password))
+                return "auth" if password == "mala" else "ok"
+
+            state.on_wifi_switch = switch
+            code, body = _http_json(
+                "POST",
+                f"{base}/api/wifi/connect",
+                {"ssid": "Oficina", "password": "mala"},
+            )
+            self.assertEqual(code, 400)
+            self.assertEqual(body.get("error"), "clave incorrecta")
+            code, body = _http_json(
+                "POST",
+                f"{base}/api/wifi/connect",
+                {"ssid": "Oficina", "password": "bien"},
+            )
+            self.assertEqual(code, 200, str(body))
+            self.assertEqual(calls, [("Oficina", "mala"), ("Oficina", "bien")])
+
+    def test_sin_callback_503(self) -> None:
+        with _api_server() as (base, state):
+            state.on_wifi_scan = None
+            state.on_wifi_switch = None
+            code, _ = _http_json("GET", f"{base}/api/wifi/networks")
+            self.assertEqual(code, 503)
+            code, _ = _http_json(
+                "POST",
+                f"{base}/api/wifi/connect",
+                {"ssid": "Oficina", "password": "x"},
+            )
+            self.assertEqual(code, 503)
 
 
 if __name__ == "__main__":
