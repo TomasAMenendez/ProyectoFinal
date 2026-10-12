@@ -587,7 +587,22 @@ def _boot_wifi_check(coord: "WifiBleCoordinator", provisioner) -> None:
         coord.mark_wifi_connected()
         log_action("WIFI_BLE", "WiFi ya conectado al arrancar; no anuncio BLE")
         return
+    joined = _try_known_wifi(provisioner)
+    if joined:
+        coord.mark_wifi_connected()
+        log_action("WIFI_BLE", f"WiFi conocido '{joined}'; no anuncio BLE")
+        return
+    log_action("WIFI_BLE", "ninguna red conocida conectó; anuncio BLE")
     coord.enter_setup()
+
+
+def _try_known_wifi(provisioner) -> str | None:
+    """Prueba known_wifi.json. None si ninguna conecta. No loguea claves."""
+    try:
+        return provisioner.try_known_networks()
+    except Exception as exc:
+        log_action("WIFI_BLE", f"redes conocidas fallaron: {type(exc).__name__}")
+        return None
 
 
 def _load_pin_font(size: int):

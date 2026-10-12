@@ -117,5 +117,8 @@ def catalog_followup_prompt(
         else:
             parts.append("Canciones en la Pi: ninguna. Pedile a mamá o papá que suban una.")
     parts.append(f"El nene dijo: {child_text}")
-    parts.append("Ofrecé solo de esa lista. No inventes títulos.")
+    parts.append(
+        "Decí los títulos en voz y preguntá cuál quiere. "
+        "En esta respuesta no uses [PLAY_STORY] ni [PLAY_MUSIC]. No inventes títulos."
+    )
     return " ".join(parts)

@@ -232,7 +232,7 @@ class CloudLLM:
             response = client.chat.completions.create(
                 model=self._MODEL,
                 messages=messages,
-                max_tokens=80,
+                max_tokens=160,
                 temperature=0.7,
             )
 

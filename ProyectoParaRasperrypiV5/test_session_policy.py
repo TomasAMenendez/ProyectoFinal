@@ -284,13 +284,21 @@ class TestTtsEarlyMic(unittest.TestCase):
 
 
 class TestSpokenAfterPlayGame(unittest.TestCase):
-    def test_tag_reemplaza_el_invento_del_llm(self) -> None:
+    def test_dice_la_frase_del_modelo_y_despues_abre_el_juego(self) -> None:
         from session_policy import spoken_after_play_game
 
         self.assertEqual(
             spoken_after_play_game(
-                "invento reglas",
-                {"response": "¡Adiviná la sombra! Mirá."},
+                "¡Uf! ¡Qué feo! ¿Querés que juguemos a buscar sombras?",
+                {"response": "¡Adiviná la sombra! Mirá.", "game_started": True},
+                [{"action": "PLAY_GAME", "param": "sombras"}],
+            ),
+            "¡Uf! ¡Qué feo! ¿Querés que juguemos a buscar sombras? ¡Adiviná la sombra! Mirá.",
+        )
+        self.assertEqual(
+            spoken_after_play_game(
+                "",
+                {"response": "¡Adiviná la sombra! Mirá.", "game_started": True},
                 [{"action": "PLAY_GAME", "param": "sombras"}],
             ),
             "¡Adiviná la sombra! Mirá.",
@@ -298,6 +306,14 @@ class TestSpokenAfterPlayGame(unittest.TestCase):
         self.assertEqual(
             spoken_after_play_game("hola", {"response": ""}, []),
             "hola",
+        )
+        self.assertEqual(
+            spoken_after_play_game(
+                "¿Jugamos a contar después?",
+                {"response": "¿Jugamos a contar después? [PLAY_GAME:contar]"},
+                [{"action": "PLAY_GAME", "param": "contar"}],
+            ),
+            "¿Jugamos a contar después?",
         )
 
 
@@ -391,15 +407,22 @@ class TestSingleWordTranscripts(unittest.TestCase):
         self.assertNotIn("Muy corto para una respuesta", src)
         self.assertNotIn("utterance_too_thin(raw_text)", src)
 
-    def test_ensalada_larga_es_basura(self) -> None:
+    def test_oracion_larga_no_es_basura(self) -> None:
         from session_policy import stt_looks_like_garbage
 
-        self.assertTrue(
-            stt_looks_like_garbage(
-                "no no tengo ganas halaga treinta segundos west caemos escuchando del miraflores"
-            )
+        koala = (
+            "Ojalá en mi colegio hubiese koalas porque a mí me gustan mucho."
         )
+        salad = (
+            "no no tengo ganas halaga treinta segundos west caemos "
+            "escuchando del miraflores"
+        )
+        self.assertFalse(stt_looks_like_garbage(koala))
+        self.assertFalse(stt_looks_like_garbage(salad))
         self.assertFalse(stt_looks_like_garbage("quiero que hagamos un pozo"))
+        workers = Path(__file__).resolve().parent / "workers.py"
+        src = workers.read_text(encoding="utf-8")
+        self.assertNotIn("stt_looks_like_garbage(", src)
 
 
 class TestShouldAllowLlm(unittest.TestCase):
@@ -434,6 +457,7 @@ class TestShouldAllowLlm(unittest.TestCase):
     def test_unknown_aunque_el_stt_sea_largo_va_al_llm(self) -> None:
         from session_policy import should_allow_llm
 
+        self.assertTrue(should_allow_llm("unknown"))
         self.assertTrue(should_allow_llm("unknown", garbage_stt=True))
 
     def test_cuento_reflect_si(self) -> None:

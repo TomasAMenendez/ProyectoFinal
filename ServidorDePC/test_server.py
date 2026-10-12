@@ -96,6 +96,45 @@ class TestTranscribe(unittest.TestCase):
         self.assertEqual(body["text"], "juguemos veo veo")
         self.assertEqual(stt.last_wav, wav)
 
+    def test_sin_memoria_gpu_responde_503(self) -> None:
+        class OomStt(FakeStt):
+            def transcribe_wav(self, wav: bytes, language: str = "es") -> str:
+                del wav, language
+                raise RuntimeError("CUDA failed with error out of memory")
+
+        logs: list[str] = []
+        status, body = handle_transcribe(
+            OomStt(),
+            FakeLlm(),
+            TOKEN,
+            "Bearer secret-token",
+            _tiny_wav(),
+            "audio/wav",
+            "es",
+            log_fn=logs.append,
+        )
+        self.assertEqual(status, 503)
+        self.assertEqual(body["error"], "stt gpu busy")
+        self.assertIn("la GPU no transcribió", "\n".join(logs))
+
+    def test_cublas_no_soportado_responde_503(self) -> None:
+        class CublasStt(FakeStt):
+            def transcribe_wav(self, wav: bytes, language: str = "es") -> str:
+                del wav, language
+                raise RuntimeError("cuBLAS failed with status CUBLAS_STATUS_NOT_SUPPORTED")
+
+        status, body = handle_transcribe(
+            CublasStt(),
+            FakeLlm(),
+            TOKEN,
+            "Bearer secret-token",
+            _tiny_wav(),
+            "audio/wav",
+            "es",
+        )
+        self.assertEqual(status, 503)
+        self.assertEqual(body["error"], "stt gpu busy")
+
     def test_transcribe_sin_token_401(self) -> None:
         status, body = handle_transcribe(
             FakeStt(), FakeLlm(), TOKEN, "Bearer no", _tiny_wav(), "audio/wav", "es"

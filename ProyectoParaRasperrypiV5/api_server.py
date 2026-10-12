@@ -137,6 +137,10 @@ class RobotState:
             self.sleep.set_belly_wake_enabled(bool(data["belly_wake_enabled"]))
         if "playtime_limit_minutes" in data:
             self._apply_playtime_limit(data["playtime_limit_minutes"])
+        if "volume_limit" in data:
+            self.volume_limit = max(0, min(100, int(data["volume_limit"])))
+        if "brightness" in data:
+            self.brightness = max(0.0, min(1.0, float(data["brightness"])))
 
     def _apply_playtime_limit(self, minutes: object) -> None:
         self.playtime_limit_minutes = max(0, min(240, int(minutes)))
@@ -146,6 +150,8 @@ class RobotState:
         payload = {
             "belly_wake_enabled": self.sleep.belly_wake_enabled,
             "playtime_limit_minutes": self.playtime_limit_minutes,
+            "volume_limit": self.volume_limit,
+            "brightness": self.brightness,
         }
         try:
             self._prefs_path.write_text(
@@ -165,7 +171,15 @@ class RobotState:
                 self._apply_playtime_limit(data["playtime_limit_minutes"])
             if "belly_wake_enabled" in data:
                 self.sleep.set_belly_wake_enabled(bool(data["belly_wake_enabled"]))
-            if "playtime_limit_minutes" in data or "belly_wake_enabled" in data:
+            if any(
+                key in data
+                for key in (
+                    "playtime_limit_minutes",
+                    "belly_wake_enabled",
+                    "volume_limit",
+                    "brightness",
+                )
+            ):
                 self._save_prefs()
         if self.on_config_changed:
             self.on_config_changed({

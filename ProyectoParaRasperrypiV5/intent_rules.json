@@ -39,11 +39,11 @@
       "no se que hacer"
     ],
     "response": [
-      "¡Hay de todo! Podemos adivinar el objeto, contar, sombras, piedra papel o tijera, música o un cuento. ¿Cuál te copa?",
-      "¡Dale! ¿Adivinamos el objeto, contamos, buscamos sombras o ponemos una canción?",
-      "Podemos adivinar el objeto, contar, sombras o piedra papel tijera. También hay cuento o música. Decime qué preferís.",
-      "Hoy hay adivinar el objeto, contar, sombras, piedra papel o tijera, música o un cuento. ¿Cuál te copa?",
-      "¿Adivinar el objeto, contar, sombras, piedra papel tijera, una canción o charlamos?"
+      "¡Hay de todo! ¿Qué te copa hacer ahora?",
+      "¡Dale! Decime qué querés y lo armamos.",
+      "¿Jugamos, charlamos, un cuento o música? Contame.",
+      "Hoy podemos jugar o charlar. ¿Qué preferís?",
+      "¿Qué te gustaría hacer?"
     ]
   },
   "farewell": {
@@ -710,11 +710,11 @@
       "un juego"
     ],
     "response": [
-      "¡Juguemos! ¿Adivinar el objeto, contar, sombras o piedra papel o tijera?",
-      "Dale, juego. ¿Adivinar el objeto, contar o sombras? También hay música o un cuento.",
-      "Estoy listo. Elegí: adivinar el objeto, contar, sombras o piedra papel tijera.",
-      "¡Sí! ¿Adivinar el objeto, contar, sombras, piedra papel tijera, o preferís una canción?",
-      "Jugar es lo mío. ¿Adivinar el objeto, contar, sombras o piedra papel tijera?"
+      "¡Juguemos! ¿A qué querés jugar?",
+      "Dale, juego. Decime cuál.",
+      "Estoy listo. ¿A cuál jugamos?",
+      "¡Sí! ¿Cuál querés?",
+      "Jugar es lo mío. ¿A cuál te copa?"
     ]
   },
   "look_at_this": {

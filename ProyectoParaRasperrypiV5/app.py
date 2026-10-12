@@ -204,16 +204,19 @@ def _wifi_ble_worker(app) -> None:
     try:
         from api_server import robot_state
         from ble_gatt_bluez import BluezGattTransport
-        from ble_setup import WifiBleCoordinator, run_wifi_ble_loop
+        from ble_setup import WifiBleCoordinator, _try_known_wifi, run_wifi_ble_loop
         from wifi_provision import WifiProvisioner
 
+        provisioner = WifiProvisioner()
         transport = BluezGattTransport()
         if not getattr(transport, "available", False):
+            if not provisioner.is_connected():
+                joined = _try_known_wifi(provisioner)
+                if joined:
+                    log_action("WIFI_BLE", f"WiFi conocido '{joined}' sin BLE")
             reason = getattr(transport, "unavailable_reason", "desconocido")
             log_action("WIFI_BLE", f"setup BLE deshabilitado: {reason}")
             return
-
-        provisioner = WifiProvisioner()
 
         def _on_state(key: str, value: bool) -> None:
             setattr(robot_state, key, value)
@@ -269,6 +272,15 @@ def _start_wifi_ble(app) -> None:
         ).start()
     except Exception as exc:
         log_action("WIFI_BLE", f"no pude lanzar el hilo de setup WiFi BLE: {exc}")
+
+
+def _speak_hug_blocking(app, phrase: str) -> bool:
+    """Dice la frase y no vuelve hasta que el audio terminó."""
+    worker = getattr(app, "speech_worker", None)
+    if worker is None:
+        return False
+    worker.speak_and_wait(phrase, timeout=60.0)
+    return True
 
 
 # ═══════════════════════════════════════════════════════════════════════════
@@ -717,8 +729,11 @@ class EyeModeApp(tk.Tk):
                     return
                 action = robot_state.apply_belly()
                 if action == "hug":
-                    speak = self.speech_worker.speak if self.speech_worker else None
-                    perform_hug_ask(self._companion, speak, self._eye_display)
+                    perform_hug_ask(
+                        self._companion,
+                        lambda phrase: _speak_hug_blocking(self, phrase),
+                        self._eye_display,
+                    )
                 elif action == "stop":
                     log_action("APP", "panza: stop música/cuento")
 
@@ -744,9 +759,16 @@ class EyeModeApp(tk.Tk):
         robot_state.routine_scheduler = self.routine_scheduler
         robot_state.speech_worker = self.speech_worker
         robot_state.audio_worker = self.audio_worker
-        robot_state.volume_limit = self._volume_limit
-        robot_state.brightness = self._brightness
-        self._playtime_limit_minutes = int(getattr(robot_state, "playtime_limit_minutes", 0) or 0)
+        self._volume_limit = int(robot_state.volume_limit)
+        self._brightness = float(robot_state.brightness)
+        self._playtime_limit_minutes = int(robot_state.playtime_limit_minutes)
+        if self.speech_worker:
+            self.speech_worker.set_volume_limit(self._volume_limit)
+        if self._eye_display is not None:
+            try:
+                self._eye_display.set_brightness(self._brightness)
+            except Exception:
+                pass
 
         # Callbacks from Android app → robot
         def _on_celebrate() -> None:
@@ -1429,8 +1451,11 @@ class EdgeAiDesktopApp(tk.Tk):
                     return
                 action = robot_state.apply_belly()
                 if action == "hug":
-                    speak = self.speech_worker.speak if self.speech_worker else None
-                    perform_hug_ask(self._companion, speak, self._eye_display)
+                    perform_hug_ask(
+                        self._companion,
+                        lambda phrase: _speak_hug_blocking(self, phrase),
+                        self._eye_display,
+                    )
                     self.after(0, lambda: self._append_log("Abrazo (pulsador: Teo pide un abrazo)"))
                 elif action == "stop":
                     self.after(0, lambda: self._append_log("Stop (pulsador: cortó música o cuento)"))
@@ -1472,8 +1497,10 @@ class EdgeAiDesktopApp(tk.Tk):
         robot_state.routine_scheduler = self.routine_scheduler
         robot_state.speech_worker = self.speech_worker
         robot_state.audio_worker = self.audio_worker
-        robot_state.volume_limit = self._volume_var.get()
-        self._playtime_limit_minutes = int(getattr(robot_state, "playtime_limit_minutes", 0) or 0)
+        self._volume_var.set(int(robot_state.volume_limit))
+        self._playtime_limit_minutes = int(robot_state.playtime_limit_minutes)
+        if self.speech_worker:
+            self.speech_worker.set_volume_limit(int(robot_state.volume_limit))
         _bind_playback_callbacks(self)
 
         def _on_celebrate() -> None:

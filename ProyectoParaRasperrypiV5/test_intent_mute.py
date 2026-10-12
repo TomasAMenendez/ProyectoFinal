@@ -213,6 +213,22 @@ class TestActionTagRegex(unittest.TestCase):
         self.assertNotIn("[", clean)
         self.assertNotIn("PLAY_GAME", clean)
 
+    def test_hug_se_parsea_y_marca_el_payload(self) -> None:
+        from workers import AudioWorker
+
+        worker = AudioWorker.__new__(AudioWorker)
+        worker.intent_mute = IntentMute(log_fn=lambda *_a, **_k: None)
+        worker.speech_worker = None
+        worker.eye_display = None
+        worker._robot_state = None
+        actions, clean = worker._parse_action_tags("Te abrazo. [HUG]")
+        self.assertEqual([a["action"] for a in actions], ["HUG"])
+        self.assertIn("abrazo", clean.lower())
+        self.assertNotIn("[", clean)
+        payload: dict = {}
+        worker._execute_actions(actions, payload, user_text="dame un abrazo")
+        self.assertTrue(payload.get("hug"))
+
     def test_intents_off_solo_no_tiene_texto_hablable(self) -> None:
         from session_policy import spoken_text_or_unknown_fallback
         from workers import AudioWorker

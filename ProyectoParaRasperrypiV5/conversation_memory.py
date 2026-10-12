@@ -1,22 +1,42 @@
-"""Historial corto de conversación compartido por Groq y el LLM local."""
+"""Historial de conversación. La PC recibe 10 turnos; el 3B de la Pi, 2."""
 from __future__ import annotations
 
 import os
 from typing import Any
 
+PC_MAX_TURNS = 10
+LOCAL_MAX_TURNS = 2
+
 
 def default_max_turns() -> int:
-    """Default 2 (4 mensajes), como la corrida rápida. Rollback: CONVO_MAX_TURNS=10."""
+    """Turnos que se guardan y se mandan al servidor de PC. Default 10."""
     try:
-        return max(1, int(os.environ.get("CONVO_MAX_TURNS") or "2"))
+        return max(1, int(os.environ.get("CONVO_MAX_TURNS") or str(PC_MAX_TURNS)))
     except ValueError:
-        return 2
+        return PC_MAX_TURNS
+
+
+def assistant_memory_text(raw_with_tags: str, spoken: str) -> str:
+    """El historial guarda corchetes para que el LLM copie el formato."""
+    raw = (raw_with_tags or "").strip()
+    if raw:
+        return raw
+    return (spoken or "").strip()
+
+
+def local_history(
+    history: list[dict[str, str]],
+    turns: int = LOCAL_MAX_TURNS,
+) -> list[dict[str, str]]:
+    """Los últimos `turns` para el LLM de la Pi. Un turno son 2 mensajes."""
+    cap = max(1, turns) * 2
+    return list(history)[-cap:]
 
 
 class ConversationMemory:
-    """Últimos N turnos (par nene + TEO) para el prompt del LLM."""
+    """Últimos N turnos (par nene + TEO). N default = lo que usa la PC."""
 
-    MAX_TURNS = 2
+    MAX_TURNS = PC_MAX_TURNS
 
     def __init__(self, max_turns: int | None = None) -> None:
         self.max_turns = default_max_turns() if max_turns is None else max_turns

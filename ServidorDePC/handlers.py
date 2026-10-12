@@ -98,7 +98,16 @@ def handle_transcribe(
     who = peer or "?"
     _emit(log_fn, f"[STT] audio recibido de {who}: {_wav_meta(wav)}")
     t0 = time.perf_counter()
-    raw_out = stt.transcribe_wav(wav, language=language or "es")
+    try:
+        raw_out = stt.transcribe_wav(wav, language=language or "es")
+    except RuntimeError as exc:
+        from stt_engine import is_gpu_runtime_failure
+
+        if not is_gpu_runtime_failure(exc):
+            raise
+        ms = (time.perf_counter() - t0) * 1000.0
+        _emit(log_fn, f"[STT] la GPU no transcribió {ms:.0f} ms")
+        return 503, {"error": "stt gpu busy"}
     ms = (time.perf_counter() - t0) * 1000.0
     avg_logprob: float | None = None
     no_speech_prob: float | None = None

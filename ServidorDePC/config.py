@@ -9,12 +9,16 @@ ROOT = Path(__file__).resolve().parent
 TOKEN_PATH = ROOT / "pc_server_token.txt"
 HOST = os.environ.get("PC_SERVER_BIND") or "0.0.0.0"
 PORT = int(os.environ.get("PC_SERVER_PORT") or "8090")
+# large-v3 float16 en la RTX. int8 lo rechaza esta placa.
+# Cabe al lado de Gemma porque el contexto quedó en 4096.
 WHISPER_MODEL = os.environ.get("PC_WHISPER_MODEL") or "large-v3"
 WHISPER_DEVICE = os.environ.get("PC_WHISPER_DEVICE") or "cuda"
 WHISPER_COMPUTE = os.environ.get("PC_WHISPER_COMPUTE") or "float16"
 LLM_REPO = os.environ.get("PC_LLM_HF_REPO") or "bartowski/google_gemma-3-12b-it-GGUF"
 LLM_GGUF = os.environ.get("PC_LLM_GGUF") or "google_gemma-3-12b-it-Q5_K_M.gguf"
-LLM_N_CTX = int(os.environ.get("PC_LLM_N_CTX") or "2048")
+# 4096: prompt de Gemma + ficha + 10 turnos, y deja VRAM para Whisper large-v3.
+# Rollback del contexto largo: PC_LLM_N_CTX=8192.
+LLM_N_CTX = int(os.environ.get("PC_LLM_N_CTX") or "4096")
 LLM_N_GPU_LAYERS = int(os.environ.get("PC_LLM_N_GPU_LAYERS") or "-1")
 MODELS_DIR = Path(os.environ.get("PC_MODELS_DIR") or (Path.home() / ".edge_ai_models" / "llm"))
 

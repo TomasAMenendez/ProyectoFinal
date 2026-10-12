@@ -38,6 +38,7 @@ exe_stderr.txt
 # API keys and secrets
 .env
 pairing_token.txt
+known_wifi.json
 parental_prefs.json
 child_profile.json
 pc_server_url.txt

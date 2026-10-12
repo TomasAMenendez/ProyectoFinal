@@ -311,18 +311,34 @@ class PhysicalCompanion:
         finally:
             self._hug_lock.release()
 
-    def _hug_body(self) -> ActuatorResult:
+    def arms_up(self) -> ActuatorResult:
+        """Deja los brazos en el gesto de abrazo. No los baja."""
         self.hug_count += 1
         if not self.pins.servos_ready:
             log_action("HW", "abrazo simulado (pines de servo pendientes)")
             return ActuatorResult(ok=True, simulated=True, message="simulado")
         try:
-            self._move_servos()
-            log_action("HW", "abrazo con servos")
+            self._raise_servos()
+            log_action("HW", "brazos arriba")
             return ActuatorResult(ok=True, simulated=False, message="servos")
         except Exception as exc:
             log_action("HW", f"servos fallaron, simulo: {exc}")
             return ActuatorResult(ok=True, simulated=True, message=str(exc))
+
+    def arms_down(self) -> None:
+        """Vuelve los brazos al reposo."""
+        if not self.pins.servos_ready:
+            return
+        try:
+            self._lower_servos()
+            log_action("HW", "brazos abajo")
+        except Exception as exc:
+            log_action("HW", f"no pude bajar los brazos: {exc}")
+
+    def _hug_body(self) -> ActuatorResult:
+        result = self.arms_up()
+        self.arms_down()
+        return result
 
     def start_button_watch(self, on_press: Callable[[], None]) -> bool:
         if not self.pins.button_ready or self.pins.hug_button_pin is None:
@@ -355,17 +371,24 @@ class PhysicalCompanion:
             if right is not None:
                 _gpio_instance.pwm_stop(right)
 
-    def _move_servos(self) -> None:
-        gpio = get_gpio()
+    def _servo_pins(self) -> tuple[int, int]:
         left = self.pins.servo_left_pin
         right = self.pins.servo_right_pin
         if left is None or right is None:
             raise RuntimeError("pines de servo incompletos")
-        import time
+        return left, right
 
+    def _raise_servos(self) -> None:
+        gpio = get_gpio()
+        left, right = self._servo_pins()
         gpio.pwm_start(left, SERVO_LEFT_UP_DUTY)
         gpio.pwm_start(right, SERVO_RIGHT_UP_DUTY)
-        time.sleep(1.0)
+
+    def _lower_servos(self) -> None:
+        import time
+
+        gpio = get_gpio()
+        left, right = self._servo_pins()
         gpio.pwm_set(left, SERVO_REST_DUTY)
         gpio.pwm_set(right, SERVO_REST_DUTY)
         time.sleep(0.45)
@@ -417,22 +440,27 @@ def perform_hug_ask(
     speak: Callable[[str], None] | None,
     eyes: Any | None = None,
 ) -> None:
-    """Pulsador: pide un abrazo en voz alta, ojos felices y levanta los brazos."""
+    """Pulsador: ojos felices, brazos arriba mientras dice la frase, después los baja.
+
+    `speak` tiene que bloquear hasta que el audio terminó. Si solo encola, los
+    brazos bajan antes de que se escuche.
+    """
     if companion is not None and not companion.try_begin_hug():
         log_action("HW", "abrazo ignorado (ya hay uno)")
         return
     try:
-        if speak is not None:
-            accepted = speak(HUG_ASK_PHRASE)
-            if accepted is False:
-                return
         if eyes is not None:
             if hasattr(eyes, "set_pictogram"):
                 eyes.set_pictogram("abrazo")
             if hasattr(eyes, "set_expression"):
                 eyes.set_expression("feliz")
         if companion is not None:
-            companion._hug_body()
+            companion.arms_up()
+        if speak is not None:
+            accepted = speak(HUG_ASK_PHRASE)
+            if accepted is False:
+                return
     finally:
         if companion is not None:
+            companion.arms_down()
             companion.end_hug()

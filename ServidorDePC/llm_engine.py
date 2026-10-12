@@ -53,7 +53,7 @@ class LlmEngine:
             return ""
         result = self._llm.create_chat_completion(
             messages=messages,
-            max_tokens=80,
+            max_tokens=160,
             temperature=0.70,
             top_p=0.9,
             top_k=40,

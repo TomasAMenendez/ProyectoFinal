@@ -252,11 +252,35 @@ class TestEngineStart(unittest.TestCase):
         self.assertEqual(resolve_play_game_param("piedra"), "piedra_papel_tijera")
         engine = GameEngine()
         payload: dict = {"intent_name": "unknown", "response": "invento reglas"}
-        self.assertTrue(apply_play_game_tag(engine, "sombras", payload))
+        self.assertTrue(
+            apply_play_game_tag(
+                engine, "sombras", payload, user_text="adiviná la sombra"
+            )
+        )
         self.assertTrue(engine.is_active)
         self.assertEqual(engine.game_type, "sombras")
         self.assertTrue(str(payload.get("lcd_image") or "").endswith(".png"))
         self.assertNotIn("invento", (payload.get("response") or "").lower())
+
+    def test_play_game_sin_pedido_del_nene_no_arranca(self) -> None:
+        from game_engine import child_asked_for_play_game
+
+        self.assertFalse(child_asked_for_play_game("Hola, ¿cómo estás?", "contar"))
+        self.assertFalse(child_asked_for_play_game("quiero jugar", "sombras"))
+        self.assertFalse(
+            child_asked_for_play_game("juguemos a contar", "sombras")
+        )
+        self.assertTrue(
+            child_asked_for_play_game("juguemos a contar", "contar")
+        )
+        engine = GameEngine()
+        payload: dict = {"intent_name": "llm_fallback", "response": "charla"}
+        self.assertFalse(
+            apply_play_game_tag(
+                engine, "contar", payload, user_text="Hola Teo, ¿qué hiciste hoy?"
+            )
+        )
+        self.assertFalse(engine.is_active)
 
     def test_ppt_trae_lcd_al_elegir(self) -> None:
         session = PiedraPapelTijeraSession()
@@ -265,6 +289,37 @@ class TestEngineStart(unittest.TestCase):
         self.assertTrue(out.lcd_clear_after_speech)
         self.assertTrue(out.lcd_image)
         self.assertTrue(out.lcd_image.endswith(".png"))
+
+
+class TestNoInyectaPlayGame(unittest.TestCase):
+    def test_no_existe_ensure_play_game_tag(self) -> None:
+        import game_engine
+
+        self.assertFalse(hasattr(game_engine, "ensure_play_game_tag"))
+        self.assertFalse(hasattr(game_engine, "mentioned_game_kinds"))
+
+    def test_workers_no_inyecta(self) -> None:
+        from pathlib import Path
+
+        src = (Path(__file__).resolve().parent / "workers.py").read_text(
+            encoding="utf-8"
+        )
+        self.assertNotIn("ensure_play_game_tag", src)
+
+    def test_basta_no_reabre_contar(self) -> None:
+        engine = GameEngine()
+        engine.process_or_passthrough(
+            "juguemos a contar",
+            {"intent_name": "play_contar", "confidence": 1, "response": ""},
+        )
+        payload = engine.process_or_passthrough(
+            "Basta, no quiero más.",
+            {"intent_name": "unknown", "confidence": 0, "response": ""},
+        )
+        self.assertTrue(payload.get("game_over"))
+        self.assertFalse(engine.is_active)
+        self.assertFalse(apply_play_game_tag(engine, "contar", dict(payload)))
+        self.assertFalse(engine.is_active)
 
 
 class TestMediaResolve(unittest.TestCase):

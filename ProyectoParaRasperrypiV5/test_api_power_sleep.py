@@ -78,6 +78,30 @@ class TestRobotStatePower(unittest.TestCase):
             self.assertEqual(rs2.playtime_guard.limit_minutes, 45)
             self.assertEqual(rs2.to_dict()["playtime_limit_minutes"], 45)
 
+    def test_volumen_y_brillo_se_persisten(self) -> None:
+        with tempfile.TemporaryDirectory() as tmp:
+            path = Path(tmp) / "parental_prefs.json"
+            rs = RobotState(prefs_path=path)
+            rs.update_config({"volume_limit": 40, "brightness": 0.35})
+            saved = json.loads(path.read_text(encoding="utf-8"))
+            self.assertEqual(saved["volume_limit"], 40)
+            self.assertAlmostEqual(saved["brightness"], 0.35)
+            rs2 = RobotState(prefs_path=path)
+            self.assertEqual(rs2.volume_limit, 40)
+            self.assertAlmostEqual(rs2.brightness, 0.35)
+            self.assertEqual(rs2.to_dict()["volume_limit"], 40)
+
+    def test_volumen_sobrevive_guardar_solo_playtime(self) -> None:
+        with tempfile.TemporaryDirectory() as tmp:
+            path = Path(tmp) / "parental_prefs.json"
+            rs = RobotState(prefs_path=path)
+            rs.update_config({"volume_limit": 25, "brightness": 0.5})
+            rs.update_config({"playtime_limit_minutes": 10})
+            rs2 = RobotState(prefs_path=path)
+            self.assertEqual(rs2.volume_limit, 25)
+            self.assertAlmostEqual(rs2.brightness, 0.5)
+            self.assertEqual(rs2.playtime_limit_minutes, 10)
+
     def test_tope_de_juego_sobrevive_guardar_solo_panza(self) -> None:
         with tempfile.TemporaryDirectory() as tmp:
             path = Path(tmp) / "parental_prefs.json"

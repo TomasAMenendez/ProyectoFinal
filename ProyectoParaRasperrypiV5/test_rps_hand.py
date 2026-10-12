@@ -300,6 +300,19 @@ class TestPiedraPapelSessionChoice(unittest.TestCase):
         resp = session.process_input("basta")
         self.assertTrue(resp.game_over)
 
+    def test_no_quiero_cambiar_no_cierra(self) -> None:
+        session = PiedraPapelTijeraSession()
+        resp = session.process_input("No quiero cambiar de juego.")
+        self.assertFalse(resp.game_over)
+        self.assertEqual(session.rounds_played, 0)
+
+    def test_la_palabra_vale_aunque_la_camara_crea_ver_la_mano(self) -> None:
+        session = PiedraPapelTijeraSession()
+        with patch("game_engine.random.choice", return_value="piedra"):
+            resp = session.process_input("papel", saw_confident=True)
+        self.assertEqual(session.rounds_played, 1)
+        self.assertIn("Yo elegí", resp.text)
+
     def test_tiguera_sigue_siendo_tijera(self) -> None:
         session = PiedraPapelTijeraSession()
         resp = session.process_input("¡Tiguera!")

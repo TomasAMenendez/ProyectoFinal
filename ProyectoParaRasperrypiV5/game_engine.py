@@ -18,7 +18,7 @@ from stt_correct import correct_stt_text
 def _wants_to_exit(text: str) -> bool:
     """Detecta si el niño quiere salir del juego usando match por palabras completas."""
     normalized = text.lower().strip()
-    exit_phrases = {"no quiero", "no quiero jugar", "no quiero más", "me aburro", "me aburrí"}
+    exit_phrases = {"no quiero jugar", "no quiero más", "me aburro", "me aburrí"}
     if any(phrase in normalized for phrase in exit_phrases):
         return True
     exit_exact_words = {"basta", "salir", "parar", "chau"}
@@ -115,20 +115,21 @@ class PiedraPapelTijeraSession:
         if _wants_to_exit(normalized):
             return self._end_game()
 
-        if saw_confident:
-            return GameResponse(text="")
-
         child_choice = None
         for choice in _PIEDRA_PAPEL_CHOICES:
             if choice in normalized:
                 child_choice = choice
                 break
 
-        if child_choice is None:
-            return self._retry_empty()
+        if child_choice is not None:
+            if self.round_committed:
+                return GameResponse(text="")
+            return self.process_choice(child_choice)
 
-        self.round_committed = False
-        return self.process_choice(child_choice)
+        if saw_confident:
+            return GameResponse(text="")
+
+        return self._retry_empty()
 
     def process_choice(self, label: str) -> GameResponse:
         if self.round_committed:
@@ -334,6 +335,20 @@ _PLAY_GAME_ALIASES = {
 }
 
 
+def child_asked_for_play_game(user_text: str, param: str) -> bool:
+    """True solo si el nene pidió ese juego, no si el LLM lo nombró."""
+    wanted = resolve_play_game_param(param)
+    if wanted is None:
+        return False
+    from session_policy import is_clear_keyword_intent
+
+    intent = is_clear_keyword_intent(user_text)
+    if intent == "play_generic" or intent == "activity_offer":
+        return False
+    mapped = _INTENT_TO_GAME.get(str(intent or ""))
+    return mapped == wanted
+
+
 def resolve_play_game_param(param: str) -> str | None:
     from game_catalog import fold_text
 
@@ -349,7 +364,16 @@ def resolve_play_game_param(param: str) -> str | None:
     return None
 
 
-def apply_play_game_tag(engine: GameEngine, param: str, payload: dict[str, Any]) -> bool:
+def apply_play_game_tag(
+    engine: GameEngine,
+    param: str,
+    payload: dict[str, Any],
+    user_text: str = "",
+) -> bool:
+    if payload.get("game_over"):
+        return False
+    if not child_asked_for_play_game(user_text, param):
+        return False
     kind = resolve_play_game_param(param)
     if kind is None:
         return False

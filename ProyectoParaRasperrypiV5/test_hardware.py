@@ -134,6 +134,21 @@ class TestHugAsk(unittest.TestCase):
         eyes.set_pictogram.assert_called_once_with("abrazo")
         eyes.set_expression.assert_called_once_with("feliz")
 
+    def test_brazos_siguen_arriba_mientras_habla(self) -> None:
+        companion = PhysicalCompanion(HardwarePins())
+        order: list[str] = []
+        companion.arms_up = lambda: order.append("up")  # type: ignore[method-assign]
+        companion.arms_down = lambda: order.append("down")  # type: ignore[method-assign]
+        eyes = MagicMock()
+
+        def speak(phrase: str) -> bool:
+            self.assertEqual(order, ["up"])
+            order.append("habla")
+            return True
+
+        perform_hug_ask(companion, speak, eyes)
+        self.assertEqual(order, ["up", "habla", "down"])
+
     def test_segundo_abrazo_se_ignora_si_el_primero_sigue(self) -> None:
         companion = PhysicalCompanion(HardwarePins())
         self.assertTrue(companion.try_begin_hug())

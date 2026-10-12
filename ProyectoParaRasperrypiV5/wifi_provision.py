@@ -1,10 +1,12 @@
 """Provisionamiento WiFi vía nmcli (sin BLE ni radio en tests)."""
 from __future__ import annotations
 
+import json
 import re
 import subprocess
 import time
 from dataclasses import dataclass
+from pathlib import Path
 from typing import Callable
 
 Runner = Callable[[list[str], float], tuple[int, str, str]]
@@ -13,6 +15,7 @@ SCAN_TIMEOUT_S = 15.0
 CONNECT_TIMEOUT_S = 30.0
 # nmcli, sin este tope, espera al agente de claves ~90s cuando el PSK es malo.
 CONNECT_WAIT_S = 20.0
+KNOWN_WIFI_PATH = Path(__file__).resolve().parent / "known_wifi.json"
 
 
 @dataclass(frozen=True)
@@ -118,6 +121,30 @@ def parse_nmcli_connection_rows(text: str) -> list[tuple[str, str, str]]:
             continue
         rows.append((parts[0], parts[1], parts[2]))
     return rows
+
+
+def load_known_networks(path: Path | None = None) -> list[tuple[str, str]]:
+    """SSIDs y claves de `known_wifi.json`. Lista vacía si no está o está roto.
+
+    El archivo no se versiona: tiene las claves de las redes de la casa.
+    """
+    file = path or KNOWN_WIFI_PATH
+    try:
+        raw = json.loads(file.read_text(encoding="utf-8"))
+    except (OSError, json.JSONDecodeError, UnicodeError):
+        return []
+    if not isinstance(raw, list):
+        return []
+    networks: list[tuple[str, str]] = []
+    for item in raw:
+        if not isinstance(item, dict):
+            continue
+        ssid = str(item.get("ssid") or "").strip()
+        password = item.get("password")
+        if not ssid or not isinstance(password, str):
+            continue
+        networks.append((ssid, password))
+    return networks
 
 
 def parse_nmcli_added_uuid(text: str) -> str | None:
@@ -393,6 +420,21 @@ class WifiProvisioner:
         )
         if code != 0:
             raise WifiCommandError("nmcli: delete")
+
+    def try_known_networks(
+        self,
+        networks: list[tuple[str, str]] | None = None,
+    ) -> str | None:
+        """Prueba las redes conocidas en orden. Devuelve el SSID que conectó.
+
+        Se usa antes del alta BLE, cuando todavía no hay WiFi. La primera
+        que conecta gana. Una clave mala no corta la lista.
+        """
+        items = load_known_networks() if networks is None else networks
+        for ssid, password in items:
+            if self.switch_to(ssid, password) == "ok":
+                return ssid
+        return None
 
     def switch_to(self, ssid: str, password: str) -> str:
         """Conecta a `ssid` y, si salió bien, olvida la red anterior.

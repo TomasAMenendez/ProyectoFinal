@@ -1,4 +1,4 @@
-"""Whisper GPU (faster-whisper large-v3 float16)."""
+"""Whisper large-v3 float16 en la RTX. Si la placa rechaza el cálculo, CPU int8."""
 from __future__ import annotations
 
 import io
@@ -10,9 +10,15 @@ import numpy as np
 from config import WHISPER_COMPUTE, WHISPER_DEVICE, WHISPER_INITIAL_PROMPT, WHISPER_MODEL
 
 
+def is_gpu_runtime_failure(exc: BaseException) -> bool:
+    text = str(exc).lower()
+    return any(needle in text for needle in ("out of memory", "cublas", "not_supported"))
+
+
 class SttEngine:
     def __init__(self) -> None:
         self._model: Any = None
+        self._cpu: Any = None
         self.ready = False
 
     def load(self) -> None:
@@ -22,13 +28,27 @@ class SttEngine:
             f"[STT] Cargando {WHISPER_MODEL} device={WHISPER_DEVICE} compute={WHISPER_COMPUTE}",
             flush=True,
         )
-        self._model = WhisperModel(
-            WHISPER_MODEL,
-            device=WHISPER_DEVICE,
-            compute_type=WHISPER_COMPUTE,
-        )
+        try:
+            self._model = WhisperModel(
+                WHISPER_MODEL,
+                device=WHISPER_DEVICE,
+                compute_type=WHISPER_COMPUTE,
+            )
+        except RuntimeError as exc:
+            if not is_gpu_runtime_failure(exc):
+                raise
+            print(f"[STT] la RTX no cargó el modelo ({exc}). Uso CPU.", flush=True)
+            self._model = self._cpu_model()
         self.ready = True
         print("[STT] listo", flush=True)
+
+    def _cpu_model(self) -> Any:
+        if self._cpu is None:
+            from faster_whisper import WhisperModel
+
+            print(f"[STT] cargo {WHISPER_MODEL} en CPU int8", flush=True)
+            self._cpu = WhisperModel(WHISPER_MODEL, device="cpu", compute_type="int8")
+        return self._cpu
 
     def transcribe_wav(self, wav: bytes, language: str = "es") -> dict[str, Any]:
         empty: dict[str, Any] = {
@@ -41,7 +61,16 @@ class SttEngine:
         audio = _wav_to_float32(wav)
         if audio.size == 0:
             return empty
-        segments, _info = self._model.transcribe(
+        try:
+            return self._collect(self._model, audio, language)
+        except RuntimeError as exc:
+            if self._model is self._cpu or not is_gpu_runtime_failure(exc):
+                raise
+            print(f"[STT] la RTX no transcribió ({exc}). Sigo en CPU.", flush=True)
+            return self._collect(self._cpu_model(), audio, language)
+
+    def _collect(self, model: Any, audio: np.ndarray, language: str) -> dict[str, Any]:
+        segments, _info = model.transcribe(
             audio,
             language=language or "es",
             vad_filter=False,

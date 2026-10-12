@@ -40,6 +40,7 @@ class TestStoryCatalog(unittest.TestCase):
         self.assertIn("El sapo valiente", prompt)
         self.assertIn("Contame un cuento", prompt)
         self.assertIn("no inventes", prompt.lower())
+        self.assertIn("no uses [PLAY_STORY]", prompt)
         self.assertIsNone(
             catalog_followup_prompt(
                 [{"action": "PLAY_MUSIC", "param": ""}],

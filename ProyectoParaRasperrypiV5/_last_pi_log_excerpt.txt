@@ -1,0 +1,259 @@
+================================================
+=== Edge AI Debug Log ===
+Inicio: 2026-10-11 16:12:53
+Plataforma: Linux-6.18.34+rpt-rpi-2712, Python 3.11.16
+================================================
+
+[16:12:53.983] Logger iniciado (audio_debug=off), archivo: /home/teo/Desktop/ProyectoParaRasperrypiV5/logs/sistema_2026-10-11_16-12-53.txt
+[16:12:53.983] [APP] inicio (ojos-lcd)
+[16:12:53.990] [ROUTINE] config cargada: 6 rutinas
+[16:12:54.030] [EYES] sprite Default 10 frames
+[16:12:54.035] [EYES] sprite dormido 4 frames
+[16:12:54.040] [EYES] sprite enojado 4 frames
+[16:12:54.043] [EYES] sprite sorprendido 2 frames
+[16:12:54.051] [EYES] sprite triste 7 frames
+[16:12:54.059] [HW] GPIO lgpio chip=4
+[16:12:54.540] [LCD] ST7789 320x240 rot=90
+[16:12:54.541] [LCD] ojos en pantalla ST7789
+[16:12:54.546] [SpeechWorker] inicio (salida=1)
+[16:12:54.546] [SpeechWorker] tarea _run comenzada
+[16:12:58.126] [SpeechWorker] piper-tts neural cargado correctamente
+[16:13:00.828] [CameraWorker] inicio (cámara=0)
+[16:13:00.828] [CameraWorker] tarea _run comenzada
+[16:13:00.828] [AudioWorker] inicio (mic=2)
+[16:13:00.829] [AudioWorker] tarea _run comenzada
+[16:13:00.829] [HW] pulsador en GPIO 27 (pull-up)
+[16:13:00.829] [APP] EyeMode workers iniciados (cam=0, mic=2, out=1, cloud=False)
+[16:13:00.832] [BEACON] inicio UDP :5555 cada 1.5s
+[16:13:00.832] [API] servidor REST bind 0.0.0.0:8080 (LAN 192.168.0.148)
+[16:13:00.834] [BEACON] IP anunciada: 192.168.0.148
+[16:13:01.077] [CameraWorker] captura 1280x720
+[16:13:01.174] <<< [CAMERA] Modelos de cámara listos, captura iniciada
+[16:13:01.174] >>> [WHISPER] Cargando modelo medium (proceso hijo)...
+[16:13:01.174] [CameraWorker] captura iniciada, modelos listos
+[16:13:07.226] [API] GET /api/status from 192.168.0.9 → 200 (4ms)
+[16:13:07.241] [API] GET /api/notifications from 192.168.0.9 → 200 (2ms)
+[16:13:08.868] [WIFI_BLE] WiFi ya conectado al arrancar; no anuncio BLE
+[16:13:16.288] [SpeechWorker] Ajustando audio 24000 Hz/1ch/float32 → 48000 Hz/2ch/int16 (dev=1)
+[16:13:21.985] [APP] config sensorial actualizada: {'volume_limit': 10, 'brightness': 1.0, 'playtime_limit_minutes': 120, 'belly_wake_enabled': True}
+[16:13:21.986] [API] POST /api/config from 192.168.0.9 → 200 in=63B (5ms)
+[16:13:22.020] [API] GET /api/status from 192.168.0.9 → 200 (3ms)
+[16:13:22.040] [API] GET /api/notifications from 192.168.0.9 → 200 (1ms)
+[16:13:23.792] <<< [WHISPER] Modelo listo (22618ms)
+[16:13:23.858] >>> [LLM_INIT] Cargando Llama-3.2-3B-Instruct-Q4_K_M.gguf n_ctx=1024 threads=4 timeout=120s...
+[16:13:27.307] [API] GET /api/status from 192.168.0.9 → 200 (4ms)
+[16:13:27.331] [API] GET /api/notifications from 192.168.0.9 → 200 (2ms)
+[16:13:46.543] <<< [LLM_INIT] Modelo cargado OK (22684ms)
+[16:13:46.543] [APP] power=ON
+[16:13:46.544] <<< [AUDIO_INIT] AudioWorker modelos cargados (Whisper + VAD + LLM=disponible PC=http://192.168.0.246:8090)
+[16:13:46.745] [CameraWorker] emoción=neutral (0.98)
+[16:13:47.156] [API] GET /api/status from 192.168.0.9 → 200 (1ms)
+[16:13:47.388] [API] GET /api/notifications from 192.168.0.9 → 200 (3ms)
+[16:13:53.106] [AudioWorker] corte de escucha: silencio detectado (capturado 4.1s, wav 5.1s)
+[16:13:53.106] >>> [SEGMENT] Audio segment (5.1s, 80960 samples)
+[16:13:53.205] >>> [TRANSCRIPTION] Audio (5.1s) [PC]
+[16:13:54.626] [STT] audio guardado: qué podemos hacer hoy_2.wav
+[16:13:54.626] <<< [STT_PC] "¿Qué podemos hacer hoy?"
+[16:13:54.626] <<< [TRANSCRIPTION] "¿Qué podemos hacer hoy?" (avg_logprob=-0.029, no_speech=0.011) (1520ms)
+[16:13:54.627] [STT] "¿Qué podemos hacer hoy?"
+[16:13:54.627] >>> [SANITIZATION] text="¿Qué podemos hacer hoy?"
+[16:13:54.630] <<< [SANITIZATION] "¿Qué podemos hacer hoy?" (3ms)
+[16:13:54.630] >>> [NLU] text="¿Qué podemos hacer hoy?", emotion={'label': 'neutral', 'score': 0.8923253921762807}
+[16:13:54.632] >>> [INTENT_DISPATCH] text="¿Qué podemos hacer hoy?"
+[16:13:54.633] <<< [INTENT_DISPATCH] intent=activity_offer conf=0.920 top2=0.000 (1ms)
+[16:13:54.633] <<< [NLU] intent=activity_offer conf=0.920 (3ms)
+[16:13:54.633] >>> [EMOTION_REACTOR] emotion={'label': 'neutral', 'score': 0.8923253921762807}, intent=activity_offer
+[16:13:54.633] <<< [EMOTION_REACTOR] is_crisis=False (0ms)
+[16:13:54.637] [TELEMETRY] interacción pilar=cognitivo intent=activity_offer
+[16:13:54.637] >>> [TTS] text="¡Dale! ¿Adivinamos el objeto, contamos, buscamos sombras o ponemos una canción?"
+[16:13:54.638] [SpeechWorker] Sintetizando: ¡Dale! ¿Adivinamos el objeto, contamos, buscamos sombras o ponemos una canción?
+[16:13:54.638] >>> [TTS_SYNTH] engine=pc-or-fallback, text="¡Dale! ¿Adivinamos el objeto, contamos, buscamos sombras o ponemos una canción?"
+[16:13:56.649] [SpeechWorker] TTS_PC
+[16:13:56.664] [SpeechWorker] Ajustando audio 24000 Hz/1ch/float32 → 48000 Hz/2ch/int16 (dev=1)
+[16:14:00.834] [ROUTINE] recordatorio: Merienda (16:00)
+[16:14:00.834] [SpeechWorker] enqueued TTS (46 chars)
+[16:14:00.834] [NOTIFY] omitido rutina: ¡Hora de la merienda! Vamos a comer algo rico.
+[16:14:04.279] <<< [TTS_SYNTH] Síntesis + reproducción completada (TTS_PC) (9641ms)
+[16:14:04.279] [SpeechWorker] Reproducción completada
+[16:14:04.279] [SpeechWorker] Sintetizando: ¡Hora de la merienda! Vamos a comer algo rico.
+[16:14:04.279] >>> [TTS_SYNTH] engine=pc-or-fallback, text="¡Hora de la merienda! Vamos a comer algo rico."
+[16:14:05.885] [SpeechWorker] TTS_PC
+[16:14:05.894] [SpeechWorker] Ajustando audio 24000 Hz/1ch/float32 → 48000 Hz/2ch/int16 (dev=1)
+[16:14:10.760] <<< [TTS_SYNTH] Síntesis + reproducción completada (TTS_PC) (6481ms)
+[16:14:10.760] [SpeechWorker] Reproducción completada
+[16:14:10.760] <<< [TTS] Reproducción completada (16123ms)
+[16:14:10.760] <<< [SEGMENT] Pipeline completo (17654ms)
+[16:14:11.215] [CameraWorker] emoción=enojado (0.19)
+[16:14:11.417] [CameraWorker] emoción=neutral (0.95)
+[16:14:12.036] [CameraWorker] emoción=triste (0.28)
+[16:14:15.031] [API] GET /api/status from 192.168.0.9 → 200 (2ms)
+[16:14:15.046] [API] GET /api/notifications from 192.168.0.9 → 200 (1ms)
+[16:14:18.724] [AudioWorker] corte de escucha: silencio detectado (capturado 7.5s, wav 8.4s)
+[16:14:18.725] >>> [SEGMENT] Audio segment (8.4s, 134080 samples)
+[16:14:18.736] >>> [TRANSCRIPTION] Audio (8.4s) [PC]
+[16:14:19.718] [STT] audio guardado: bueno hagamos eso que dijiste primero.wav
+[16:14:19.718] <<< [STT_PC] "Bueno, hagamos eso que dijiste primero."
+[16:14:19.718] <<< [TRANSCRIPTION] "Bueno, hagamos eso que dijiste primero." (avg_logprob=-0.024, no_speech=0.006) (993ms)
+[16:14:19.718] [STT] "Bueno, hagamos eso que dijiste primero."
+[16:14:19.718] >>> [SANITIZATION] text="Bueno, hagamos eso que dijiste primero."
+[16:14:19.720] <<< [SANITIZATION] "Bueno, hagamos eso que dijiste primero." (1ms)
+[16:14:19.720] >>> [NLU] text="Bueno, hagamos eso que dijiste primero.", emotion={'label': 'triste', 'score': 0.27990619540214534}
+[16:14:19.722] >>> [INTENT_DISPATCH] text="Bueno, hagamos eso que dijiste primero."
+[16:14:19.722] <<< [INTENT_DISPATCH] unknown (0ms)
+[16:14:19.722] <<< [NLU] intent=unknown conf=0.000 (2ms)
+[16:14:19.722] >>> [EMOTION_REACTOR] emotion={'label': 'triste', 'score': 0.27990619540214534}, intent=unknown
+[16:14:19.722] <<< [EMOTION_REACTOR] is_crisis=False (0ms)
+[16:14:19.722] >>> [LLM_FALLBACK] text="Bueno, hagamos eso que dijiste primero."
+[16:14:21.103] <<< [LLM_PC] response="¡Sí! ¿Qué objeto querés que adivinemos? ¡A ver si podés conmigo, Micaela! [INTENTS_OFF]" (1381ms)
+[16:14:21.103] <<< [LLM_FALLBACK] response="¡Sí! ¿Qué objeto querés que adivinemos? ¡A ver si podés conmigo, Micaela! [INTENTS_OFF]" (1381ms)
+[16:14:21.105] [INTENTS] on→off reason=llm_tag text="Bueno, hagamos eso que dijiste primero."
+[16:14:21.105] <<< [INTENTS] on→off reason=llm_tag text="Bueno, hagamos eso que dijiste primero."
+[16:14:21.105] <<< [ACTION] INTENTS_OFF (mute=True)
+[16:14:21.105] <<< [LLM_ACTIONS] actions=['INTENTS_OFF']
+[16:14:21.106] [TELEMETRY] interacción pilar=general intent=unknown
+[16:14:21.106] >>> [TTS] text="¡Sí! ¿Qué objeto querés que adivinemos? ¡A ver si podés conmigo, Micaela!"
+[16:14:21.106] [SpeechWorker] Sintetizando: ¡Sí! ¿Qué objeto querés que adivinemos? ¡A ver si podés conmigo, Micaela!
+[16:14:21.107] >>> [TTS_SYNTH] engine=pc-or-fallback, text="¡Sí! ¿Qué objeto querés que adivinemos? ¡A ver si podés conmigo, Micaela!"
+[16:14:23.687] [SpeechWorker] TTS_PC
+[16:14:23.700] [SpeechWorker] Ajustando audio 24000 Hz/1ch/float32 → 48000 Hz/2ch/int16 (dev=1)
+[16:14:31.793] <<< [TTS_SYNTH] Síntesis + reproducción completada (TTS_PC) (10687ms)
+[16:14:31.793] [SpeechWorker] Reproducción completada
+[16:14:31.793] <<< [TTS] Reproducción completada (10687ms)
+[16:14:31.794] <<< [SEGMENT] Pipeline completo (13069ms)
+[16:14:41.436] [AudioWorker] corte de escucha: silencio detectado (capturado 8.2s, wav 9.2s)
+[16:14:41.437] >>> [SEGMENT] Audio segment (9.2s, 147520 samples)
+[16:14:41.500] >>> [TRANSCRIPTION] Audio (9.2s) [PC]
+[16:14:42.712] [STT] audio guardado: dale juegamos.wav
+[16:14:42.712] <<< [STT_PC] "Dale, juegamos."
+[16:14:42.712] <<< [TRANSCRIPTION] "Dale, juegamos." (avg_logprob=-0.236, no_speech=0.003) (1274ms)
+[16:14:42.712] [STT] "Dale, juegamos."
+[16:14:42.712] >>> [SANITIZATION] text="Dale, juegamos."
+[16:14:42.713] <<< [SANITIZATION] "Dale, juegamos." (1ms)
+[16:14:42.735] >>> [NLU] text="Dale, juegamos.", emotion={'label': 'triste', 'score': 0.27990619540214534}
+[16:14:42.735] <<< [NLU] intent=unknown conf=0.000 muted (0ms)
+[16:14:42.735] >>> [EMOTION_REACTOR] emotion={'label': 'triste', 'score': 0.27990619540214534}, intent=unknown
+[16:14:42.735] <<< [EMOTION_REACTOR] is_crisis=False (0ms)
+[16:14:42.736] >>> [LLM_FALLBACK] text="Dale, juegamos."
+[16:14:43.935] <<< [LLM_PC] response="¡Genial! Acá estoy, listo. ¡Adiviná qué soy! Soy grande y puedo ser de muchos colores... ¿Qué podría ser? [INTENTS_OFF]" (1200ms)
+[16:14:43.935] <<< [LLM_FALLBACK] response="¡Genial! Acá estoy, listo. ¡Adiviná qué soy! Soy grande y puedo ser de muchos colores... ¿Qué podría ser? [INTENTS_OFF]" (1200ms)
+[16:14:43.936] <<< [ACTION] INTENTS_OFF (mute=True)
+[16:14:43.936] <<< [LLM_ACTIONS] actions=['INTENTS_OFF']
+[16:14:43.937] [TELEMETRY] interacción pilar=general intent=unknown
+[16:14:43.939] >>> [TTS] text="¡Genial! Acá estoy, listo. ¡Adiviná qué soy! Soy grande y puedo ser de muchos colores... ¿Qué podría ser?"
+[16:14:43.939] [SpeechWorker] Sintetizando: ¡Genial! Acá estoy, listo. ¡Adiviná qué soy! Soy grande y puedo ser de muchos colores... ¿Qué podría ser?
+[16:14:43.939] >>> [TTS_SYNTH] engine=pc-or-fallback, text="¡Genial! Acá estoy, listo. ¡Adiviná qué soy! Soy grande y puedo ser de muchos colores... ¿Qué podría ser?"
+[16:14:47.120] [SpeechWorker] TTS_PC
+[16:14:47.142] [SpeechWorker] Ajustando audio 24000 Hz/1ch/float32 → 48000 Hz/2ch/int16 (dev=1)
+[16:14:55.260] [CameraWorker] emoción=neutral (0.99)
+[16:14:59.195] <<< [TTS_SYNTH] Síntesis + reproducción completada (TTS_PC) (15256ms)
+[16:14:59.195] [SpeechWorker] Reproducción completada
+[16:14:59.195] <<< [TTS] Reproducción completada (15257ms)
+[16:14:59.195] <<< [SEGMENT] Pipeline completo (17759ms)
+[16:14:59.888] [API] GET /api/status from 192.168.0.9 → 200 (3ms)
+[16:14:59.905] [API] GET /api/notifications from 192.168.0.9 → 200 (1ms)
+[16:15:01.644] [AudioWorker] corte de escucha: silencio detectado (capturado 2.2s, wav 2.7s)
+[16:15:01.644] >>> [SEGMENT] Audio segment (2.7s, 42560 samples)
+[16:15:11.528] [AudioWorker] corte de escucha: silencio detectado (capturado 4.0s, wav 5.0s)
+[16:15:11.528] >>> [SEGMENT] Audio segment (5.0s, 79360 samples)
+[16:15:11.598] >>> [TRANSCRIPTION] Audio (5.0s) [PC]
+[16:15:12.505] [STT] audio guardado: un pavo real.wav
+[16:15:12.506] <<< [STT_PC] "Un pavo real."
+[16:15:12.506] <<< [TRANSCRIPTION] "Un pavo real." (avg_logprob=-0.025, no_speech=0.002) (977ms)
+[16:15:12.506] [STT] "Un pavo real."
+[16:15:12.506] >>> [SANITIZATION] text="Un pavo real."
+[16:15:12.507] <<< [SANITIZATION] "Un pavo real." (1ms)
+[16:15:12.528] >>> [NLU] text="Un pavo real.", emotion={'label': 'neutral', 'score': 0.955885533511173}
+[16:15:12.528] <<< [NLU] intent=unknown conf=0.000 muted (0ms)
+[16:15:12.528] >>> [EMOTION_REACTOR] emotion={'label': 'neutral', 'score': 0.955885533511173}, intent=unknown
+[16:15:12.528] <<< [EMOTION_REACTOR] is_crisis=False (0ms)
+[16:15:12.528] >>> [LLM_FALLBACK] text="Un pavo real."
+[16:15:13.771] <<< [LLM_PC] response="¡No, Micaela! ¡Qué buena idea, pero no es un pavo real! Es algo que está acá mismo... ¿Te acercás para ver mejor mis sombras? [INTENTS_OFF]" (1243ms)
+[16:15:13.771] <<< [LLM_FALLBACK] response="¡No, Micaela! ¡Qué buena idea, pero no es un pavo real! Es algo que está acá mismo... ¿Te acercás para ver mejor mis sombras? [INTENTS_OFF]" (1243ms)
+[16:15:13.772] <<< [ACTION] INTENTS_OFF (mute=True)
+[16:15:13.772] <<< [LLM_ACTIONS] actions=['INTENTS_OFF']
+[16:15:13.773] [TELEMETRY] interacción pilar=general intent=unknown
+[16:15:13.774] >>> [TTS] text="¡No, Micaela! ¡Qué buena idea, pero no es un pavo real! Es algo que está acá mismo... ¿Te acercás para ver mejor mis sombras?"
+[16:15:13.774] [SpeechWorker] Sintetizando: ¡No, Micaela! ¡Qué buena idea, pero no es un pavo real! Es algo que está acá mismo... ¿Te acercás para ver mejor mis sombras?
+[16:15:13.774] >>> [TTS_SYNTH] engine=pc-or-fallback, text="¡No, Micaela! ¡Qué buena idea, pero no es un pavo real! Es algo que está acá mismo... ¿Te acercás para ver mejor mis sombras?"
+[16:15:17.055] [SpeechWorker] TTS_PC
+[16:15:17.076] [SpeechWorker] Ajustando audio 24000 Hz/1ch/float32 → 48000 Hz/2ch/int16 (dev=1)
+[16:15:29.236] <<< [TTS_SYNTH] Síntesis + reproducción completada (TTS_PC) (15462ms)
+[16:15:29.236] [SpeechWorker] Reproducción completada
+[16:15:29.237] <<< [TTS] Reproducción completada (15463ms)
+[16:15:29.237] <<< [SEGMENT] Pipeline completo (17708ms)
+[16:15:32.277] [AudioWorker] corte de escucha: silencio detectado (capturado 3.0s, wav 3.3s)
+[16:15:32.277] >>> [SEGMENT] Audio segment (3.3s, 52160 samples)
+[16:15:32.294] >>> [TRANSCRIPTION] Audio (3.3s) [PC]
+[16:15:33.114] [STT] audio guardado: qué_39.wav
+[16:15:33.114] <<< [STT_PC] "¿Qué?"
+[16:15:33.114] <<< [TRANSCRIPTION] "¿Qué?" (avg_logprob=-0.876, no_speech=0.144) (837ms)
+[16:15:33.114] [STT] "¿Qué?"
+[16:15:33.114] >>> [SANITIZATION] text="¿Qué?"
+[16:15:33.115] <<< [SANITIZATION] "¿Qué?" (1ms)
+[16:15:33.116] >>> [NLU] text="¿Qué?", emotion={'label': 'neutral', 'score': 0.9668680981713642}
+[16:15:33.116] <<< [NLU] intent=unknown conf=0.000 muted (0ms)
+[16:15:33.116] >>> [EMOTION_REACTOR] emotion={'label': 'neutral', 'score': 0.9668680981713642}, intent=unknown
+[16:15:33.116] <<< [EMOTION_REACTOR] is_crisis=False (0ms)
+[16:15:33.116] >>> [LLM_FALLBACK] text="¿Qué?"
+[16:15:34.125] <<< [LLM_PC] response="[INTENTS_OFF] ¿Me decís qué estás viendo? Necesito saber para darte una pista mejor. ¿Es algo grande, pequeño, de color...?" (1009ms)
+[16:15:34.125] <<< [LLM_FALLBACK] response="[INTENTS_OFF] ¿Me decís qué estás viendo? Necesito saber para darte una pista mejor. ¿Es algo grande, pequeño, de color...?" (1009ms)
+[16:15:34.126] <<< [ACTION] INTENTS_OFF (mute=True)
+[16:15:34.126] <<< [LLM_ACTIONS] actions=['INTENTS_OFF']
+[16:15:34.126] [INTENTS] off→on reason=failsafe text="¿Qué?"
+[16:15:34.126] <<< [INTENTS] off→on reason=failsafe text="¿Qué?"
+[16:15:34.127] [TELEMETRY] interacción pilar=general intent=unknown
+[16:15:34.127] >>> [TTS] text="¿Me decís qué estás viendo? Necesito saber para darte una pista mejor. ¿Es algo grande, pequeño, de color...?"
+[16:15:34.127] [SpeechWorker] Sintetizando: ¿Me decís qué estás viendo? Necesito saber para darte una pista mejor. ¿Es algo grande, pequeño, de color...?
+[16:15:34.127] >>> [TTS_SYNTH] engine=pc-or-fallback, text="¿Me decís qué estás viendo? Necesito saber para darte una pista mejor. ¿Es algo grande, pequeño, de color...?"
+[16:15:36.967] [SpeechWorker] TTS_PC
+[16:15:36.988] [SpeechWorker] Ajustando audio 24000 Hz/1ch/float32 → 48000 Hz/2ch/int16 (dev=1)
+[16:15:47.121] <<< [TTS_SYNTH] Síntesis + reproducción completada (TTS_PC) (12994ms)
+[16:15:47.122] [SpeechWorker] Reproducción completada
+[16:15:47.122] <<< [TTS] Reproducción completada (12995ms)
+[16:15:47.122] <<< [SEGMENT] Pipeline completo (14845ms)
+[16:15:48.915] [AudioWorker] corte de escucha: silencio detectado (capturado 1.4s, wav 2.0s)
+[16:15:48.915] >>> [SEGMENT] Audio segment (2.0s, 32000 samples)
+[16:15:50.840] [AudioWorker] corte de escucha: silencio detectado (capturado 1.4s, wav 1.9s)
+[16:15:50.840] >>> [SEGMENT] Audio segment (1.9s, 30720 samples)
+[16:15:53.706] [AudioWorker] corte de escucha: silencio detectado (capturado 2.5s, wav 2.9s)
+[16:15:53.707] >>> [SEGMENT] Audio segment (2.9s, 45760 samples)
+[16:15:53.790] >>> [TRANSCRIPTION] Audio (2.9s) [PC]
+[16:15:55.136] [STT] audio guardado: apagate_3.wav
+[16:15:55.136] <<< [STT_PC] "Apagate."
+[16:15:55.136] <<< [TRANSCRIPTION] "Apagate." (avg_logprob=-0.294, no_speech=0.026) (1429ms)
+[16:15:55.136] [STT] "Apagate."
+[16:15:55.136] >>> [SANITIZATION] text="Apagate."
+[16:15:55.137] <<< [SANITIZATION] "Apagate." (1ms)
+[16:15:55.137] >>> [NLU] text="Apagate.", emotion={'label': 'neutral', 'score': 0.9414994135499001}
+[16:15:55.137] >>> [INTENT_DISPATCH] text="Apagate."
+[16:15:55.137] <<< [INTENT_DISPATCH] unknown (0ms)
+[16:15:55.137] <<< [NLU] intent=unknown conf=0.000 (0ms)
+[16:15:55.138] >>> [EMOTION_REACTOR] emotion={'label': 'neutral', 'score': 0.9414994135499001}, intent=unknown
+[16:15:55.138] <<< [EMOTION_REACTOR] is_crisis=False (0ms)
+[16:15:55.138] >>> [LLM_FALLBACK] text="Apagate."
+[16:15:56.259] <<< [LLM_PC] response="¡Ya, ya! ¡Qué lindo jugar contigo, Micaela! Chau, me voy a dormir. Buenas noches... [CALM_MODE] [GO_TO_SLEEP]" (1121ms)
+[16:15:56.259] <<< [LLM_FALLBACK] response="¡Ya, ya! ¡Qué lindo jugar contigo, Micaela! Chau, me voy a dormir. Buenas noches... [CALM_MODE] [GO_TO_SLEEP]" (1121ms)
+[16:15:56.260] <<< [ACTION] CALM_MODE ejecutado
+[16:15:56.260] <<< [ACTION] GO_TO_SLEEP diferido a después del TTS
+[16:15:56.260] <<< [LLM_ACTIONS] actions=['CALM_MODE', 'GO_TO_SLEEP']
+[16:15:56.261] [TELEMETRY] interacción pilar=general intent=unknown
+[16:15:56.261] >>> [TTS] text="¡Ya, ya! ¡Qué lindo jugar contigo, Micaela! Chau, me voy a dormir. Buenas noches..."
+[16:15:56.261] [SpeechWorker] Sintetizando: ¡Ya, ya! ¡Qué lindo jugar contigo, Micaela! Chau, me voy a dormir. Buenas noches...
+[16:15:56.261] >>> [TTS_SYNTH] engine=pc-or-fallback, text="¡Ya, ya! ¡Qué lindo jugar contigo, Micaela! Chau, me voy a dormir. Buenas noches..."
+[16:15:59.152] [SpeechWorker] TTS_PC
+[16:15:59.172] [SpeechWorker] Ajustando audio 24000 Hz/1ch/float32 → 48000 Hz/2ch/int16 (dev=1)
+[16:16:09.496] <<< [TTS_SYNTH] Síntesis + reproducción completada (TTS_PC) (13234ms)
+[16:16:09.496] [SpeechWorker] Reproducción completada
+[16:16:09.496] <<< [TTS] Reproducción completada (13235ms)
+[16:16:09.496] [APP] power=OFF
+[16:16:09.497] <<< [SEGMENT] Pipeline completo (15790ms)
+[16:16:23.606] [API] GET /api/status from 192.168.0.9 → 200 (1ms)
+[16:16:23.626] [API] GET /api/notifications from 192.168.0.9 → 200 (1ms)
+[16:16:38.908] [API] GET /api/status from 192.168.0.9 → 200 (2ms)
+[16:16:38.925] [API] GET /api/notifications from 192.168.0.9 → 200 (2ms)
+[16:16:52.431] [API] GET /api/status from 192.168.0.9 → 200 (2ms)
+[16:16:52.450] [API] GET /api/notifications from 192.168.0.9 → 200 (1ms)
+[16:17:08.003] [API] GET /api/status from 192.168.0.9 → 200 (1ms)
+[16:17:08.112] [API] GET /api/notifications from 192.168.0.9 → 200 (1ms)
+[16:17:43.736] [API] GET /api/status from 192.168.0.9 → 200 (23ms)
+[16:17:43.785] [API] GET /api/notifications from 192.168.0.9 → 200 (3ms)

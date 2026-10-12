@@ -1,7 +1,9 @@
 """Tests TDD de wifi_provision (parseo nmcli, sin radio real)."""
 from __future__ import annotations
 
+import json
 import subprocess
+import tempfile
 import unittest
 from pathlib import Path
 from unittest import mock
@@ -13,6 +15,7 @@ from wifi_provision import (
     WifiProvisioner,
     _default_runner,
     classify_nmcli_connect,
+    load_known_networks,
     parse_nmcli_active_wifi_name,
     parse_nmcli_added_uuid,
     parse_nmcli_connection_rows,
@@ -351,6 +354,51 @@ class TestSwitchNetwork(unittest.TestCase):
         self.assertTrue(
             any("connection.autoconnect" in argv and "no" in argv for argv in calls)
         )
+
+
+class TestKnownNetworks(unittest.TestCase):
+    def test_archivo_roto_o_ausente_devuelve_vacio(self) -> None:
+        missing = Path(tempfile.gettempdir()) / "known-wifi-que-no-existe.json"
+        self.assertEqual(load_known_networks(missing), [])
+        with tempfile.NamedTemporaryFile("w", suffix=".json", delete=False, encoding="utf-8") as fh:
+            fh.write("{")
+            path = Path(fh.name)
+        self.addCleanup(path.unlink, missing_ok=True)
+        self.assertEqual(load_known_networks(path), [])
+
+    def test_ignora_entradas_sin_ssid_o_sin_clave(self) -> None:
+        with tempfile.NamedTemporaryFile("w", suffix=".json", delete=False, encoding="utf-8") as fh:
+            json.dump(
+                [
+                    {"ssid": "Casa", "password": "secreta"},
+                    {"ssid": "", "password": "x"},
+                    {"ssid": "Abierta", "password": 1},
+                    "basura",
+                ],
+                fh,
+            )
+            path = Path(fh.name)
+        self.addCleanup(path.unlink, missing_ok=True)
+        self.assertEqual(load_known_networks(path), [("Casa", "secreta")])
+
+    def test_para_en_la_primera_que_conecta(self) -> None:
+        tried: list[str] = []
+
+        def switch(ssid: str, password: str) -> str:
+            tried.append(ssid)
+            return "ok" if ssid == "TeleCentro-22ed" else "auth"
+
+        prov = WifiProvisioner(runner=lambda argv, timeout: (0, "", ""))
+        prov.switch_to = switch  # type: ignore[method-assign]
+        joined = prov.try_known_networks(
+            [
+                ("MOVISTARWIFI8165", "a"),
+                ("TeleCentro-22ed", "b"),
+                ("moto g72", "c"),
+            ]
+        )
+        self.assertEqual(joined, "TeleCentro-22ed")
+        self.assertEqual(tried, ["MOVISTARWIFI8165", "TeleCentro-22ed"])
 
 
 class TestWifiProvisionSource(unittest.TestCase):

@@ -274,6 +274,15 @@ class TestMicHalfDuplex(unittest.TestCase):
 
 
 class TestEndpointingYCola(unittest.TestCase):
+    def test_cara_enojada_no_tapa_lo_que_dijo(self) -> None:
+        out = EmotionReactor().evaluate(
+            {"label": "enojado", "score": 0.65},
+            {"intent_name": "unknown", "confidence": 0.0, "response": "", "pilar": "general"},
+        )
+        self.assertEqual(out["intent_name"], "unknown")
+        self.assertEqual(out["response"], "")
+        self.assertTrue(out["is_crisis"])
+
     def test_silencio_normal_es_1_2(self) -> None:
         self.assertAlmostEqual(EmotionReactor.NORMAL_SILENCE, 1.2)
         self.assertAlmostEqual(EmotionReactor.EXTENDED_SILENCE, 3.0)

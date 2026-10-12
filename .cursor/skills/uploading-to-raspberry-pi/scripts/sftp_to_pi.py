@@ -38,6 +38,79 @@ def remote_path(remote_dir: str, local: Path) -> str:
     return f"{remote_dir.rstrip('/')}/{local.name}"
 
 
+# Mata python app.py de este usuario y lo vuelve a abrir como el autostart
+# (venv, DISPLAY, sin --gui, sin el runner que corta a los N segundos).
+_RESTART_SH = """\
+set -u
+cd "$DIR" || exit 1
+me=$(id -un)
+uid=$(id -u)
+kill_matches() {
+  sig=$1
+  ps -u "$me" -o pid=,args= | while read -r pid args; do
+    case "$args" in
+      *python*app.py*)
+        kill "$sig" "$pid" 2>/dev/null || true
+        ;;
+    esac
+  done
+}
+kill_matches -TERM
+sleep 1
+kill_matches -KILL
+sleep 1
+alive=$(ps -u "$me" -o args= | grep -E 'python.*app[.]py' | grep -v grep || true)
+if [ -n "$alive" ]; then
+  echo "app.py sigue vivo" >&2
+  exit 1
+fi
+if [ -x venv/bin/python ]; then
+  PY="$DIR/venv/bin/python"
+else
+  PY=python
+fi
+export DISPLAY="${DISPLAY:-:0}"
+export WAYLAND_DISPLAY="${WAYLAND_DISPLAY:-wayland-0}"
+export XDG_RUNTIME_DIR="${XDG_RUNTIME_DIR:-/run/user/$uid}"
+if [ -z "${XAUTHORITY:-}" ] && [ -f "$HOME/.Xauthority" ]; then
+  export XAUTHORITY="$HOME/.Xauthority"
+fi
+export PYTHONUNBUFFERED=1
+echo "----- $(date -Is) restart -----" >> "$DIR/autostart.log"
+setsid "$PY" -u app.py >> "$DIR/autostart.log" 2>&1 </dev/null &
+sleep 2
+found=0
+ps -u "$me" -o pid=,args= | while read -r pid args; do
+  case "$args" in
+    *python*app.py*)
+      echo "restart pid $pid"
+      found=1
+      ;;
+  esac
+done
+exit 0
+"""
+
+
+def restart_app(client: paramiko.SSHClient, remote_dir: str) -> int:
+    import shlex
+
+    quoted = shlex.quote(remote_dir)
+    stdin, stdout, stderr = client.exec_command(f"DIR={quoted} sh -s", timeout=40)
+    stdin.write(_RESTART_SH)
+    stdin.channel.shutdown_write()
+    out = stdout.read().decode("utf-8", "replace")
+    err = stderr.read().decode("utf-8", "replace").strip()
+    code = stdout.channel.recv_exit_status()
+    sys.stdout.write(out)
+    if err:
+        sys.stderr.write(err + "\n")
+    if code != 0 or "restart pid " not in out:
+        sys.stderr.write("no quedó app.py corriendo después del reinicio\n")
+        return code or 1
+    return 0
+
+
 def main() -> int:
     parser = argparse.ArgumentParser(description="Subir o borrar archivos en la Raspberry Pi")
     parser.add_argument("--put", nargs="*", default=[], help="Archivos locales a subir (basename en la Pi)")
@@ -51,6 +124,7 @@ def main() -> int:
         "/home/teo/Desktop/ProyectoFinal/ProyectoParaRasperrypiV5",
     )
     client, sftp = connect()
+    uploaded = False
     try:
         for raw in args.put:
             local = Path(raw).resolve()
@@ -67,10 +141,15 @@ def main() -> int:
                 print("rm", Path(name).name)
             except FileNotFoundError:
                 print("missing", Path(name).name)
+        uploaded = True
     finally:
         sftp.close()
+        if not uploaded:
+            client.close()
+    try:
+        return restart_app(client, remote_dir)
+    finally:
         client.close()
-    return 0
 
 
 if __name__ == "__main__":

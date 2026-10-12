@@ -6,7 +6,9 @@ import unittest
 from unittest.mock import patch
 
 from fallback_llm import (
+    _GEMMA_SYSTEM_PROMPT,
     _SYSTEM_PROMPT,
+    FallbackLLM,
     drop_prompt_leak,
     drop_unsolicited_story_offer,
     scrub_veo_veo_speech,
@@ -150,6 +152,82 @@ class TestPromptNoCannedEcho(unittest.TestCase):
         out = drop_prompt_leak("Se volvió imbécil. Qué bueno.", "Neutral.")
         self.assertNotEqual(out.strip().lower().rstrip("."), "neutral")
         self.assertGreater(len(out.split()), 2)
+
+
+class TestGemmaPrompt(unittest.TestCase):
+    def test_tiene_ejemplo_de_cada_accion(self) -> None:
+        for tag in (
+            "[PLAY_GAME:sombras]",
+            "[LIST_STORIES]",
+            "[PLAY_STORY:título de la lista]",
+            "[PLAY_GAME:piedra]",
+            "[LIST_MUSIC]",
+            "[PLAY_MUSIC:nombre que dijo]",
+            "[PLAY_MUSIC]",
+            "[STOP_MUSIC]",
+            "[INTENTS_OFF]",
+            "[INTENTS_ON]",
+            "[EXPRESSION:feliz]",
+            "[CELEBRATE:ató los cordones]",
+            "[HUG]",
+            "[CALM_MODE]",
+            "[GO_TO_SLEEP]",
+            "[NOTIFY_PARENT:Lleva un celular escondido en la mochila]",
+        ):
+            self.assertIn(tag, _GEMMA_SYSTEM_PROMPT)
+
+    def test_guarda_las_reglas_que_el_3b_ya_tenia(self) -> None:
+        folded = _GEMMA_SYSTEM_PROMPT.lower()
+        self.assertIn("no ofrezcas cuento", folded)
+        self.assertIn("no inventes", folded)
+        self.assertIn("no sabés", folded)
+        self.assertIn("palabra suelta", folded)
+        self.assertIn("piedra papel o tijera", folded)
+        self.assertIn("quiere jugar", folded)
+        self.assertNotIn("veo veo", folded)
+        self.assertNotIn("me llamo teo", folded)
+        self.assertNotIn("tags:", folded)
+        self.assertIn("situación es parecida", folded)
+        self.assertIn("otras palabras", folded)
+        self.assertIn("el nene no los escucha", folded)
+        self.assertIn("no le pidas permiso", folded)
+        self.assertIn("aunque diga que no", folded)
+        self.assertIn("celular escondido", folded)
+        self.assertIn("un saludo no abre un juego", folded)
+        self.assertIn("proponerlos en prosa", folded)
+        self.assertIn("sin [play_game", folded)
+        self.assertIn("[hug]", folded)
+        self.assertIn("abrazo", folded)
+        self.assertNotIn("ese me gusta", folded)
+        self.assertNotIn("ejemplo:", folded)
+        self.assertNotIn("no esta bueno", folded)
+        self.assertIn("[calm_mode] solo no alcanza", folded)
+        self.assertIn("igual van en tu respuesta", folded)
+        self.assertIn("[go_to_sleep] apaga", folded)
+        self.assertNotIn("buenas noches.\n[go_to_sleep]", folded)
+        self.assertNotIn("descansá un poco.\n[calm_mode]", folded)
+
+    def test_la_ficha_sigue_en_el_system(self) -> None:
+        ficha = "Datos del nene (dalo por cierto):\nSe llama Luna. Es nena."
+        messages = FallbackLLM._build_messages(
+            "hola",
+            None,
+            [],
+            profile_section=ficha,
+            system_prompt=_GEMMA_SYSTEM_PROMPT,
+        )
+        system = messages[0]["content"]
+        self.assertTrue(system.startswith("Sos TEO, un peluche."))
+        self.assertIn("Se llama Luna.", system)
+        self.assertIn("[PLAY_GAME:sombras]", system)
+        self.assertEqual(messages[-1], {"role": "user", "content": "hola"})
+
+    def test_el_3b_no_recibe_el_prompt_de_gemma(self) -> None:
+        messages = FallbackLLM._build_messages("hola", None, [], profile_section="Se llama Luna.")
+        system = messages[0]["content"]
+        self.assertTrue(system.startswith("Tu nombre es TEO."))
+        self.assertIn("Se llama Luna.", system)
+        self.assertNotIn("Sos TEO, un peluche.", system)
 
 
 class TestLlmProfile(unittest.TestCase):

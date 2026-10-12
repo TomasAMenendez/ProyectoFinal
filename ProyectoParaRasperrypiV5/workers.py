@@ -556,6 +556,12 @@ class EmotionReactor:
             intent_result["is_crisis"] = True
             return intent_result
 
+        # La cara enojada no reemplaza lo que dijo. El LLM lee el texto y avisa.
+        if intent_name == "unknown":
+            updated = dict(intent_result)
+            updated["is_crisis"] = True
+            return updated
+
         # Override: forzar respuesta de crisis
         crisis_intent = "emotion_angry" if label == "enojado" else "emotion_sad"
         return {
@@ -2565,6 +2571,7 @@ class AudioWorker:
                 from child_profile import current_prompt_section
                 from fallback_llm import (
                     FallbackLLM,
+                    _GEMMA_SYSTEM_PROMPT,
                     drop_prompt_leak,
                     drop_unsolicited_story_offer,
                     scrub_veo_veo_speech,
@@ -2575,6 +2582,7 @@ class AudioWorker:
                     emotion,
                     history,
                     profile_section=current_prompt_section(),
+                    system_prompt=_GEMMA_SYSTEM_PROMPT,
                 )
                 self._log_pc(
                     f"[PC] enviando LLM a {url} (timeout {getattr(client, 'llm_timeout_s', 60):.0f}s)"
@@ -2598,7 +2606,9 @@ class AudioWorker:
             )
         local = self.fallback_llm
         if local is not None and getattr(local, "is_available", False):
-            return local.generate(user_text, emotion, history=history) or ""
+            from conversation_memory import local_history
+
+            return local.generate(user_text, emotion, history=local_history(history)) or ""
         return ""
 
     def _maybe_catalog_followup(
@@ -2633,7 +2643,21 @@ class AudioWorker:
             "[CATALOG] skill silenciosa; no se habla el LIST_*",
         )
         second = self._remote_or_local_llm(follow, emotion, history, pc_ready)
-        return second or ""
+        if not second:
+            return ""
+        _actions, spoken = self._parse_action_tags(second)
+        kept = [
+            item
+            for item in _actions
+            if item.get("action") not in {"PLAY_STORY", "PLAY_MUSIC"}
+        ]
+        if not kept:
+            return spoken or "¿Cuál querés?"
+        tags = "".join(
+            f" [{item['action']}:{item['param']}]" if item.get("param") else f" [{item['action']}]"
+            for item in kept
+        )
+        return (spoken + tags).strip()
 
     def _handle_segment(self, audio_segment: np.ndarray, whisper_model: Any, audio_queue: queue.Queue) -> None:
         if audio_segment.size == 0:
@@ -2965,11 +2989,6 @@ class AudioWorker:
                 self.speech_worker.stop_music()
 
             if intent_name == "hug_request":
-                if self.companion is not None:
-                    try:
-                        self.companion.hug()
-                    except Exception:
-                        pass
                 if self.eye_display is not None and hasattr(self.eye_display, "set_pictogram"):
                     try:
                         self.eye_display.set_pictogram("abrazo")
@@ -2982,7 +3001,7 @@ class AudioWorker:
             story_active = self.story_engine is not None and self.story_engine.is_active
             yoga_active = self.yoga_engine is not None and self.yoga_engine.is_active
             story_reflect = intent_payload.get("intent_name") == "story_reflect_answer"
-            from session_policy import should_allow_llm, stt_looks_like_garbage
+            from session_policy import should_allow_llm
 
             allow_llm = should_allow_llm(
                 intent_name,
@@ -2991,7 +3010,6 @@ class AudioWorker:
                 yoga_active=yoga_active,
                 gated=gated,
                 story_reflect=story_reflect,
-                garbage_stt=stt_looks_like_garbage(sanitized_text),
             )
             llm_history = self.conversation_memory.messages()
             pc_maybe = (
@@ -3127,6 +3145,8 @@ class AudioWorker:
                 intent_payload["pilar"] = "general"
 
             # 8.7 Parse and execute LLM action tags (#LLM-SKILLS)
+            from conversation_memory import assistant_memory_text
+
             response_text_raw = str(intent_payload.get("response", ""))
             actions, clean_response = self._parse_action_tags(response_text_raw)
             if actions:
@@ -3227,12 +3247,24 @@ class AudioWorker:
             skip_cut = bool(intent_payload.get("skip_tts_truncate"))
             story_chunk = intent_payload.get("story_chunk")
             if not skip_cut and not story_chunk and not intent_payload.get("story_need_reflection") and intent_payload.get("intent_name") != "story_reflect_answer":
-                # Truncar respuestas largas a ~25 palabras para mantener TTS < 4s.
-                response_text = self._truncate_response(response_text, max_words=25)
+                # Truncar respuestas largas a 50 palabras.
+                response_text = self._truncate_response(response_text, max_words=50)
             self._begin_game_lcd(
                 intent_payload.get("lcd_image"),
                 bool(intent_payload.get("lcd_clear_after_speech")),
             )
+            hold_hug = False
+            if (
+                (
+                    intent_payload.get("intent_name") == "hug_request"
+                    or intent_payload.get("hug")
+                )
+                and response_text
+                and self.companion is not None
+                and self.companion.try_begin_hug()
+            ):
+                hold_hug = True
+                self.companion.arms_up()
             try:
                 if self.speech_worker is not None:
                     _t_tts = time.monotonic()
@@ -3259,6 +3291,9 @@ class AudioWorker:
                     if _dlog:
                         _dlog.log_output("TTS", "Reproducción completada", elapsed_ms=(time.monotonic() - _t_tts) * 1000)
             finally:
+                if hold_hug and self.companion is not None:
+                    self.companion.arms_down()
+                    self.companion.end_hug()
                 self._end_game_lcd()
             if ppt_committed:
                 self._finish_rps_committed_turn()
@@ -3266,7 +3301,11 @@ class AudioWorker:
                 self._sync_rps_hands()
             self._sync_story_guard()
 
-            self._remember_turn(sanitized_text, intent_payload, response_text)
+            self._remember_turn(
+                sanitized_text,
+                intent_payload,
+                assistant_memory_text(response_text_raw, response_text),
+            )
 
             # Reproducir archivo de música si fue solicitado
             music_to_play = intent_payload.get("play_music_file")
@@ -3308,7 +3347,7 @@ class AudioWorker:
             self._kept_tts_mic_tail = False
 
     @staticmethod
-    def _truncate_response(text: str, max_words: int = 25) -> str:
+    def _truncate_response(text: str, max_words: int = 50) -> str:
         """Trunca respuestas TTS largas para mantener latencia baja.
 
         Corta en el último límite de oración dentro de *max_words* para
@@ -3336,7 +3375,7 @@ class AudioWorker:
     # [NOTIFY_PARENT:razón del aviso], etc.
     _ACTION_TAG_RE = re.compile(
         r"\["
-        r"(PLAY_MUSIC|STOP_MUSIC|NOTIFY_PARENT|EXPRESSION|CELEBRATE|CALM_MODE|INTENTS_OFF|INTENTS_ON|GO_TO_SLEEP|LIST_STORIES|LIST_MUSIC|PLAY_STORY|PLAY_GAME)"
+        r"(PLAY_MUSIC|STOP_MUSIC|NOTIFY_PARENT|EXPRESSION|CELEBRATE|HUG|CALM_MODE|INTENTS_OFF|INTENTS_ON|GO_TO_SLEEP|LIST_STORIES|LIST_MUSIC|PLAY_STORY|PLAY_GAME)"
         r"(?::([^\]]*))?"
         r"\]",
         re.IGNORECASE,
@@ -3436,7 +3475,7 @@ class AudioWorker:
                     from game_engine import apply_play_game_tag
 
                     if self.game_engine is not None and apply_play_game_tag(
-                        self.game_engine, param, intent_payload
+                        self.game_engine, param, intent_payload, user_text=user_text
                     ):
                         if _dlog:
                             _dlog.log_output("ACTION", f"PLAY_GAME -> {param!r}")
@@ -3489,6 +3528,18 @@ class AudioWorker:
                         )
                     if _dlog:
                         _dlog.log_output("ACTION", f"CELEBRATE -> {achievement}")
+
+                elif action == "HUG":
+                    intent_payload["hug"] = True
+                    if self.eye_display is not None and hasattr(
+                        self.eye_display, "set_pictogram"
+                    ):
+                        try:
+                            self.eye_display.set_pictogram("abrazo")
+                        except Exception:
+                            pass
+                    if _dlog:
+                        _dlog.log_output("ACTION", "HUG")
 
                 elif action in {"INTENTS_OFF", "INTENTS_ON"}:
                     if _dlog:

@@ -229,7 +229,7 @@ class PcServerClient:
     def complete(self, messages: list[dict[str, str]]) -> str | None:
         body = json.dumps({
             "messages": messages,
-            "max_tokens": 80,
+            "max_tokens": 160,
             "temperature": 0.70,
             "top_p": 0.9,
         }).encode("utf-8")

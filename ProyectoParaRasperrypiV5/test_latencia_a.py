@@ -97,8 +97,11 @@ class TestLlmNCtx(unittest.TestCase):
         self.assertGreater(rescue_at, gen_at)
         parse_at = src.find("self._parse_action_tags(response_text_raw)")
         spoken_at = src.find("spoken_text_or_unknown_fallback(")
+        remember_at = src.find("assistant_memory_text(")
         self.assertGreater(parse_at, rescue_at)
         self.assertGreater(spoken_at, parse_at)
+        self.assertGreater(remember_at, parse_at)
+        self.assertNotIn("ensure_play_game_tag", src)
 
     def test_mientras_piensa_deja_ojos_default(self) -> None:
         from workers import AudioWorker
@@ -188,14 +191,22 @@ class TestWhisperFastDefaults(unittest.TestCase):
 
 
 class TestConvoMaxTurns(unittest.TestCase):
-    def test_default_son_2_turnos(self) -> None:
+    def test_default_son_10_turnos_para_la_pc(self) -> None:
         env = {k: v for k, v in os.environ.items() if k != "CONVO_MAX_TURNS"}
         with patch.dict(os.environ, env, clear=True):
             mem = ConversationMemory()
-            for i in range(6):
+            for i in range(12):
                 mem.add_turn(f"u{i}", f"a{i}")
-            self.assertEqual(len(mem.messages()), 4)
-            self.assertEqual(mem.messages()[0]["content"], "u4")
+            self.assertEqual(len(mem.messages()), 20)
+            self.assertEqual(mem.messages()[0]["content"], "u2")
+
+    def test_la_pi_local_solo_ve_2_turnos(self) -> None:
+        from conversation_memory import local_history
+
+        history = [{"role": "user", "content": f"u{i}"} for i in range(20)]
+        kept = local_history(history)
+        self.assertEqual(len(kept), 4)
+        self.assertEqual(kept[0]["content"], "u16")
 
     def test_rollback_env_10(self) -> None:
         with patch.dict(os.environ, {"CONVO_MAX_TURNS": "10"}):
@@ -204,6 +215,21 @@ class TestConvoMaxTurns(unittest.TestCase):
                 mem.add_turn(f"u{i}", f"a{i}")
             self.assertEqual(len(mem.messages()), 20)
             self.assertEqual(mem.messages()[0]["content"], "u2")
+
+    def test_memoria_prefiere_la_respuesta_con_tags(self) -> None:
+        from conversation_memory import assistant_memory_text
+
+        self.assertEqual(
+            assistant_memory_text(
+                "Dale. [PLAY_GAME:adivina]",
+                "Dale. ¡Adiviná el objeto!",
+            ),
+            "Dale. [PLAY_GAME:adivina]",
+        )
+        self.assertEqual(
+            assistant_memory_text("", "¿Qué querés hacer?"),
+            "¿Qué querés hacer?",
+        )
 
 
 if __name__ == "__main__":

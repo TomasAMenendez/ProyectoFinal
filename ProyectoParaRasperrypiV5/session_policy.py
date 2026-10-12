@@ -301,14 +301,17 @@ def spoken_after_play_game(
     payload: dict | None,
     actions: list[dict[str, str]] | tuple[dict[str, str], ...],
 ) -> str:
-    """El tag arranca el motor; no se habla el invento del LLM."""
+    """El tag arranca el motor. Se dice la frase del modelo y después la apertura del juego."""
     names = {str(item.get("action") or "").upper() for item in actions}
+    said = str(clean_text or "").strip()
     if "PLAY_GAME" not in names:
-        return str(clean_text or "")
+        return said
+    if not (payload or {}).get("game_started"):
+        return said
     started = str((payload or {}).get("response") or "").strip()
-    if started:
-        return started
-    return str(clean_text or "")
+    if said and started and said != started:
+        return f"{said} {started}"
+    return said or started
 
 
 def mic_open_for_listen(speaker_playing: bool, now: float, echo_mute_until: float) -> bool:
@@ -319,9 +322,9 @@ def mic_open_for_listen(speaker_playing: bool, now: float, echo_mute_until: floa
 
 
 def stt_looks_like_garbage(text: str) -> bool:
-    """Vosk a 8 s a veces suelta ensalada (west, miraflores, …). No va al LLM."""
-    words = [w for w in (text or "").strip().split() if w]
-    return len(words) >= 8
+    """Ya no se usa longitud. La basura real la corta stt_is_low_confidence."""
+    del text
+    return False
 
 
 MIN_ACTIVE_SPEECH_SECONDS = 0.15
@@ -370,10 +373,7 @@ def should_allow_llm(
     story_reflect: bool = False,
     garbage_stt: bool = False,
 ) -> bool:
-    """Unknown siempre va al LLM. Un intent matcheado nunca.
-
-    ``garbage_stt`` se ignora: Whisper largo no es motivo para hablar enlatado.
-    """
+    """Unknown va al LLM. garbage_stt queda por compat y no corta."""
     del garbage_stt
     if story_reflect:
         return True

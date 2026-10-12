@@ -131,7 +131,7 @@ class TestTranscribeAndChat(unittest.TestCase):
             body = kwargs.get("body")
             self.assertIsInstance(body, bytes)
             payload = json.loads(body)
-            self.assertEqual(payload["max_tokens"], 80)
+            self.assertEqual(payload["max_tokens"], 160)
             self.assertEqual(payload["messages"][0]["content"], "hola")
             return 200, json.dumps({
                 "choices": [{"message": {"content": "Hola, estoy acá."}}],
