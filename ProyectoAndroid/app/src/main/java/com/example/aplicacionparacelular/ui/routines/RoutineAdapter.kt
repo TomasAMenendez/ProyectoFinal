@@ -15,6 +15,13 @@ class RoutineAdapter(
 ) : RecyclerView.Adapter<RoutineAdapter.ViewHolder>() {
 
     private var items: List<RoutineItem> = emptyList()
+    private var actionsEnabled = false
+
+    fun setActionsEnabled(enabled: Boolean) {
+        if (actionsEnabled == enabled) return
+        actionsEnabled = enabled
+        notifyDataSetChanged()
+    }
 
     fun submitList(newItems: List<RoutineItem>) {
         items = RoutineDisplayOrder.sorted(newItems)
@@ -27,7 +34,7 @@ class RoutineAdapter(
     }
 
     override fun onBindViewHolder(holder: ViewHolder, position: Int) {
-        holder.bind(items[position], onToggle, onEdit, onDelete)
+        holder.bind(items[position], actionsEnabled, onToggle, onEdit, onDelete)
     }
 
     override fun getItemCount(): Int = items.size
@@ -35,6 +42,7 @@ class RoutineAdapter(
     class ViewHolder(private val binding: ItemRoutineBinding) : RecyclerView.ViewHolder(binding.root) {
         fun bind(
             item: RoutineItem,
+            actionsEnabled: Boolean,
             onToggle: (RoutineItem) -> Unit,
             onEdit: (RoutineItem) -> Unit,
             onDelete: (RoutineItem) -> Unit,
@@ -49,9 +57,9 @@ class RoutineAdapter(
             binding.txtName.setTextColor(emphasis)
             binding.txtMessage.setTextColor(ContextCompat.getColor(context, RoutineCardTone.message(item.enabled)))
             binding.root.alpha = 1f
-            binding.switchEnabled.isEnabled = true
-            binding.btnEdit.isEnabled = true
-            binding.btnDelete.isEnabled = true
+            binding.switchEnabled.isEnabled = actionsEnabled
+            binding.btnEdit.isEnabled = actionsEnabled
+            binding.btnDelete.isEnabled = actionsEnabled
             binding.switchEnabled.contentDescription = item.name
             ViewCompat.setStateDescription(
                 binding.switchEnabled,

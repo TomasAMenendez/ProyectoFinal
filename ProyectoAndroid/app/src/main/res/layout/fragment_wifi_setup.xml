@@ -2,29 +2,130 @@
 <ScrollView xmlns:android="http://schemas.android.com/apk/res/android"
     xmlns:app="http://schemas.android.com/apk/res-auto"
     xmlns:tools="http://schemas.android.com/tools"
+    android:id="@+id/wifi_scroll"
     android:layout_width="match_parent"
     android:layout_height="match_parent"
+    android:background="@color/teo_background"
     android:clipToPadding="false"
-    android:paddingBottom="16dp"
+    android:fillViewport="true"
     tools:context=".ui.onboarding.WifiSetupFragment">
 
     <LinearLayout
         android:layout_width="match_parent"
         android:layout_height="wrap_content"
         android:orientation="vertical"
-        android:padding="16dp">
+        android:paddingStart="@dimen/teo_screen_margin"
+        android:paddingTop="12dp"
+        android:paddingEnd="@dimen/teo_screen_margin"
+        android:paddingBottom="24dp">
 
-        <TextView
-            android:layout_width="wrap_content"
-            android:layout_height="wrap_content"
-            android:text="@string/wifi_setup_title"
-            android:textAppearance="@style/TextAppearance.App.SectionTitle" />
-
-        <com.google.android.material.card.MaterialCardView
-            style="@style/Widget.App.CardView"
+        <FrameLayout
             android:layout_width="match_parent"
             android:layout_height="wrap_content"
-            android:layout_marginBottom="16dp">
+            android:minHeight="48dp">
+
+            <ImageButton
+                android:id="@+id/btn_back"
+                android:layout_width="48dp"
+                android:layout_height="48dp"
+                android:layout_gravity="start|center_vertical"
+                android:background="?attr/selectableItemBackgroundBorderless"
+                android:contentDescription="@string/my_teo_back"
+                android:src="@drawable/teo_ic_back"
+                android:visibility="gone"
+                app:tint="@color/teo_primary"
+                tools:visibility="visible" />
+
+            <TextView
+                android:layout_width="match_parent"
+                android:layout_height="wrap_content"
+                android:layout_gravity="center"
+                android:gravity="center"
+                android:paddingStart="48dp"
+                android:paddingEnd="48dp"
+                android:text="@string/wifi_setup_title"
+                android:textAppearance="@style/TextAppearance.Teo.Home.Title" />
+        </FrameLayout>
+
+        <TextView
+            android:id="@+id/txt_step_subtitle"
+            android:layout_width="match_parent"
+            android:layout_height="wrap_content"
+            android:layout_marginTop="4dp"
+            android:gravity="center"
+            android:text="@string/wifi_setup_pin_subtitle"
+            android:textAppearance="@style/TextAppearance.Teo.Home.Body" />
+
+        <ImageView
+            android:id="@+id/img_character"
+            android:layout_width="140dp"
+            android:layout_height="140dp"
+            android:layout_gravity="center_horizontal"
+            android:layout_marginTop="8dp"
+            android:contentDescription="@string/home_character"
+            android:scaleType="fitCenter" />
+
+        <TextView
+            android:id="@+id/chip_ble"
+            android:layout_width="wrap_content"
+            android:layout_height="wrap_content"
+            android:layout_gravity="center_horizontal"
+            android:layout_marginTop="8dp"
+            android:background="@drawable/teo_ble_chip"
+            android:drawablePadding="6dp"
+            android:gravity="center"
+            android:paddingStart="12dp"
+            android:paddingTop="6dp"
+            android:paddingEnd="12dp"
+            android:paddingBottom="6dp"
+            android:text="@string/wifi_setup_ble_chip"
+            android:textAppearance="@style/TextAppearance.Teo.Home.Caption"
+            android:textColor="@color/teo_text"
+            android:visibility="gone"
+            app:drawableStartCompat="@drawable/teo_ic_bluetooth"
+            tools:visibility="visible" />
+
+        <TextView
+            android:id="@+id/txt_wifi_status"
+            android:layout_width="match_parent"
+            android:layout_height="wrap_content"
+            android:layout_marginTop="8dp"
+            android:gravity="center"
+            android:textAppearance="@style/TextAppearance.Teo.Home.Secondary"
+            android:visibility="gone"
+            tools:text="Buscando redes…"
+            tools:visibility="visible" />
+
+        <com.google.android.material.progressindicator.CircularProgressIndicator
+            android:id="@+id/progress_wifi"
+            android:layout_width="wrap_content"
+            android:layout_height="wrap_content"
+            android:layout_gravity="center_horizontal"
+            android:layout_marginTop="8dp"
+            android:indeterminate="true"
+            android:visibility="gone"
+            app:indicatorColor="@color/teo_primary"
+            app:indicatorSize="36dp"
+            app:trackThickness="4dp" />
+
+        <TextView
+            android:id="@+id/txt_wifi_error"
+            android:layout_width="match_parent"
+            android:layout_height="wrap_content"
+            android:layout_marginTop="8dp"
+            android:gravity="center"
+            android:textAppearance="@style/TextAppearance.Teo.Home.Body"
+            android:textColor="@color/teo_error"
+            android:visibility="gone"
+            tools:text="Ese PIN no es."
+            tools:visibility="visible" />
+
+        <com.google.android.material.card.MaterialCardView
+            android:id="@+id/section_pin"
+            style="@style/Widget.Teo.Card"
+            android:layout_width="match_parent"
+            android:layout_height="wrap_content"
+            android:layout_marginTop="12dp">
 
             <LinearLayout
                 android:layout_width="match_parent"
@@ -34,189 +135,206 @@
                 <TextView
                     android:layout_width="match_parent"
                     android:layout_height="wrap_content"
-                    android:layout_marginBottom="12dp"
-                    android:text="@string/wifi_setup_subtitle"
-                    android:textAppearance="@style/TextAppearance.App.CardSubtitle" />
+                    android:text="@string/wifi_setup_pin_card"
+                    android:textAppearance="@style/TextAppearance.Teo.Home.Section" />
 
                 <TextView
-                    android:id="@+id/txt_wifi_status"
                     android:layout_width="match_parent"
                     android:layout_height="wrap_content"
-                    android:layout_marginBottom="8dp"
-                    android:text="@string/wifi_setup_searching"
-                    android:textSize="14sp" />
-
-                <com.google.android.material.progressindicator.LinearProgressIndicator
-                    android:id="@+id/progress_wifi"
-                    android:layout_width="match_parent"
-                    android:layout_height="wrap_content"
-                    android:layout_marginBottom="8dp"
-                    android:indeterminate="true"
-                    app:indicatorColor="@color/tertiary"
-                    app:trackColor="@color/card_bg_mint" />
+                    android:layout_marginTop="8dp"
+                    android:text="@string/wifi_setup_pin_help"
+                    android:textAppearance="@style/TextAppearance.Teo.Home.Body" />
 
                 <TextView
-                    android:id="@+id/txt_wifi_error"
-                    android:layout_width="match_parent"
-                    android:layout_height="wrap_content"
-                    android:layout_marginBottom="8dp"
-                    android:textColor="#F44336"
-                    android:textSize="14sp"
-                    android:visibility="gone"
-                    tools:text="Ese PIN no es."
-                    tools:visibility="visible" />
-
-                <!-- Paso 1: PIN del LCD -->
-                <LinearLayout
-                    android:id="@+id/section_pin"
-                    android:layout_width="match_parent"
-                    android:layout_height="wrap_content"
-                    android:orientation="vertical">
-
-                    <com.google.android.material.textfield.TextInputLayout
-                        android:id="@+id/til_wifi_pin"
-                        style="@style/Widget.MaterialComponents.TextInputLayout.OutlinedBox"
-                        android:layout_width="match_parent"
-                        android:layout_height="wrap_content"
-                        android:hint="@string/wifi_setup_pin_hint">
-
-                        <com.google.android.material.textfield.TextInputEditText
-                            android:id="@+id/edit_wifi_pin"
-                            android:layout_width="match_parent"
-                            android:layout_height="wrap_content"
-                            android:inputType="number"
-                            android:maxLength="6"
-                            android:minHeight="48dp" />
-                    </com.google.android.material.textfield.TextInputLayout>
-
-                    <com.google.android.material.button.MaterialButton
-                        android:id="@+id/btn_verify_pin"
-                        android:layout_width="match_parent"
-                        android:layout_height="wrap_content"
-                        android:layout_marginTop="8dp"
-                        android:enabled="false"
-                        android:minHeight="48dp"
-                        android:text="@string/wifi_setup_pin_verify"
-                        app:backgroundTint="@color/tertiary"
-                        app:cornerRadius="8dp" />
-                </LinearLayout>
-
-                <!-- Paso 2: elegir red -->
-                <LinearLayout
-                    android:id="@+id/section_networks"
-                    android:layout_width="match_parent"
-                    android:layout_height="wrap_content"
-                    android:orientation="vertical"
-                    android:visibility="gone">
-
-                    <TextView
-                        android:layout_width="wrap_content"
-                        android:layout_height="wrap_content"
-                        android:layout_marginBottom="4dp"
-                        android:text="@string/wifi_setup_networks_title"
-                        android:textSize="15sp" />
-
-                    <LinearLayout
-                        android:id="@+id/container_networks"
-                        android:layout_width="match_parent"
-                        android:layout_height="wrap_content"
-                        android:orientation="vertical" />
-
-                    <TextView
-                        android:id="@+id/txt_networks_empty"
-                        android:layout_width="match_parent"
-                        android:layout_height="wrap_content"
-                        android:text="@string/wifi_setup_networks_empty"
-                        android:textSize="14sp"
-                        android:visibility="gone" />
-
-                    <com.google.android.material.button.MaterialButton
-                        android:id="@+id/btn_refresh_networks"
-                        style="?attr/materialButtonOutlinedStyle"
-                        android:layout_width="match_parent"
-                        android:layout_height="wrap_content"
-                        android:layout_marginTop="8dp"
-                        android:minHeight="48dp"
-                        android:text="@string/wifi_setup_networks_refresh"
-                        app:cornerRadius="8dp" />
-                </LinearLayout>
-
-                <!-- Paso 3: contraseña -->
-                <LinearLayout
-                    android:id="@+id/section_password"
-                    android:layout_width="match_parent"
-                    android:layout_height="wrap_content"
-                    android:orientation="vertical"
-                    android:visibility="gone">
-
-                    <TextView
-                        android:id="@+id/txt_password_title"
-                        android:layout_width="match_parent"
-                        android:layout_height="wrap_content"
-                        android:layout_marginBottom="4dp"
-                        android:textSize="15sp"
-                        tools:text="Contraseña de Casa" />
-
-                    <com.google.android.material.textfield.TextInputLayout
-                        android:id="@+id/til_wifi_password"
-                        style="@style/Widget.MaterialComponents.TextInputLayout.OutlinedBox"
-                        android:layout_width="match_parent"
-                        android:layout_height="wrap_content"
-                        android:hint="@string/wifi_setup_password_hint"
-                        app:endIconMode="password_toggle">
-
-                        <com.google.android.material.textfield.TextInputEditText
-                            android:id="@+id/edit_wifi_password"
-                            android:layout_width="match_parent"
-                            android:layout_height="wrap_content"
-                            android:inputType="textPassword"
-                            android:minHeight="48dp" />
-                    </com.google.android.material.textfield.TextInputLayout>
-
-                    <com.google.android.material.button.MaterialButton
-                        android:id="@+id/btn_wifi_connect"
-                        android:layout_width="match_parent"
-                        android:layout_height="wrap_content"
-                        android:layout_marginTop="8dp"
-                        android:minHeight="48dp"
-                        android:text="@string/wifi_setup_password_connect"
-                        app:backgroundTint="@color/tertiary"
-                        app:cornerRadius="8dp" />
-                </LinearLayout>
-
-                <com.google.android.material.button.MaterialButton
-                    android:id="@+id/btn_wifi_retry"
-                    style="?attr/materialButtonOutlinedStyle"
                     android:layout_width="match_parent"
                     android:layout_height="wrap_content"
                     android:layout_marginTop="12dp"
-                    android:minHeight="48dp"
-                    android:text="@string/wifi_setup_retry"
-                    android:visibility="gone"
-                    app:cornerRadius="8dp" />
+                    android:text="@string/wifi_setup_pin_label"
+                    android:textAppearance="@style/TextAppearance.Teo.Home.Caption" />
 
-                <com.google.android.material.button.MaterialButton
-                    android:id="@+id/btn_wifi_bluetooth_settings"
-                    style="?attr/materialButtonOutlinedStyle"
+                <com.google.android.material.textfield.TextInputLayout
+                    android:id="@+id/til_wifi_pin"
+                    style="@style/Widget.Teo.Field"
                     android:layout_width="match_parent"
                     android:layout_height="wrap_content"
-                    android:layout_marginTop="8dp"
-                    android:minHeight="48dp"
-                    android:text="@string/wifi_setup_open_settings"
-                    android:visibility="gone"
-                    app:cornerRadius="8dp" />
+                    android:layout_marginTop="4dp">
+
+                    <com.google.android.material.textfield.TextInputEditText
+                        android:id="@+id/edit_wifi_pin"
+                        android:layout_width="match_parent"
+                        android:layout_height="wrap_content"
+                        android:digits="0123456789"
+                        android:hint="@string/wifi_setup_pin_placeholder"
+                        android:inputType="number"
+                        android:maxLength="6"
+                        android:minHeight="48dp"
+                        android:textColor="@color/teo_text"
+                        android:textColorHint="@color/teo_outline" />
+                </com.google.android.material.textfield.TextInputLayout>
 
                 <com.google.android.material.button.MaterialButton
-                    android:id="@+id/btn_wifi_app_settings"
-                    style="?attr/materialButtonOutlinedStyle"
+                    android:id="@+id/btn_verify_pin"
+                    style="@style/Widget.Teo.Home.Button"
                     android:layout_width="match_parent"
                     android:layout_height="wrap_content"
-                    android:layout_marginTop="8dp"
-                    android:minHeight="48dp"
-                    android:text="@string/wifi_setup_app_settings"
-                    android:visibility="gone"
-                    app:cornerRadius="8dp" />
+                    android:layout_marginTop="12dp"
+                    android:enabled="false"
+                    android:text="@string/wifi_setup_pin_verify"
+                    android:textColor="@color/teo_button_text"
+                    app:backgroundTint="@color/teo_button_bg" />
             </LinearLayout>
         </com.google.android.material.card.MaterialCardView>
+
+        <TextView
+            android:id="@+id/txt_pin_next"
+            android:layout_width="match_parent"
+            android:layout_height="wrap_content"
+            android:layout_marginTop="12dp"
+            android:gravity="center"
+            android:text="@string/wifi_setup_pin_next"
+            android:textAppearance="@style/TextAppearance.Teo.Home.Secondary" />
+
+        <com.google.android.material.card.MaterialCardView
+            android:id="@+id/section_networks"
+            style="@style/Widget.Teo.Card"
+            android:layout_width="match_parent"
+            android:layout_height="wrap_content"
+            android:layout_marginTop="12dp"
+            android:visibility="gone"
+            app:contentPadding="8dp">
+
+            <LinearLayout
+                android:layout_width="match_parent"
+                android:layout_height="wrap_content"
+                android:orientation="vertical">
+
+                <TextView
+                    android:layout_width="match_parent"
+                    android:layout_height="wrap_content"
+                    android:paddingStart="8dp"
+                    android:paddingTop="8dp"
+                    android:paddingEnd="8dp"
+                    android:text="@string/wifi_setup_networks_title"
+                    android:textAppearance="@style/TextAppearance.Teo.Home.Section" />
+
+                <LinearLayout
+                    android:id="@+id/container_networks"
+                    android:layout_width="match_parent"
+                    android:layout_height="wrap_content"
+                    android:layout_marginTop="4dp"
+                    android:orientation="vertical" />
+
+                <TextView
+                    android:id="@+id/txt_networks_empty"
+                    android:layout_width="match_parent"
+                    android:layout_height="wrap_content"
+                    android:padding="8dp"
+                    android:text="@string/wifi_setup_networks_empty"
+                    android:textAppearance="@style/TextAppearance.Teo.Home.Body"
+                    android:visibility="gone" />
+
+                <com.google.android.material.button.MaterialButton
+                    android:id="@+id/btn_refresh_networks"
+                    style="@style/Widget.Teo.Button.Outlined"
+                    android:layout_width="wrap_content"
+                    android:layout_height="wrap_content"
+                    android:layout_gravity="center_horizontal"
+                    android:layout_marginTop="4dp"
+                    android:layout_marginBottom="4dp"
+                    android:letterSpacing="0"
+                    android:text="@string/wifi_setup_networks_refresh" />
+            </LinearLayout>
+        </com.google.android.material.card.MaterialCardView>
+
+        <com.google.android.material.card.MaterialCardView
+            android:id="@+id/section_password"
+            style="@style/Widget.Teo.Card"
+            android:layout_width="match_parent"
+            android:layout_height="wrap_content"
+            android:layout_marginTop="12dp"
+            android:visibility="gone">
+
+            <LinearLayout
+                android:layout_width="match_parent"
+                android:layout_height="wrap_content"
+                android:orientation="vertical">
+
+                <TextView
+                    android:id="@+id/txt_password_title"
+                    android:layout_width="match_parent"
+                    android:layout_height="wrap_content"
+                    android:textAppearance="@style/TextAppearance.Teo.Home.Section"
+                    tools:text="Contraseña de Casa" />
+
+                <com.google.android.material.textfield.TextInputLayout
+                    android:id="@+id/til_wifi_password"
+                    style="@style/Widget.Teo.Field"
+                    android:layout_width="match_parent"
+                    android:layout_height="wrap_content"
+                    android:layout_marginTop="8dp"
+                    app:endIconMode="password_toggle"
+                    app:endIconTint="@color/teo_primary">
+
+                    <com.google.android.material.textfield.TextInputEditText
+                        android:id="@+id/edit_wifi_password"
+                        android:layout_width="match_parent"
+                        android:layout_height="wrap_content"
+                        android:hint="@string/wifi_setup_password_hint"
+                        android:inputType="textPassword"
+                        android:minHeight="48dp"
+                        android:textColor="@color/teo_text"
+                        android:textColorHint="@color/teo_outline" />
+                </com.google.android.material.textfield.TextInputLayout>
+            </LinearLayout>
+        </com.google.android.material.card.MaterialCardView>
+
+        <TextView
+            android:id="@+id/txt_same_network"
+            android:layout_width="match_parent"
+            android:layout_height="wrap_content"
+            android:layout_marginTop="12dp"
+            android:gravity="center"
+            android:text="@string/wifi_setup_same_network"
+            android:textAppearance="@style/TextAppearance.Teo.Home.Secondary"
+            android:visibility="gone" />
+
+        <com.google.android.material.button.MaterialButton
+            android:id="@+id/btn_wifi_connect"
+            style="@style/Widget.Teo.Home.Button"
+            android:layout_width="match_parent"
+            android:layout_height="wrap_content"
+            android:layout_marginTop="12dp"
+            android:text="@string/wifi_setup_password_connect"
+            android:visibility="gone" />
+
+        <com.google.android.material.button.MaterialButton
+            android:id="@+id/btn_wifi_retry"
+            style="@style/Widget.Teo.Button.Outlined"
+            android:layout_width="match_parent"
+            android:layout_height="wrap_content"
+            android:layout_marginTop="12dp"
+            android:letterSpacing="0"
+            android:text="@string/wifi_setup_retry"
+            android:visibility="gone" />
+
+        <com.google.android.material.button.MaterialButton
+            android:id="@+id/btn_wifi_bluetooth_settings"
+            style="@style/Widget.Teo.Button.Outlined"
+            android:layout_width="match_parent"
+            android:layout_height="wrap_content"
+            android:layout_marginTop="8dp"
+            android:letterSpacing="0"
+            android:text="@string/wifi_setup_open_settings"
+            android:visibility="gone" />
+
+        <com.google.android.material.button.MaterialButton
+            android:id="@+id/btn_wifi_app_settings"
+            style="@style/Widget.Teo.Button.Outlined"
+            android:layout_width="match_parent"
+            android:layout_height="wrap_content"
+            android:layout_marginTop="8dp"
+            android:letterSpacing="0"
+            android:text="@string/wifi_setup_app_settings"
+            android:visibility="gone" />
     </LinearLayout>
 </ScrollView>

@@ -19,8 +19,12 @@ class ChildProfileForm(private val form: IncludeChildProfileFieldsBinding) {
     private var selectedCostume = ChildProfile.DEFAULT_COSTUME
     private var picker: AlertDialog? = null
     val hasChanges: Boolean get() = dirtyTracker.dirty
+    val hasModel: Boolean get() = dirtyTracker.hasModel
 
     fun bind(onChanged: () -> Unit) {
+        // El modelo completo se restaura explícitamente, incluido el disfraz.
+        // La restauración automática de EditText no debe parecer una edición.
+        form.root.isSaveFromParentEnabled = false
         val watcher = object : TextWatcher {
             override fun beforeTextChanged(s: CharSequence?, start: Int, count: Int, after: Int) = Unit
             override fun onTextChanged(s: CharSequence?, start: Int, before: Int, count: Int) = Unit
@@ -90,9 +94,9 @@ class ChildProfileForm(private val form: IncludeChildProfileFieldsBinding) {
         dirtyTracker.markClean()
     }
 
-    fun restoreDraft(profile: ChildProfile) {
+    fun restoreDraft(profile: ChildProfile, dirty: Boolean = true) {
         populate(profile)
-        dirtyTracker.markDirty()
+        if (dirty) dirtyTracker.markDirty() else dirtyTracker.markClean()
     }
 
     fun read(): ChildProfile = ChildProfile(

@@ -3,6 +3,7 @@ package com.example.aplicacionparacelular.notifications
 import org.json.JSONArray
 import org.json.JSONObject
 import java.util.Calendar
+import java.net.URLEncoder
 
 data class PlannedAlarm(
     val requestCode: Int,
@@ -26,6 +27,71 @@ object ReminderPlan {
     const val BASE_APPT = 44000
 
     fun routineCode(id: String): Int = BASE_ROUTINE + (id.hashCode() and 0x0FFF)
+
+    fun routineCodes(json: String): Set<Int> {
+        val arr = runCatching { JSONArray(json) }.getOrDefault(JSONArray())
+        return buildSet {
+            for (i in 0 until arr.length()) {
+                val obj = arr.optJSONObject(i) ?: continue
+                add(routineCode(obj.optString("id")))
+            }
+        }
+    }
+
+    fun routineAlarmIdentity(id: String): String =
+        "teo-reminder://routine/" + URLEncoder.encode(id, "UTF-8")
+
+    fun storedRoutines(items: List<Triple<String, String, Int>>, token: () -> String): String {
+        val arr = JSONArray()
+        items.filter { it.third in 0 until 24 * 60 }.forEach { (id, name, minutes) ->
+            arr.put(
+                JSONObject().put("id", id).put("name", name).put("minutes", minutes)
+                    .put("alarmToken", token()),
+            )
+        }
+        return arr.toString()
+    }
+
+    fun legacyRoutineCodes(json: String): Set<Int> {
+        val arr = runCatching { JSONArray(json) }.getOrDefault(JSONArray())
+        return buildSet {
+            for (i in 0 until arr.length()) {
+                val obj = arr.optJSONObject(i) ?: continue
+                if (obj.optString("alarmToken").isBlank()) add(routineCode(obj.optString("id")))
+            }
+        }
+    }
+
+    fun routineLegacyCodesToCancel(routines: String, vaccines: String, appointments: String): List<Int> {
+        val medicalCodes = codesToCancel(vaccines, emptySet()) { legacyVaccineCodes(it.optString("id")) } +
+            codesToCancel(appointments, emptySet()) { legacyAppointmentCodes(it.optString("title")) }
+        return legacyRoutineCodes(routines).filterNot { it in medicalCodes }
+    }
+
+    fun isCurrentRoutine(
+        json: String,
+        requestCode: Int,
+        hhmm: String?,
+        recordId: String? = null,
+        token: String? = null,
+    ): Boolean {
+        if (recordId == null || token.isNullOrBlank() || requestCode != BASE_ROUTINE) return false
+        val parts = hhmm?.split(":") ?: return false
+        if (parts.size != 2) return false
+        val hour = parts[0].toIntOrNull()?.takeIf { it in 0..23 } ?: return false
+        val minute = parts[1].toIntOrNull()?.takeIf { it in 0..59 } ?: return false
+        val minutesOfDay = hour * 60 + minute
+        val arr = runCatching { JSONArray(json) }.getOrDefault(JSONArray())
+        for (i in 0 until arr.length()) {
+            val obj = arr.optJSONObject(i) ?: continue
+            if (obj.optString("id") == recordId && obj.optString("alarmToken") == token &&
+                obj.optInt("minutes", -1) == minutesOfDay
+            ) {
+                return true
+            }
+        }
+        return false
+    }
 
     fun legacyAppointmentCodes(title: String): List<Int> {
         val code = BASE_APPT + (title.hashCode() and 0x0FFF)

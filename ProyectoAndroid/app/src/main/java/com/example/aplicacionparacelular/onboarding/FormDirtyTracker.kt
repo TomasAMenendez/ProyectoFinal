@@ -5,6 +5,8 @@ class FormDirtyTracker {
     var dirty: Boolean = false
         private set
     private var applying: Boolean = false
+    private var loaded: Boolean = false
+    val hasModel: Boolean get() = loaded || dirty
 
     fun shouldApplyRemote(): Boolean = !dirty
 
@@ -17,11 +19,13 @@ class FormDirtyTracker {
     }
 
     fun endApply() {
+        loaded = true
         dirty = false
         applying = false
     }
 
     fun markClean() {
+        loaded = true
         dirty = false
     }
 

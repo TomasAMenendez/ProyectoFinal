@@ -41,7 +41,7 @@ class ProfileEditFragment : Fragment() {
         form = ChildProfileForm(binding.form)
         savedInstanceState?.getString("profile_draft")?.let {
             viewModel.draft = ChildProfile.parse(JSONObject(it))
-            viewModel.dirty = true
+            viewModel.dirty = savedInstanceState?.getBoolean("profile_dirty", true) != false
         }
         binding.form.btnSave.setText(R.string.profile_save_changes)
         form.bind {
@@ -52,11 +52,8 @@ class ProfileEditFragment : Fragment() {
         binding.btnBack.setOnClickListener { findNavController().popBackStack() }
         binding.form.btnSave.setOnClickListener { save() }
         val draft = viewModel.draft
-        if (viewModel.dirty && draft != null) {
-            form.restoreDraft(draft)
-        } else {
-            load()
-        }
+        if (draft != null) form.restoreDraft(draft, viewModel.dirty)
+        if (!viewModel.dirty) load()
     }
 
     private fun load() {
@@ -108,7 +105,10 @@ class ProfileEditFragment : Fragment() {
     }
 
     override fun onSaveInstanceState(outState: Bundle) {
-        if (_binding != null && form.hasChanges) outState.putString("profile_draft", form.payload().toString())
+        if (_binding != null && form.hasModel) {
+            outState.putString("profile_draft", form.payload().toString())
+            outState.putBoolean("profile_dirty", form.hasChanges)
+        }
         super.onSaveInstanceState(outState)
     }
 }

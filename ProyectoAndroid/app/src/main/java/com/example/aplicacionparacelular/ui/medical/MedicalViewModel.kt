@@ -22,7 +22,10 @@ data class Vaccine(
     val dueDate: String = ""
 )
 
-class MedicalViewModel : ViewModel() {
+class MedicalViewModel(
+    private val schedule: (Context, List<Vaccine>, List<Appointment>) -> Unit = ::scheduleMedicalReminders,
+) : ViewModel() {
+    private var loaded = false
 
     private val _appointments = MutableLiveData<List<Appointment>>(emptyList())
     val appointments: LiveData<List<Appointment>> = _appointments
@@ -67,28 +70,40 @@ class MedicalViewModel : ViewModel() {
             if (parsed == null) {
                 _vaccineLoad.value = RecordLoad.FAILED
             } else {
-                _vaccines.value = parsed
+                _vaccines.value = parsed.toList()
                 _vaccineLoad.value = RecordLoad.READY
             }
         } else {
             _vaccines.value = AgendaRules.defaultVaccines()
             _vaccineLoad.value = RecordLoad.READY
         }
+        loaded = true
     }
 
-    fun addAppointment(context: Context, appointment: Appointment) {
+    private fun ensureLoaded(context: Context) {
+        if (!loaded) loadData(context)
+    }
+
+    fun addAppointment(context: Context, appointment: Appointment): Boolean {
+        ensureLoaded(context)
+        if (_appointmentLoad.value != RecordLoad.READY) return false
         val current = _appointments.value.orEmpty() + appointment
         _appointments.value = AgendaRules.sort(current)
         _appointmentLoad.value = RecordLoad.READY
         saveAppointments(context)
+        return true
     }
 
     fun removeAppointment(context: Context, id: String) {
+        ensureLoaded(context)
+        if (_appointmentLoad.value != RecordLoad.READY) return
         _appointments.value = AgendaRules.without(_appointments.value.orEmpty(), id)
         saveAppointments(context)
     }
 
     fun toggleVaccine(context: Context, id: String) {
+        ensureLoaded(context)
+        if (_vaccineLoad.value != RecordLoad.READY) return
         val current = _vaccines.value?.toMutableList() ?: return
         val index = current.indexOfFirst { it.id == id }
         if (index < 0) return
@@ -99,6 +114,8 @@ class MedicalViewModel : ViewModel() {
     }
 
     fun setVaccineDueDate(context: Context, id: String, isoDate: String) {
+        ensureLoaded(context)
+        if (_vaccineLoad.value != RecordLoad.READY) return
         val current = _vaccines.value?.toMutableList() ?: return
         val index = current.indexOfFirst { it.id == id }
         if (index < 0) return
@@ -108,30 +125,9 @@ class MedicalViewModel : ViewModel() {
     }
 
     fun scheduleReminders(context: Context) {
+        ensureLoaded(context)
         if (_appointmentLoad.value == RecordLoad.FAILED || _vaccineLoad.value == RecordLoad.FAILED) return
-        val app = context.applicationContext
-        com.example.aplicacionparacelular.notifications.ReminderScheduler.saveAndScheduleVaccines(
-            app,
-            _vaccines.value.orEmpty().map {
-                com.example.aplicacionparacelular.notifications.ReminderScheduler.VaccineReminder(
-                    id = it.id,
-                    name = it.name,
-                    dueDateIso = it.dueDate,
-                    applied = it.applied,
-                )
-            },
-        )
-        com.example.aplicacionparacelular.notifications.ReminderScheduler.saveAndScheduleAppointments(
-            app,
-            _appointments.value.orEmpty().map {
-                com.example.aplicacionparacelular.notifications.AppointmentReminder(
-                    id = it.id,
-                    title = it.title,
-                    atMillis = AgendaRules.atMillis(it),
-                    label = AgendaRules.displayWhen(it),
-                )
-            },
-        )
+        schedule(context.applicationContext, _vaccines.value.orEmpty(), _appointments.value.orEmpty())
     }
 
     private fun saveAppointments(context: Context) {
@@ -145,4 +141,29 @@ class MedicalViewModel : ViewModel() {
         prefs.edit().putString("vaccines", MedicalRecords.vaccinesTo(_vaccines.value.orEmpty())).apply()
         scheduleReminders(context)
     }
+}
+
+private fun scheduleMedicalReminders(app: Context, vaccines: List<Vaccine>, appointments: List<Appointment>) {
+    com.example.aplicacionparacelular.notifications.ReminderScheduler.saveAndScheduleVaccines(
+        app,
+        vaccines.map {
+            com.example.aplicacionparacelular.notifications.ReminderScheduler.VaccineReminder(
+                id = it.id,
+                name = it.name,
+                dueDateIso = it.dueDate,
+                applied = it.applied,
+            )
+        },
+    )
+    com.example.aplicacionparacelular.notifications.ReminderScheduler.saveAndScheduleAppointments(
+        app,
+        appointments.map {
+            com.example.aplicacionparacelular.notifications.AppointmentReminder(
+                id = it.id,
+                title = it.title,
+                atMillis = AgendaRules.atMillis(it),
+                label = AgendaRules.displayWhen(it),
+            )
+        },
+    )
 }

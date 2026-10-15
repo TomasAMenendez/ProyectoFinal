@@ -53,15 +53,38 @@ class RoutinesFragment : Fragment() {
             val empty = routines.isEmpty()
             binding.txtEmpty.visibility = if (empty) View.VISIBLE else View.GONE
             binding.recyclerRoutines.visibility = if (empty) View.GONE else View.VISIBLE
+            renderLoadState()
+        }
+        viewModel.canEdit.observe(viewLifecycleOwner) { enabled ->
+            binding.btnAdd.isEnabled = enabled
+            adapter.setActionsEnabled(enabled)
+            renderLoadState()
+        }
+        viewModel.isLoading.observe(viewLifecycleOwner) {
+            renderLoadState()
         }
         viewModel.syncStatus.observe(viewLifecycleOwner) { status ->
             if (!status.isNullOrBlank()) {
-                Snackbar.make(binding.root, status, Snackbar.LENGTH_LONG).show()
+                Snackbar.make(binding.root, status, Snackbar.LENGTH_LONG)
+                    .setAction(R.string.activity_retry) { viewModel.loadRoutines() }
+                    .show()
                 viewModel.consumeStatus()
             }
         }
         viewModel.attachContext(requireContext())
         viewModel.loadRoutines()
+    }
+
+    private fun renderLoadState() {
+        if (_binding == null || viewModel.routines.value.orEmpty().isNotEmpty()) return
+        binding.txtEmpty.text = when {
+            viewModel.isLoading.value == true -> "Cargando rutinas…"
+            viewModel.canEdit.value == true -> getString(R.string.routines_empty)
+            else -> "No se pudieron leer las rutinas. Tocá para reintentar."
+        }
+        binding.txtEmpty.setOnClickListener {
+            if (viewModel.canEdit.value != true) viewModel.loadRoutines()
+        }
     }
 
     private fun openEditor(edit: Boolean, id: String) {

@@ -151,7 +151,7 @@ class AppointmentFormFragment : Fragment() {
         cal.set(Calendar.SECOND, 0)
         cal.set(Calendar.MILLISECOND, 0)
         val millis = cal.timeInMillis
-        viewModel.addAppointment(
+        val saved = viewModel.addAppointment(
             requireContext(),
             Appointment(
                 id = UUID.randomUUID().toString(),
@@ -161,6 +161,11 @@ class AppointmentFormFragment : Fragment() {
                 atMillis = millis,
             ),
         )
+        if (!saved) {
+            binding.txtFormError.setText(R.string.agenda_read_failed)
+            binding.txtFormError.isVisible = true
+            return
+        }
         findNavController().popBackStack()
     }
 

@@ -59,9 +59,9 @@ class Routine:
         parts = self.time.split(":")
         return int(parts[1]) if len(parts) > 1 else 0
 
-    def reset_daily(self) -> None:
+    def reset_daily(self, now: datetime | None = None) -> None:
         """Resetea el estado diario de la rutina."""
-        today = datetime.now().strftime("%Y-%m-%d")
+        today = (now or datetime.now()).strftime("%Y-%m-%d")
         if self._last_reminded_date != today:
             self._reminded_today = False
             self._pre_reminded_today = False
@@ -114,9 +114,9 @@ class RoutineScheduler:
         cues: list[RoutineCue] = []
 
         for routine in self.routines:
+            routine.reset_daily(now)
             if not routine.enabled or routine._completed_today:
                 continue
-            routine.reset_daily()
 
             routine_time = now.replace(
                 hour=routine.time_hour,

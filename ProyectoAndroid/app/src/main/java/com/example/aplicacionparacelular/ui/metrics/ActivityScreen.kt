@@ -15,6 +15,7 @@ import com.example.aplicacionparacelular.databinding.FragmentMetricsBinding
 
 object ActivityScreen {
     fun render(binding: FragmentMetricsBinding, presentation: ActivityPresentation) {
+        binding.metricsScroll.scrollTo(0, 0)
         val ready = presentation.phase == ActivityPhase.READY
         binding.groupContent.visibility = if (ready) View.VISIBLE else View.GONE
         binding.progressActivity.visibility = if (presentation.phase == ActivityPhase.LOADING) View.VISIBLE else View.GONE
@@ -87,15 +88,13 @@ object ActivityCharts {
         container.visibility = View.VISIBLE
         val density = container.resources.displayMetrics.density
         val fixed = (52 * density).toInt()
-        fillDays(container, days, fixed)
         val token = Any()
         scroll.tag = token
         scroll.post {
             if (scroll.tag != token) return@post
             val viewport = scroll.width - scroll.paddingLeft - scroll.paddingRight
-            if (days.size in 1..8 && viewport > fixed * days.size) {
-                fillDays(container, days, viewport / days.size)
-            }
+            val column = if (days.size in 1..8 && viewport > 0) viewport / days.size else fixed
+            fillDays(container, days, column.coerceAtLeast((36 * density).toInt()))
         }
     }
 

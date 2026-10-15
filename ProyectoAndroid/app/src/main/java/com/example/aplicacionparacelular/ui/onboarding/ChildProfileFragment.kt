@@ -50,7 +50,10 @@ class ChildProfileFragment : Fragment() {
         form.bind { form.refreshSaveEnabled() }
         binding.form.btnSave.setOnClickListener { save() }
         val draft = savedInstanceState?.getString("profile_draft")
-        if (draft != null) form.restoreDraft(ChildProfile.parse(JSONObject(draft))) else loadProfile()
+        if (draft != null) {
+            form.restoreDraft(ChildProfile.parse(JSONObject(draft)), savedInstanceState?.getBoolean("profile_dirty", true) != false)
+        }
+        if (draft == null || !form.hasChanges) loadProfile()
     }
 
     private fun loadProfile() {
@@ -101,7 +104,10 @@ class ChildProfileFragment : Fragment() {
     }
 
     override fun onSaveInstanceState(outState: Bundle) {
-        if (_binding != null && form.hasChanges) outState.putString("profile_draft", form.payload().toString())
+        if (_binding != null && form.hasModel) {
+            outState.putString("profile_draft", form.payload().toString())
+            outState.putBoolean("profile_dirty", form.hasChanges)
+        }
         super.onSaveInstanceState(outState)
     }
 }

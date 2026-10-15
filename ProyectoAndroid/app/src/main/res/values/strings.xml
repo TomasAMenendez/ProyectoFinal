@@ -52,13 +52,6 @@
     <string name="content_read_failed">No pude leer el archivo.</string>
     <string name="content_delete_music">Eliminar música</string>
     <string name="content_delete_story">Eliminar cuento</string>
-    <string name="preview_content_playing">Música en reproducción</string>
-    <string name="preview_content_uploading">Subida de música</string>
-    <string name="preview_content_empty">Catálogo vacío</string>
-    <string name="preview_content_error">Error de consulta</string>
-    <string name="preview_content_offline">Sin conexión</string>
-    <string name="preview_content_banner">Vista previa · %1$s</string>
-    <string name="preview_story_text">Una tarde, Luna encontró una semilla brillante al lado del sendero del jardín. La sembró con cuidado y la regó todos los días.\n\nAl principio, no pasó nada. Luna aprendió a esperar y a cuidar la tierra, incluso cuando todavía no se veía ningún brote.</string>
 
     <!-- Dashboard -->
     <string name="dashboard_connection_title">Estado del Peluche</string>
@@ -310,22 +303,22 @@
     <string name="child_profile_load_error">No pude cargar los datos del chico.</string>
 
     <!-- WiFi por BLE -->
-    <string name="wifi_setup_title">Conectá TEO al WiFi</string>
+    <string name="wifi_setup_title">Configurar Wi-Fi</string>
     <string name="wifi_setup_subtitle">TEO todavía no está en tu red. Miralo: en su pantallita hay un número de 6 dígitos.</string>
     <string name="wifi_setup_pin_hint">PIN de 6 dígitos</string>
     <string name="wifi_setup_pin_verify">Verificar PIN</string>
     <string name="wifi_setup_searching">Buscando a TEO por Bluetooth…</string>
     <string name="wifi_setup_connected_ble">Ya estoy hablando con TEO. Escribí el PIN de su pantallita.</string>
-    <string name="wifi_setup_networks_title">Elegí tu red</string>
+    <string name="wifi_setup_networks_title">Redes disponibles</string>
     <string name="wifi_setup_networks_empty">No encontré redes. Probá de nuevo.</string>
     <string name="wifi_setup_networks_refresh">Buscar redes de nuevo</string>
     <string name="wifi_setup_password_title">Contraseña de %1$s</string>
     <string name="wifi_setup_password_hint">Contraseña</string>
-    <string name="wifi_setup_password_connect">Conectar</string>
+    <string name="wifi_setup_password_connect">Conectar TEO</string>
     <string name="wifi_setup_connecting">Conectando a %1$s…</string>
     <string name="wifi_setup_scanning">Buscando redes…</string>
     <string name="wifi_setup_refresh_hint">TEO está actualizando la lista. Mientras tanto podés elegir una red.</string>
-    <string name="wifi_setup_done">¡Listo! TEO se conectó. Buscándolo en tu red…</string>
+    <string name="wifi_setup_done">TEO entró a la red. Comprobando la comunicación…</string>
     <string name="wifi_setup_error_pin">Ese PIN no es. Fijate en la pantallita de TEO. Si fallaste 5 veces, mirá el PIN nuevo.</string>
     <string name="wifi_setup_error_auth">La contraseña no funcionó. Probá de nuevo.</string>
     <string name="wifi_setup_error_session">TEO cortó la sesión. Escribí el PIN otra vez.</string>
@@ -347,13 +340,35 @@
     <string name="wifi_setup_error_expired">Pasaron los 10 minutos y TEO apagó el PIN. Reiniciá el peluche o volvé a "Cambiar red WiFi".</string>
     <string name="wifi_setup_secure">Con contraseña</string>
     <string name="wifi_setup_open_network">Abierta</string>
+    <string name="wifi_setup_open_short">Abierta</string>
+    <string name="wifi_setup_pin_subtitle">Primero, verificá el PIN de tu TEO</string>
+    <string name="wifi_setup_network_subtitle">Elegí la red Wi-Fi para TEO</string>
+    <string name="wifi_setup_pin_card">Verificá tu TEO</string>
+    <string name="wifi_setup_pin_help">Ingresá el código de 6 dígitos que aparece en la pantalla de TEO</string>
+    <string name="wifi_setup_pin_label">PIN de TEO</string>
+    <string name="wifi_setup_pin_placeholder">6 dígitos</string>
+    <string name="wifi_setup_pin_next">Después vas a elegir la red Wi-Fi</string>
+    <string name="wifi_setup_ble_chip">Conectado por Bluetooth</string>
+    <string name="wifi_setup_same_network">Usá la misma red Wi-Fi que tu teléfono</string>
+    <string name="wifi_network_selected">%1$s seleccionada</string>
+    <string name="wifi_network_available">%1$s disponible</string>
     <string name="wifi_setup_signal">Señal %1$d%%</string>
 
     <!-- Onboarding: sin LAN ni BLE -->
-    <string name="onboarding_retry_title">No encuentro a TEO</string>
+    <string name="onboarding_retry_title">Encontrar TEO</string>
     <string name="onboarding_retry_message">Acercate al peluche y activá el Bluetooth del celular. Si TEO ya está en tu WiFi, fijate que el celular esté en la misma red.</string>
-    <string name="onboarding_retry_button">Reintentar</string>
-    <string name="onboarding_retry_searching">Buscando…</string>
+    <string name="onboarding_retry_button">Volver a buscar TEO</string>
+    <string name="onboarding_retry_searching">Buscando a TEO…</string>
+    <string name="onboarding_find_subtitle">Vamos a conectar tu teléfono con TEO</string>
+    <string name="onboarding_find_missing_title">Todavía no encontramos a TEO</string>
+    <string name="onboarding_find_hint_power">Comprobá que TEO esté encendido y acercá el teléfono</string>
+    <string name="onboarding_find_hint_bluetooth">Activá el Bluetooth del teléfono</string>
+    <string name="onboarding_find_hint_wifi">Si TEO ya está configurado, conectá el teléfono a su misma red Wi-Fi</string>
+    <string name="onboarding_find_bluetooth_off_title">Activá el Bluetooth</string>
+    <string name="onboarding_find_permission_title">Falta un permiso de la app</string>
+    <string name="onboarding_find_permission">Para buscar a TEO, la app necesita permiso de dispositivos cercanos. Abrir los ajustes de Bluetooth no lo concede.</string>
+    <string name="onboarding_find_permission_blocked_title">El permiso quedó bloqueado</string>
+    <string name="onboarding_find_permission_blocked">Activá «Dispositivos cercanos» en los ajustes de la app y volvé. Los ajustes de Bluetooth del teléfono no alcanzan.</string>
 
     <!-- Config: cambiar red -->
     <string name="config_change_wifi">📶 Cambiar red WiFi</string>
@@ -447,7 +462,7 @@
 
     <string name="wifi_change_title">Cambiar red Wi-Fi</string>
     <string name="wifi_change_intro">TEO sigue en la red actual hasta que la nueva conecte.</string>
-    <string name="wifi_change_refresh">Actualizar lista</string>
+    <string name="wifi_change_refresh">Buscar redes de nuevo</string>
     <string name="wifi_change_password">Contraseña</string>
     <string name="wifi_change_send">Enviar a TEO</string>
     <string name="wifi_change_open">Esta red es abierta y no pide contraseña.</string>

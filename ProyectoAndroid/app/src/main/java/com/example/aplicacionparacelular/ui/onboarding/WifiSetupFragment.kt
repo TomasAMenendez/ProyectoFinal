@@ -15,6 +15,7 @@ import android.view.ViewGroup
 import androidx.activity.OnBackPressedCallback
 import androidx.activity.result.contract.ActivityResultContracts
 import androidx.core.app.ActivityCompat
+import androidx.core.view.isVisible
 import androidx.fragment.app.Fragment
 import androidx.navigation.fragment.findNavController
 import com.example.aplicacionparacelular.R
@@ -29,8 +30,13 @@ import com.example.aplicacionparacelular.onboarding.TeoBleClient
 import com.example.aplicacionparacelular.onboarding.TeoBleStatus
 import com.example.aplicacionparacelular.onboarding.TeoBleUuids
 import com.example.aplicacionparacelular.onboarding.TeoStatusEffect
+import com.example.aplicacionparacelular.onboarding.WifiDraft
+import com.example.aplicacionparacelular.onboarding.WifiLanRecovery
 import com.example.aplicacionparacelular.onboarding.WifiNetworkUi
 import com.example.aplicacionparacelular.onboarding.WifiScanPolicy
+import com.example.aplicacionparacelular.onboarding.WifiStepRules
+import com.example.aplicacionparacelular.ui.SystemBarInsets
+import com.example.aplicacionparacelular.ui.dashboard.TeoCharacterPresenter
 
 /**
  * Pantalla bloqueante que conecta al peluche a una red WiFi por BLE.
@@ -53,6 +59,7 @@ class WifiSetupFragment : Fragment() {
     private var pendingReadIsManual = false
 
     private var pinVerified = false
+    private var connectedByBle = false
     private var credentialsSent = false
     private var sawDisconnected = false
 
@@ -62,7 +69,8 @@ class WifiSetupFragment : Fragment() {
      */
     private var startedFromConfig = false
     private var fromMyTeo = false
-    private var joinedWifi = false
+    private val lanRecovery = WifiLanRecovery()
+    private val joinedWifi: Boolean get() = lanRecovery.hasJoinedWifi
 
     private val mainHandler = Handler(Looper.getMainLooper())
 
@@ -91,6 +99,8 @@ class WifiSetupFragment : Fragment() {
 
     override fun onViewCreated(view: View, savedInstanceState: Bundle?) {
         super.onViewCreated(view, savedInstanceState)
+        SystemBarInsets.applyVertical(binding.wifiScroll)
+        TeoCharacterPresenter.applyWave(binding.imgCharacter, null)
 
         // Con LAN viva solo se llega acá desde Config: el onboarding real no
         // tiene red. Se mira una vez, antes de que la Pi cambie de red, y
@@ -105,6 +115,7 @@ class WifiSetupFragment : Fragment() {
         } else {
             arguments?.getBoolean(KEY_FROM_MY_TEO) == true
         }
+        if (savedInstanceState?.getBoolean(KEY_JOINED_WIFI) == true) lanRecovery.joined()
 
         requireActivity().onBackPressedDispatcher.addCallback(
             viewLifecycleOwner,
@@ -124,13 +135,13 @@ class WifiSetupFragment : Fragment() {
         RobotConnectionManager.isConnected.observe(viewLifecycleOwner) { connected ->
             if (!connected) {
                 sawDisconnected = true
-            } else if (sawDisconnected) {
+            } else if (sawDisconnected || joinedWifi) {
+                lanRecovery.confirmed()
+                mainHandler.removeCallbacks(lanTimeout)
                 // El peluche volvió a aparecer en la LAN: el onboarding sigue
                 // en MainActivity (perfil del chico o app normal).
-                if (fromMyTeo) {
+                if (findNavController().currentDestination?.id == R.id.nav_wifi_setup) {
                     findNavController().popBackStack()
-                } else {
-                    findNavController().popBackStack(R.id.nav_dashboard, false)
                 }
             }
         }
@@ -145,13 +156,18 @@ class WifiSetupFragment : Fragment() {
         binding.btnVerifyPin.setOnClickListener { verifyPin() }
         binding.btnRefreshNetworks.setOnClickListener { requestNetworks(manual = true) }
         binding.btnWifiConnect.setOnClickListener { sendCredentials() }
-        binding.btnWifiRetry.setOnClickListener { restart() }
+        binding.btnWifiRetry.setOnClickListener {
+            if (lanRecovery.retryLan()) awaitLan() else restart()
+        }
         binding.btnWifiBluetoothSettings.setOnClickListener {
             startActivity(Intent(Settings.ACTION_BLUETOOTH_SETTINGS))
         }
         binding.btnWifiAppSettings.setOnClickListener { openAppSettings() }
+        binding.btnBack.isVisible = fromMyTeo
+        binding.btnBack.setOnClickListener { findNavController().popBackStack() }
+        showWaitingForTeo()
 
-        ensurePermissionsAndStart()
+        if (joinedWifi) awaitLan() else ensurePermissionsAndStart()
     }
 
     /**
@@ -198,10 +214,15 @@ class WifiSetupFragment : Fragment() {
         if (_binding == null) return
         val ble = TeoBleClient(requireContext())
         client = ble
-        ble.onScanStarted = { setBusy(true, getString(R.string.wifi_setup_searching)) }
+        ble.onScanStarted = {
+            setBusy(true, getString(R.string.wifi_setup_searching))
+            armStallWatchdog()
+        }
         ble.onReady = {
-            setBusy(false, getString(R.string.wifi_setup_connected_ble))
-            binding.sectionPin.visibility = View.VISIBLE
+            cancelStallWatchdog()
+            connectedByBle = true
+            setBusy(false, "")
+            showPinStep()
         }
         ble.onStatus = { handleStatus(it) }
         ble.onNetworks = { showNetworks(it) }
@@ -214,12 +235,11 @@ class WifiSetupFragment : Fragment() {
         client = null
         cancelStallWatchdog()
         pinVerified = false
+        connectedByBle = false
         credentialsSent = false
         selectedNetwork = null
         forgetNetworkList()
-        binding.sectionPin.visibility = View.GONE
-        binding.sectionNetworks.visibility = View.GONE
-        binding.sectionPassword.visibility = View.GONE
+        showWaitingForTeo()
         binding.txtWifiError.visibility = View.GONE
         binding.btnWifiRetry.visibility = View.GONE
         binding.btnWifiBluetoothSettings.visibility = View.GONE
@@ -293,28 +313,21 @@ class WifiSetupFragment : Fragment() {
         if (_binding == null) return
         when (TeoBleStatus.effectOf(status)) {
             TeoStatusEffect.WAIT_PIN -> {
-                // La sesión volvió a esperar el PIN (o todavía no arrancó).
                 if (!pinVerified) {
                     cancelStallWatchdog()
-                    setBusy(false, getString(R.string.wifi_setup_waiting_pin))
-                    binding.sectionPin.visibility = View.VISIBLE
+                    setBusy(false, "")
+                    showPinStep()
                 }
             }
             TeoStatusEffect.PIN_ACCEPTED -> {
                 pinVerified = true
-                // La Pi repite `pin_ok` cada vez que su sesión vuelve a reposo.
-                // Releer acá siempre era el ping-pong: read → la Pi rescanea →
-                // `scanning` → `pin_ok` → read…
                 val action = WifiScanPolicy.onPinOk(
                     hasNetworks = shownNetworks.isNotEmpty(),
                     userChoosing = isUserChoosing(),
                     readInFlight = readInFlight,
                     autoReads = autoReads,
                 )
-                if (action != ScanListAction.KEEP) {
-                    binding.sectionPin.visibility = View.GONE
-                    binding.sectionNetworks.visibility = View.VISIBLE
-                }
+                if (action != ScanListAction.KEEP) showNetworkStep()
                 when (action) {
                     ScanListAction.READ -> requestNetworks(manual = false)
                     ScanListAction.SETTLE -> settleNetworkList()
@@ -349,8 +362,9 @@ class WifiSetupFragment : Fragment() {
             TeoStatusEffect.JOINED_WIFI -> onRobotJoinedWifi()
             TeoStatusEffect.RETRY_PIN -> {
                 cancelStallWatchdog()
-                setBusy(false, getString(R.string.wifi_setup_connected_ble))
-                binding.sectionPin.visibility = View.VISIBLE
+                pinVerified = false
+                setBusy(false, "")
+                showPinStep()
                 showError(getString(R.string.wifi_setup_error_pin), allowRetry = false)
             }
             TeoStatusEffect.RESTART_SESSION -> {
@@ -358,34 +372,28 @@ class WifiSetupFragment : Fragment() {
                 pinVerified = false
                 selectedNetwork = null
                 forgetNetworkList()
-                setBusy(false, getString(R.string.wifi_setup_connected_ble))
-                binding.sectionPin.visibility = View.VISIBLE
-                binding.sectionNetworks.visibility = View.GONE
-                binding.sectionPassword.visibility = View.GONE
+                setBusy(false, "")
+                showPinStep()
                 showError(getString(R.string.wifi_setup_error_session), allowRetry = false)
             }
             TeoStatusEffect.RETRY_PASSWORD -> {
-                // El PIN sigue valiendo: solo hay que reescribir la contraseña.
                 cancelStallWatchdog()
                 credentialsSent = false
                 setBusy(false, "")
-                binding.sectionPassword.visibility = View.VISIBLE
+                showNetworkStep()
                 binding.btnWifiConnect.isEnabled = true
                 binding.editWifiPassword.text?.clear()
                 showError(getString(R.string.wifi_setup_error_auth), allowRetry = false)
             }
             TeoStatusEffect.SESSION_EXPIRED -> {
-                // Se cumplieron los 10 minutos: la Pi apagó el BLE y borró el
-                // PIN, así que hay que empezar de cero (no solo reintentar).
                 cancelStallWatchdog()
                 pinVerified = false
+                connectedByBle = false
                 credentialsSent = false
                 selectedNetwork = null
                 forgetNetworkList()
                 setBusy(false, "")
-                binding.sectionPin.visibility = View.GONE
-                binding.sectionNetworks.visibility = View.GONE
-                binding.sectionPassword.visibility = View.GONE
+                showWaitingForTeo()
                 showError(getString(R.string.wifi_setup_error_expired), allowRetry = true)
             }
             TeoStatusEffect.UNKNOWN_FAILURE -> {
@@ -406,17 +414,40 @@ class WifiSetupFragment : Fragment() {
     }
 
     private fun onRobotJoinedWifi() {
-        joinedWifi = true
-        cancelStallWatchdog()
-        setBusy(true, getString(R.string.wifi_setup_done))
-        binding.sectionPin.visibility = View.GONE
-        binding.sectionNetworks.visibility = View.GONE
-        binding.sectionPassword.visibility = View.GONE
-        binding.txtWifiError.visibility = View.GONE
+        lanRecovery.joined()
         // La Pi corta el BLE apenas entra a la red; soltamos la radio nosotros también.
         client?.close()
         client = null
+        awaitLan()
+    }
+
+    private fun awaitLan() {
+        if (_binding == null) return
+        cancelStallWatchdog()
+        setBusy(true, getString(R.string.wifi_setup_done))
+        binding.sectionPin.isVisible = false
+        binding.txtPinNext.isVisible = false
+        binding.sectionNetworks.isVisible = false
+        binding.sectionPassword.isVisible = false
+        binding.btnWifiConnect.isVisible = false
+        binding.txtSameNetwork.setText(R.string.wifi_setup_lan_hint)
+        binding.txtSameNetwork.isVisible = true
+        binding.chipBle.isVisible = false
+        binding.imgCharacter.isVisible = false
+        binding.txtWifiError.visibility = View.GONE
+        binding.btnWifiRetry.isVisible = false
+        binding.btnWifiBluetoothSettings.isVisible = false
+        binding.btnWifiAppSettings.isVisible = false
+        mainHandler.removeCallbacks(lanTimeout)
+        mainHandler.postDelayed(lanTimeout, STALL_TIMEOUT_MS)
         RobotConnectionManager.forgetAndRediscover(requireContext())
+    }
+
+    private val lanTimeout = Runnable {
+        if (_binding == null || RobotConnectionManager.isConnected.value == true) return@Runnable
+        if (!lanRecovery.timeOut()) return@Runnable
+        setBusy(false, "")
+        showError(getString(R.string.wifi_setup_lan_not_found), allowRetry = true)
     }
 
     /** Respuesta de CHAR_SCAN. */
@@ -427,9 +458,14 @@ class WifiSetupFragment : Fragment() {
         val manual = pendingReadIsManual
         pendingReadIsManual = false
         shownNetworks = WifiScanPolicy.listToShow(shownNetworks, answer, manual)
+        if (selectedNetwork != null && shownNetworks.none { it.ssid == selectedNetwork?.ssid }) {
+            val typed = binding.editWifiPassword.text?.toString().orEmpty()
+            binding.editWifiPassword.setText(
+                WifiDraft.passwordAfterRefresh(selectedNetwork?.ssid, null, typed),
+            )
+            selectedNetwork = null
+        }
         if (isUserChoosing() && !manual) {
-            // Llegó tarde, mientras el padre elige o tipea: guardamos la lista
-            // nueva pero no le movemos la pantalla abajo de las manos.
             setBusy(false, "")
             return
         }
@@ -440,22 +476,23 @@ class WifiSetupFragment : Fragment() {
     private fun settleNetworkList() {
         if (_binding == null) return
         cancelStallWatchdog()
-        setBusy(false, getString(R.string.wifi_setup_networks_title))
-        binding.sectionNetworks.visibility = View.VISIBLE
+        setBusy(false, "")
+        showNetworkStep()
+        bindRows()
+    }
+
+    private fun bindRows() {
         binding.containerNetworks.removeAllViews()
-        binding.txtNetworksEmpty.visibility =
-            if (shownNetworks.isEmpty()) View.VISIBLE else View.GONE
+        binding.txtNetworksEmpty.isVisible = shownNetworks.isEmpty()
         val inflater = LayoutInflater.from(requireContext())
         for (network in shownNetworks) {
             val item = ItemWifiNetworkBinding.inflate(inflater, binding.containerNetworks, false)
-            item.txtNetworkSsid.text = network.ssid
-            val lock = if (network.secure) {
-                "🔒 " + getString(R.string.wifi_setup_secure)
-            } else {
-                getString(R.string.wifi_setup_open_network)
-            }
-            item.txtNetworkDetail.text =
-                "$lock · " + getString(R.string.wifi_setup_signal, network.signal)
+            WifiNetworkRow.bind(
+                item,
+                network.ssid,
+                network.secure,
+                selected = network.ssid == selectedNetwork?.ssid,
+            )
             item.root.setOnClickListener { selectNetwork(network) }
             binding.containerNetworks.addView(item.root)
         }
@@ -463,20 +500,60 @@ class WifiSetupFragment : Fragment() {
 
     private fun selectNetwork(network: WifiNetworkUi) {
         selectedNetwork = network
-        binding.txtWifiError.visibility = View.GONE
+        binding.txtWifiError.isVisible = false
+        showNetworkStep()
+        bindRows()
         if (!network.secure) {
-            binding.sectionPassword.visibility = View.GONE
+            binding.sectionPassword.isVisible = false
+            binding.btnWifiConnect.isVisible = false
             setBusy(true, getString(R.string.wifi_setup_connecting, network.ssid))
             credentialsSent = true
             armStallWatchdog()
             client?.writeConnect(network.ssid, "")
             return
         }
-        binding.sectionPassword.visibility = View.VISIBLE
         binding.btnWifiConnect.isEnabled = true
         binding.txtPasswordTitle.text = getString(R.string.wifi_setup_password_title, network.ssid)
         binding.editWifiPassword.text?.clear()
         binding.editWifiPassword.requestFocus()
+    }
+
+    private fun showWaitingForTeo() {
+        binding.sectionPin.isVisible = false
+        binding.txtPinNext.isVisible = false
+        binding.sectionNetworks.isVisible = false
+        binding.sectionPassword.isVisible = false
+        binding.btnWifiConnect.isVisible = false
+        binding.txtSameNetwork.isVisible = false
+        binding.chipBle.isVisible = false
+        binding.imgCharacter.isVisible = true
+        binding.txtStepSubtitle.setText(R.string.wifi_setup_pin_subtitle)
+    }
+
+    private fun showPinStep() {
+        binding.sectionPin.isVisible = WifiStepRules.showsPin(pinVerified)
+        binding.txtPinNext.isVisible = binding.sectionPin.isVisible
+        binding.sectionNetworks.isVisible = false
+        binding.sectionPassword.isVisible = false
+        binding.btnWifiConnect.isVisible = false
+        binding.txtSameNetwork.isVisible = false
+        binding.imgCharacter.isVisible = true
+        binding.txtStepSubtitle.setText(R.string.wifi_setup_pin_subtitle)
+        binding.chipBle.isVisible = WifiStepRules.showsBluetoothChip(connectedByBle, httpChange = false)
+    }
+
+    private fun showNetworkStep() {
+        binding.sectionPin.isVisible = false
+        binding.txtPinNext.isVisible = false
+        binding.sectionNetworks.isVisible = WifiStepRules.showsNetworks(pinVerified)
+        binding.imgCharacter.isVisible = false
+        binding.txtStepSubtitle.setText(R.string.wifi_setup_network_subtitle)
+        binding.chipBle.isVisible = WifiStepRules.showsBluetoothChip(connectedByBle, httpChange = false)
+        binding.txtSameNetwork.isVisible = true
+        binding.txtSameNetwork.setText(R.string.wifi_setup_same_network)
+        val secure = selectedNetwork?.secure == true
+        binding.sectionPassword.isVisible = secure
+        binding.btnWifiConnect.isVisible = secure
     }
 
     private fun handleFailure(failure: TeoBleClient.Failure) {
@@ -488,6 +565,8 @@ class WifiSetupFragment : Fragment() {
         binding.btnWifiConnect.isEnabled = true
         when (failure) {
             TeoBleClient.Failure.BLUETOOTH_OFF -> {
+                connectedByBle = false
+                binding.chipBle.isVisible = false
                 showError(getString(R.string.wifi_setup_error_bluetooth_off), allowRetry = true)
                 binding.btnWifiBluetoothSettings.visibility = View.VISIBLE
             }
@@ -523,8 +602,13 @@ class WifiSetupFragment : Fragment() {
     // ------------------------------------------------------------------
 
     private fun setBusy(busy: Boolean, message: String) {
-        binding.progressWifi.visibility = if (busy) View.VISIBLE else View.GONE
-        if (message.isNotEmpty()) binding.txtWifiStatus.text = message
+        binding.progressWifi.isVisible = busy
+        if (message.isNotEmpty()) {
+            binding.txtWifiStatus.text = message
+            binding.txtWifiStatus.isVisible = true
+        } else if (!busy) {
+            binding.txtWifiStatus.isVisible = false
+        }
     }
 
     private fun showError(message: String, allowRetry: Boolean) {
@@ -560,6 +644,7 @@ class WifiSetupFragment : Fragment() {
         client?.close()
         client = null
         cancelStallWatchdog()
+        mainHandler.removeCallbacks(lanTimeout)
         cancelProvisioningIfAbandoned()
         super.onDestroyView()
         _binding = null
@@ -590,12 +675,14 @@ class WifiSetupFragment : Fragment() {
         super.onSaveInstanceState(outState)
         outState.putBoolean(KEY_FROM_CONFIG, startedFromConfig)
         outState.putBoolean(KEY_FROM_MY_TEO, fromMyTeo)
+        outState.putBoolean(KEY_JOINED_WIFI, joinedWifi)
     }
 
     companion object {
         private const val TAG = "WifiSetupFragment"
         private const val KEY_FROM_CONFIG = "started_from_config"
         const val KEY_FROM_MY_TEO = "fromMyTeo"
+        private const val KEY_JOINED_WIFI = "joined_wifi"
 
         /** Máximo que esperamos una respuesta de la Pi antes de ofrecer salida. */
         private const val STALL_TIMEOUT_MS = 45_000L

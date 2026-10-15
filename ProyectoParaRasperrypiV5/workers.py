@@ -1768,6 +1768,7 @@ class AudioWorker:
         if not payload.get("story_chunk"):
             self._publish_story_status()
             return False
+        self._publish_story_status()
         gen = self._story_generation
 
         def _run() -> None:

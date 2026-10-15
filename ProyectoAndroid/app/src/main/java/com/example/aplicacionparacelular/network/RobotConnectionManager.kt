@@ -41,6 +41,7 @@ object RobotConnectionManager {
     private var appContext: Context? = null
     private var initialized = false
     private val profileAppearanceGate = ProfileAppearanceGate()
+    private val connectionSession = ConnectionSession()
 
     private val _parentAlerts = MutableLiveData<List<ParentNotice>>(emptyList())
     val parentAlerts: LiveData<List<ParentNotice>> = _parentAlerts
@@ -91,13 +92,14 @@ object RobotConnectionManager {
         attachDiscoveryObserver()
         if (RobotApiClient.isConfigured()) {
             Log.d(TAG, "IP ya configurada, arrancando polling")
+            val revision = connectionSession.revision
             executor.execute {
                 RobotApiClient.refreshPairingToken(ctx)
-                postToMain { startPolling() }
+                postToMain { if (connectionSession.accepts(revision)) startPolling() }
             }
         } else {
             Log.d(TAG, "No hay IP configurada, iniciando descubrimiento automático")
-            RobotDiscovery.startScan(ctx)
+            startLanRediscovery()
         }
     }
 
@@ -107,14 +109,16 @@ object RobotConnectionManager {
         val ctx = appContext ?: return@Observer
         val hasLan = _isConnected.value == true
         if (robot != null && BeaconIp.isUsable(robot.ip) && OnboardingGate.shouldAdoptLanDiscovery(hasLan)) {
+            if (!connectionSession.hasOwner) return@Observer
             Log.d(TAG, "Robot descubierto: ${robot.ip}:${robot.port} (${robot.deviceName})")
+            val revision = resetConnectionAttempt()
             RobotApiClient.setRobotAddress(ctx, robot.ip, robot.port)
             if (robot.pairingToken.isNotBlank()) {
                 RobotApiClient.setPairingToken(ctx, robot.pairingToken)
             }
             executor.execute {
                 RobotApiClient.refreshPairingToken(ctx)
-                postToMain { startPolling() }
+                postToMain { if (connectionSession.accepts(revision)) startPolling() }
             }
         }
     }
@@ -126,6 +130,7 @@ object RobotConnectionManager {
     }
 
     private fun startLanRediscovery() {
+        if (!connectionSession.hasOwner) return
         val ctx = appContext ?: return
         attachDiscoveryObserver()
         RobotDiscovery.startScan(ctx)
@@ -141,17 +146,13 @@ object RobotConnectionManager {
     fun forgetAndRediscover(context: Context) {
         val ctx = context.applicationContext
         appContext = ctx
-        stopPolling()
+        resetConnectionAttempt()
         RobotApiClient.clearAddress(ctx)
-        postToMain {
-            _isConnected.value = false
-            _robotStatus.value = null
-        }
         attachDiscoveryObserver()
         RobotDiscovery.stopScan()
         // stopScan apaga isScanning con postValue; sin este post, startScan vería
         // el scan viejo todavía en curso y se iría sin hacer nada.
-        postToMain { RobotDiscovery.startScan(ctx) }
+        postToMain { startLanRediscovery() }
     }
 
     /**
@@ -160,10 +161,42 @@ object RobotConnectionManager {
      */
     fun connectManually(context: Context, ip: String, port: Int = 8080) {
         Log.d(TAG, "Conexión manual a $ip:$port")
+        val revision = resetConnectionAttempt()
+        RobotDiscovery.stopScan()
         RobotApiClient.setRobotAddress(context, ip, port)
         executor.execute {
             RobotApiClient.refreshPairingToken(context)
-            postToMain { startPolling() }
+            postToMain { if (connectionSession.accepts(revision)) startPolling() }
+        }
+    }
+
+    private fun resetConnectionAttempt(): Long {
+        val revision = connectionSession.changeTarget()
+        stopPolling()
+        _isConnected.value = false
+        _robotStatus.value = null
+        _lastError.value = null
+        return revision
+    }
+
+    fun setUiActive(active: Boolean) {
+        connectionSession.uiActive = active
+        reconcileConnectionWork()
+    }
+
+    fun setAlertServiceActive(active: Boolean) {
+        connectionSession.alertServiceActive = active
+        reconcileConnectionWork()
+    }
+
+    private fun reconcileConnectionWork() {
+        if (!connectionSession.hasOwner) {
+            stopPolling()
+            RobotDiscovery.stopScan()
+        } else if (RobotApiClient.isConfigured()) {
+            if (pollingFuture == null) startPolling()
+        } else {
+            startLanRediscovery()
         }
     }
 
@@ -172,6 +205,7 @@ object RobotConnectionManager {
      * El intervalo por defecto es de 5 segundos.
      */
     fun startPolling(intervalSeconds: Long = 5) {
+        if (!connectionSession.hasOwner) return
         if (!RobotApiClient.isConfigured()) {
             Log.d(TAG, "startPolling() ignorado: no hay IP configurada")
             return
@@ -195,28 +229,34 @@ object RobotConnectionManager {
     }
 
     private fun pollStatus() {
+        if (!connectionSession.hasOwner) return
+        val revision = connectionSession.revision
         if (!RobotApiClient.isConfigured()) {
-            postToMain { _isConnected.value = false }
+            postToMain {
+                if (connectionSession.accepts(revision) && connectionSession.hasOwner) _isConnected.value = false
+            }
             return
         }
 
         when (val result = RobotApiClient.getStatus()) {
             is ApiResult.Success -> {
                 postToMain {
+                    if (!connectionSession.accepts(revision) || !connectionSession.hasOwner) return@postToMain
                     val justConnected = _isConnected.value != true
-                    _isConnected.value = true
                     _robotStatus.value = result.data
                     _lastError.value = null
                     // Si el JSON no trae has_child_profile (firmware viejo), true evita
                     // dejar la app bloqueada para siempre. Tras actualizar la Pi, el campo existe.
                     _hasChildProfile.value = result.data.optBoolean("has_child_profile", true)
+                    _isConnected.value = true
                     if (justConnected) fetchChildProfile { }
                 }
-                pollNotifications()
+                if (connectionSession.accepts(revision) && connectionSession.hasOwner) pollNotifications(revision)
             }
             is ApiResult.Error -> {
                 Log.d(TAG, "Poll falló: ${result.message}")
                 postToMain {
+                    if (!connectionSession.accepts(revision) || !connectionSession.hasOwner) return@postToMain
                     _isConnected.value = false
                     _robotStatus.value = null
                     _lastError.value = result.message
@@ -237,18 +277,24 @@ object RobotConnectionManager {
         call: () -> ApiResult<T>,
         onResult: (ApiResult<T>) -> Unit
     ) {
+        val revision = connectionSession.revision
         executor.execute {
-            val result = call()
-            postToMain { onResult(result) }
+            val result = if (connectionSession.accepts(revision)) call() else connectionChanged()
+            postToMain {
+                onResult(if (connectionSession.accepts(revision)) result else connectionChanged())
+            }
         }
     }
+
+    private fun connectionChanged() = ApiResult.Error("La conexión con TEO cambió. Reintentá la operación.")
 
     fun fetchStatus(onResult: (ApiResult<JSONObject>) -> Unit) {
         executeAsync({ RobotApiClient.getStatus() }) { result ->
             if (result is ApiResult.Success) {
-                _isConnected.value = true
                 _robotStatus.value = result.data
                 _lastError.value = null
+                _hasChildProfile.value = result.data.optBoolean("has_child_profile", true)
+                _isConnected.value = true
             }
             onResult(result)
         }
@@ -461,9 +507,10 @@ object RobotConnectionManager {
     // Notificaciones Raspberry → celular
     // ------------------------------------------------------------------
 
-    private fun pollNotifications() {
+    private fun pollNotifications(revision: Long) {
         when (val result = RobotApiClient.getNotifications()) {
             is ApiResult.Success -> {
+                if (!connectionSession.accepts(revision) || !connectionSession.hasOwner) return
                 val arr = result.data.optJSONArray("notifications") ?: return
                 if (arr.length() == 0) return
                 val incoming = mutableListOf<ParentNotice>()
@@ -479,10 +526,11 @@ object RobotConnectionManager {
                         receivedAt + i,
                     ) ?: continue
                     incoming.add(notice)
-                    showSystemNotification(type, message)
                 }
                 if (incoming.isEmpty()) return
                 postToMain {
+                    if (!connectionSession.accepts(revision) || !connectionSession.hasOwner) return@postToMain
+                    incoming.forEach { showSystemNotification(it.type, it.message) }
                     val merged = ParentInbox.merge(recentNotices, incoming)
                     recentNotices.clear()
                     recentNotices.addAll(merged)

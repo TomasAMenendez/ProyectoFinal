@@ -62,7 +62,14 @@ data class RoutineItem(
     }
 }
 
-class RoutinesViewModel : ViewModel() {
+class RoutinesViewModel(
+    private val fetchRoutines: ((ApiResult<JSONObject>) -> Unit) -> Unit = {
+        RobotConnectionManager.fetchRoutines(it)
+    },
+    private val updateRoutines: (JSONObject, (ApiResult<JSONObject>) -> Unit) -> Unit = { body, callback ->
+        RobotConnectionManager.updateRoutines(body, callback)
+    },
+) : ViewModel() {
 
     private val _routines = MutableLiveData<List<RoutineItem>>(emptyList())
     val routines: LiveData<List<RoutineItem>> = _routines
@@ -73,25 +80,38 @@ class RoutinesViewModel : ViewModel() {
     private val _syncStatus = MutableLiveData<String?>()
     val syncStatus: LiveData<String?> = _syncStatus
 
+    private var hasLoaded = false
+    private val _canEdit = MutableLiveData(false)
+    val canEdit: LiveData<Boolean> = _canEdit
+
     fun loadRoutines() {
+        if (_isLoading.value == true) return
+        hasLoaded = false
         _isLoading.value = true
-        RobotConnectionManager.fetchRoutines { result ->
+        publishEditable()
+        fetchRoutines { result ->
             _isLoading.value = false
             when (result) {
                 is ApiResult.Success -> {
-                    val routinesArray = result.data.optJSONArray("routines") ?: JSONArray()
-                    val list = mutableListOf<RoutineItem>()
-                    for (i in 0 until routinesArray.length()) {
-                        val json = routinesArray.optJSONObject(i) ?: continue
-                        list.add(RoutineItem.fromJson(json))
+                    val routinesArray = result.data.optJSONArray("routines")
+                    if (routinesArray == null) {
+                        _syncStatus.value = "No se pudieron leer las rutinas"
+                    } else {
+                        val list = mutableListOf<RoutineItem>()
+                        for (i in 0 until routinesArray.length()) {
+                            val json = routinesArray.optJSONObject(i) ?: continue
+                            list.add(RoutineItem.fromJson(json))
+                        }
+                        hasLoaded = true
+                        _routines.value = list
+                        scheduleLocalReminders()
                     }
-                    _routines.value = list
-                    scheduleLocalReminders()
                 }
                 is ApiResult.Error -> {
                     _syncStatus.value = result.message.ifBlank { "No se pudieron leer las rutinas" }
                 }
             }
+            publishEditable()
         }
     }
 
@@ -109,12 +129,12 @@ class RoutinesViewModel : ViewModel() {
         } else {
             previous.map { if (it.id == item.id) item else it }
         }
-        persist(previous, next, onResult)
+        persist(next, onResult)
     }
 
     fun removeRoutine(id: String) {
         val previous = _routines.value.orEmpty()
-        persist(previous, previous.filterNot { it.id == id }) { _, _ -> }
+        persist(previous.filterNot { it.id == id }) { _, _ -> }
     }
 
     fun toggleRoutine(id: String) {
@@ -122,32 +142,48 @@ class RoutinesViewModel : ViewModel() {
         val next = previous.map { routine ->
             if (routine.id == id) routine.copy(enabled = !routine.enabled) else routine
         }
-        persist(previous, next) { _, _ -> }
+        persist(next) { _, _ -> }
     }
 
     private fun persist(
-        previous: List<RoutineItem>,
         next: List<RoutineItem>,
         onResult: (Boolean, String?) -> Unit,
     ) {
-        _routines.value = next
+        if (_canEdit.value != true) {
+            val message = if (_isLoading.value == true) {
+                "Esperá a que termine la operación de rutinas"
+            } else {
+                "Primero hay que leer las rutinas de TEO. Reintentá la carga"
+            }
+            _syncStatus.value = message
+            onResult(false, message)
+            return
+        }
+        _isLoading.value = true
+        publishEditable()
         val jsonArray = JSONArray()
         for (routine in next) {
             jsonArray.put(routine.toJson())
         }
         val body = JSONObject().apply { put("routines", jsonArray) }
-        RobotConnectionManager.updateRoutines(body) { result ->
-            when (result) {
-                is ApiResult.Success -> {
-                    scheduleLocalReminders()
-                    onResult(true, null)
-                }
-                is ApiResult.Error -> {
-                    _routines.value = previous
-                    val message = result.message.ifBlank { "No se pudieron guardar las rutinas" }
-                    _syncStatus.value = message
-                    onResult(false, message)
-                }
+        updateRoutines(body) { result ->
+            _isLoading.value = false
+            if (result is ApiResult.Success && result.data.optString("status") == "ok") {
+                _routines.value = next
+                scheduleLocalReminders()
+                publishEditable()
+                onResult(true, null)
+            } else {
+                hasLoaded = false
+                val message = when (result) {
+                    is ApiResult.Error -> result.message
+                    is ApiResult.Success -> result.data.optString("reason").ifBlank {
+                        result.data.optString("message").ifBlank { result.data.optString("error") }
+                    }
+                }.ifBlank { "No se pudieron guardar las rutinas" }
+                publishEditable()
+                _syncStatus.value = message
+                onResult(false, message)
             }
         }
     }
@@ -159,7 +195,12 @@ class RoutinesViewModel : ViewModel() {
 
     private var appContext: android.content.Context? = null
 
+    private fun publishEditable() {
+        _canEdit.value = hasLoaded && _isLoading.value != true
+    }
+
     private fun scheduleLocalReminders() {
+        if (!hasLoaded) return
         val ctx = appContext ?: return
         val items = _routines.value.orEmpty()
             .filter { it.enabled }

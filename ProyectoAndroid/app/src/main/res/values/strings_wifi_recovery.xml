@@ -1,0 +1,5 @@
+<?xml version="1.0" encoding="utf-8"?>
+<resources>
+    <string name="wifi_setup_lan_hint">Conectá el celular a la red Wi-Fi que elegiste para TEO. Después comprobamos la comunicación.</string>
+    <string name="wifi_setup_lan_not_found">TEO confirmó el Wi-Fi, pero todavía no responde en la red. Verificá que el celular esté en la misma red y tocá Reintentar.</string>
+</resources>

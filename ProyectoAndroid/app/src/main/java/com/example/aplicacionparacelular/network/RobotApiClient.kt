@@ -28,8 +28,10 @@ object RobotApiClient {
     private const val CONNECT_TIMEOUT = 3000
     private const val READ_TIMEOUT = 10000
 
-    private var baseUrl: String = ""
-    private var pairingToken: String = ""
+    private val addressLock = Any()
+    private var addressGeneration = 0L
+    @Volatile private var baseUrl: String = ""
+    @Volatile private var pairingToken: String = ""
 
     /**
      * Inicializa el cliente con la IP guardada en SharedPreferences.
@@ -38,9 +40,10 @@ object RobotApiClient {
         val prefs = context.getSharedPreferences(PREFS_NAME, Context.MODE_PRIVATE)
         val ip = prefs.getString(KEY_ROBOT_IP, "") ?: ""
         val port = prefs.getInt(KEY_ROBOT_PORT, DEFAULT_PORT)
-        pairingToken = prefs.getString(KEY_TOKEN, "") ?: ""
-        if (BeaconIp.isUsable(ip)) {
-            baseUrl = "http://$ip:$port"
+        synchronized(addressLock) {
+            pairingToken = prefs.getString(KEY_TOKEN, "") ?: ""
+            baseUrl = if (BeaconIp.isUsable(ip)) "http://$ip:$port" else ""
+            addressGeneration++
         }
     }
 
@@ -49,12 +52,15 @@ object RobotApiClient {
      */
     fun setRobotAddress(context: Context, ip: String, port: Int = DEFAULT_PORT) {
         if (!BeaconIp.isUsable(ip)) return
-        baseUrl = "http://$ip:$port"
-        val prefs = context.getSharedPreferences(PREFS_NAME, Context.MODE_PRIVATE)
-        prefs.edit()
-            .putString(KEY_ROBOT_IP, ip)
-            .putInt(KEY_ROBOT_PORT, port)
-            .apply()
+        synchronized(addressLock) {
+            baseUrl = "http://$ip:$port"
+            addressGeneration++
+            val prefs = context.getSharedPreferences(PREFS_NAME, Context.MODE_PRIVATE)
+            prefs.edit()
+                .putString(KEY_ROBOT_IP, ip)
+                .putInt(KEY_ROBOT_PORT, port)
+                .apply()
+        }
     }
 
     /**
@@ -63,9 +69,12 @@ object RobotApiClient {
      * El token de emparejamiento se conserva porque es del peluche, no de la red.
      */
     fun clearAddress(context: Context) {
-        baseUrl = ""
-        val prefs = context.getSharedPreferences(PREFS_NAME, Context.MODE_PRIVATE)
-        prefs.edit().putString(KEY_ROBOT_IP, "").apply()
+        synchronized(addressLock) {
+            baseUrl = ""
+            addressGeneration++
+            val prefs = context.getSharedPreferences(PREFS_NAME, Context.MODE_PRIVATE)
+            prefs.edit().putString(KEY_ROBOT_IP, "").apply()
+        }
     }
 
     fun setPairingToken(context: Context, token: String) {
@@ -75,10 +84,19 @@ object RobotApiClient {
     }
 
     fun refreshPairingToken(context: Context) {
+        refreshPairingToken { token -> setPairingToken(context, token) }
+    }
+
+    internal fun refreshPairingToken(saveToken: (String) -> Unit) {
+        val target = synchronized(addressLock) { baseUrl to addressGeneration }
         when (val result = doGet("/api/server-info")) {
             is ApiResult.Success -> {
                 val token = result.data.optString("pairing_token", "")
-                if (token.isNotBlank()) setPairingToken(context, token)
+                if (token.isNotBlank()) {
+                    synchronized(addressLock) {
+                        if (target.first == baseUrl && target.second == addressGeneration) saveToken(token)
+                    }
+                }
             }
             is ApiResult.Error -> { /* keep */ }
         }
@@ -228,7 +246,7 @@ object RobotApiClient {
     fun uploadMusic(filename: String, data: ByteArray): ApiResult<JSONObject> {
         if (!isConfigured()) return ApiResult.Error("Robot no configurado")
         return try {
-            val encodedFilename = java.net.URLEncoder.encode(filename, "UTF-8")
+            val encodedFilename = UrlEncoding.headerValue(filename)
             val url = URL("$baseUrl/api/music/upload")
             val conn = (url.openConnection() as HttpURLConnection).apply {
                 requestMethod = "POST"
@@ -252,7 +270,7 @@ object RobotApiClient {
     fun uploadStory(filename: String, data: ByteArray, title: String? = null): ApiResult<JSONObject> {
         if (!isConfigured()) return ApiResult.Error("Robot no configurado")
         return try {
-            val encodedFilename = java.net.URLEncoder.encode(filename, "UTF-8")
+            val encodedFilename = UrlEncoding.headerValue(filename)
             val url = URL("$baseUrl/api/stories/upload")
             val conn = (url.openConnection() as HttpURLConnection).apply {
                 requestMethod = "POST"
@@ -295,7 +313,7 @@ object RobotApiClient {
 
     /** Elimina una canción del robot. */
     fun deleteMusic(filename: String): ApiResult<JSONObject> =
-        doDelete("/api/music/$filename")
+        doDelete("/api/music/${UrlEncoding.headerValue(filename)}")
 
     /** Elimina un cuento publicado. */
     fun deleteStory(storyId: String): ApiResult<JSONObject> {

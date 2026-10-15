@@ -71,6 +71,9 @@ class RoutineEditorFragment : Fragment() {
         binding.btnBack.setOnClickListener { findNavController().popBackStack() }
         binding.btnCancel.setOnClickListener { findNavController().popBackStack() }
         binding.btnSave.setOnClickListener { save(editMode) }
+        viewModel.canEdit.observe(viewLifecycleOwner) { enabled ->
+            binding.btnSave.isEnabled = enabled
+        }
     }
 
     private fun showTimePicker() {
@@ -110,7 +113,7 @@ class RoutineEditorFragment : Fragment() {
                 binding.btnSave.isEnabled = false
                 viewModel.save(outcome.item, isNew = !editMode) { ok, message ->
                     if (_binding == null) return@save
-                    binding.btnSave.isEnabled = true
+                    binding.btnSave.isEnabled = viewModel.canEdit.value == true
                     if (ok) {
                         findNavController().popBackStack()
                     } else {
