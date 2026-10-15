@@ -3993,6 +3993,13 @@ class AudioWorker:
         return SileroVadAdapter(sample_rate=sample_rate)
 
 
+class _SpeechRequest:
+    def __init__(self, text: str, on_playback_start=None, on_playback_cancel=None) -> None:
+        self.text = text
+        self.on_playback_start = on_playback_start
+        self.on_playback_cancel = on_playback_cancel
+
+
 class SpeechWorker:
     PIPER_MODEL_NAME = "es_AR-daniela-high"
     PIPER_MODEL_HF_PATH = "es/es_AR/daniela/high"
@@ -4039,6 +4046,10 @@ class SpeechWorker:
         self._volume_limit = 100
         self._night_mode = False
         self._playback_generation = 0
+        self._playback_start_hook = None
+        self._playback_start_gen = 0
+        self._playback_live = False
+        self._active_playback_cancel = None
         self._power_gate: Callable[[], bool] | None = None
         self._pipeline_active = False
         self._hug_tts_held = False
@@ -4135,6 +4146,12 @@ class SpeechWorker:
     def interrupt_playback(self) -> None:
         """Corta TTS en curso (barge-in) sin matar el worker."""
         self._playback_generation += 1
+        self._playback_start_hook = None
+        cancel = None
+        if self._playback_live:
+            self._playback_live = False
+            cancel = self._active_playback_cancel
+            self._active_playback_cancel = None
         try:
             while True:
                 self._queue.get_nowait()
@@ -4144,6 +4161,11 @@ class SpeechWorker:
         self._idle_event.set()
         self._tts_playback_end = time.monotonic()
         self._tts_is_story = False
+        if cancel is not None:
+            try:
+                cancel()
+            except Exception:
+                log_action("SpeechWorker", "no se pudo retirar el pictograma cancelado")
 
     @staticmethod
     def _strip_tts_markup(text: str) -> str:
@@ -4177,7 +4199,15 @@ class SpeechWorker:
 
         return _phrase_key(_normalize(text)).startswith("quiero un abrazo")
 
-    def speak(self, text: str, *, story: bool = False, allow_when_asleep: bool = False) -> bool:
+    def speak(
+        self,
+        text: str,
+        *,
+        story: bool = False,
+        allow_when_asleep: bool = False,
+        on_playback_start=None,
+        on_playback_cancel=None,
+    ) -> bool:
         if not self._speech_allowed(allow_when_asleep):
             return False
         speech_text = self._prepare_tts_text(self._strip_tts_markup((text or "").strip()))
@@ -4193,8 +4223,11 @@ class SpeechWorker:
         if self._is_hug_tts(speech_text):
             self._hug_tts_held = True
         self._idle_event.clear()
+        queued = speech_text
+        if on_playback_start is not None or on_playback_cancel is not None:
+            queued = _SpeechRequest(speech_text, on_playback_start, on_playback_cancel)
         try:
-            self._queue.put_nowait(speech_text)
+            self._queue.put_nowait(queued)
             log_action("SpeechWorker", f"enqueued TTS ({len(speech_text)} chars)")
         except queue.Full:
             if self._is_hug_tts(speech_text):
@@ -4381,6 +4414,7 @@ class SpeechWorker:
         audio_array: np.ndarray,
         sample_rate: int,
         music_generation: int | None = None,
+        announce_start: bool = False,
     ) -> None:
         """Play audio using a dedicated OutputStream to avoid conflicts with AudioWorker's InputStream.
 
@@ -4493,6 +4527,7 @@ class SpeechWorker:
                     n_frames = int(play_audio.shape[0])
                     dur = (n_frames / float(play_sr)) if play_sr else 0.0
                     self._tts_playback_end = time.monotonic() + dur
+                    opened = False
                     try:
                         with sd.OutputStream(
                             samplerate=play_sr,
@@ -4501,11 +4536,16 @@ class SpeechWorker:
                             device=out_device,
                             callback=_callback,
                         ):
+                            opened = True
+                            if announce_start:
+                                self._note_playback_started()
                             finished.wait(timeout=len(play_audio) / play_sr + 5.0)
                     finally:
                         self._tts_playback_end = time.monotonic()
                     return
                 except Exception as exc:
+                    if opened and announce_start:
+                        self._abort_started_playback()
                     last_exc = exc
                     self._log(
                         f"Salida {dtype}/{channels}ch/{play_sr} Hz "
@@ -4541,6 +4581,12 @@ class SpeechWorker:
             try:
                 if isinstance(item, list):
                     self._speak_sentence_pipeline(item)
+                elif isinstance(item, _SpeechRequest):
+                    self._speak_queued_text(
+                        item.text,
+                        item.on_playback_start,
+                        item.on_playback_cancel,
+                    )
                 else:
                     self._speak_queued_text(item)
                 self._log("Reproducción completada")
@@ -4629,13 +4675,45 @@ class SpeechWorker:
 
         return model_file
 
-    def _speak_queued_text(self, text: str) -> None:
+    def _speak_queued_text(self, text: str, on_start=None, on_cancel=None) -> None:
+        self._playback_start_hook = on_start
+        self._playback_start_gen = self._playback_generation
+        self._active_playback_cancel = on_cancel
+        self._playback_live = False
         hug_turn = self._is_hug_tts(text)
         try:
             self._speak_queued_text_body(text)
         finally:
+            self._playback_live = False
+            self._playback_start_hook = None
+            self._active_playback_cancel = None
             if hug_turn:
                 self._hug_tts_held = False
+
+    def _note_playback_started(self) -> None:
+        if self._playback_live:
+            return
+        hook = self._playback_start_hook
+        if hook is None or self._interrupted(self._playback_start_gen):
+            return
+        try:
+            hook()
+        except Exception:
+            log_action("SpeechWorker", "no se pudo mostrar el pictograma del recordatorio")
+            return
+        self._playback_live = True
+
+    def _abort_started_playback(self) -> None:
+        if not self._playback_live:
+            return
+        self._playback_live = False
+        cancel = self._active_playback_cancel
+        if cancel is None:
+            return
+        try:
+            cancel()
+        except Exception:
+            log_action("SpeechWorker", "no se pudo retirar el pictograma del audio fallido")
 
     def _speak_queued_text_body(self, text: str) -> None:
         self._mark_tts_synthesizing()
@@ -4664,7 +4742,7 @@ class SpeechWorker:
                 audio_array, sample_rate = pc_pcm
                 used = "TTS_PC"
                 self._log("TTS_PC")
-                self._play_wav_via_output_stream(audio_array, sample_rate)
+                self._play_wav_via_output_stream(audio_array, sample_rate, announce_start=True)
             elif self._piper_voice is not None:
                 if getattr(self, "pc_client", None) is not None:
                     self._log("TTS_PI")
@@ -4789,7 +4867,7 @@ class SpeechWorker:
         if synthesized is None:
             return
         audio_array, sample_rate = synthesized
-        self._play_wav_via_output_stream(audio_array, sample_rate)
+        self._play_wav_via_output_stream(audio_array, sample_rate, announce_start=True)
 
     # ------------------------------------------------------------------
     # Music playback
@@ -4941,7 +5019,7 @@ class SpeechWorker:
             return
 
         audio_array, sample_rate = result
-        self._play_wav_via_output_stream(audio_array, sample_rate)
+        self._play_wav_via_output_stream(audio_array, sample_rate, announce_start=True)
 
     def _speak_windows(self, text: str) -> None:
         encoded_text = base64.b64encode(text.encode("utf-8")).decode("ascii")
@@ -4996,7 +5074,7 @@ class SpeechWorker:
             if channel_count > 1:
                 audio_array = audio_array.reshape(-1, channel_count)
 
-            self._play_wav_via_output_stream(audio_array, sample_rate)
+            self._play_wav_via_output_stream(audio_array, sample_rate, announce_start=True)
         finally:
             try:
                 Path(wav_path).unlink(missing_ok=True)
@@ -5032,7 +5110,7 @@ class SpeechWorker:
             if channel_count > 1:
                 audio_array = audio_array.reshape(-1, channel_count)
 
-            self._play_wav_via_output_stream(audio_array, sample_rate)
+            self._play_wav_via_output_stream(audio_array, sample_rate, announce_start=True)
         finally:
             try:
                 Path(wav_path).unlink(missing_ok=True)

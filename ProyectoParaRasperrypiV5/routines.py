@@ -11,6 +11,7 @@ la resistencia al cambio en el niño (#EPIC-007).
 from __future__ import annotations
 
 import json
+from dataclasses import dataclass
 from datetime import datetime, timedelta
 from pathlib import Path
 from typing import Any
@@ -37,6 +38,11 @@ class Routine:
         )
         self.pre_reminder_minutes: int = data.get("pre_reminder_minutes", 5)
         self.enabled: bool = data.get("enabled", True)
+        raw_pictogram = data.get("pictogram_id")
+        if isinstance(raw_pictogram, str) and raw_pictogram.strip():
+            self.pictogram_id: str | None = raw_pictogram.strip()
+        else:
+            self.pictogram_id = None
         # Estado de ejecución
         self._reminded_today: bool = False
         self._pre_reminded_today: bool = False
@@ -70,9 +76,8 @@ class RoutineScheduler:
 
         scheduler = RoutineScheduler(config_path)
         # En un timer periódico (cada 30s):
-        messages = scheduler.check_pending()
-        for msg in messages:
-            speech_worker.speak(msg)
+        cues = scheduler.check_pending()
+        speak_routine_cues(speech_worker, eye_display, cues)
     """
 
     def __init__(self, config_path: Path | None = None) -> None:
@@ -99,14 +104,14 @@ class RoutineScheduler:
         """Recarga la configuración (para hot-reload desde la app)."""
         self._load_config()
 
-    def check_pending(self) -> list[str]:
+    def check_pending(self, now: datetime | None = None) -> list["RoutineCue"]:
         """Verifica si hay rutinas pendientes de recordar.
 
-        Retorna lista de mensajes TTS a emitir.
-        Diseñado para ser llamado periódicamente (cada 30-60 segundos).
+        Cada aviso conserva el id de la rutina, el tipo de evento y el mensaje.
+        El pictograma viaja solo con el recordatorio principal.
         """
-        now = datetime.now()
-        messages: list[str] = []
+        now = now or datetime.now()
+        cues: list[RoutineCue] = []
 
         for routine in self.routines:
             if not routine.enabled or routine._completed_today:
@@ -120,27 +125,38 @@ class RoutineScheduler:
                 microsecond=0,
             )
 
-            # Pre-recordatorio (transición gradual)
             pre_time = routine_time - timedelta(minutes=routine.pre_reminder_minutes)
             if not routine._pre_reminded_today and pre_time <= now < routine_time:
                 routine._pre_reminded_today = True
                 if routine.transition_from and routine.transition_to:
-                    messages.append(
-                        f"En un ratito vamos a pasar de {routine.transition_from} "
-                        f"a {routine.transition_to}. "
-                        f"¡Vamos terminando de a poquito!"
+                    cues.append(
+                        RoutineCue(
+                            routine_id=routine.id,
+                            kind="pre",
+                            message=(
+                                f"En un ratito vamos a pasar de {routine.transition_from} "
+                                f"a {routine.transition_to}. "
+                                f"¡Vamos terminando de a poquito!"
+                            ),
+                            pictogram_id=None,
+                        )
                     )
                     log_action("ROUTINE", f"pre-recordatorio: {routine.name}")
 
-            # Recordatorio principal
             if not routine._reminded_today and now >= routine_time:
-                # Solo recordar si no pasaron más de 30 minutos
                 if (now - routine_time).total_seconds() < 1800:
                     routine._reminded_today = True
-                    messages.append(routine.reminder_message)
+                    cues.append(
+                        RoutineCue(
+                            routine_id=routine.id,
+                            kind="main",
+                            message=routine.reminder_message,
+                            pictogram_id=routine.pictogram_id,
+                        )
+                    )
                     log_action("ROUTINE", f"recordatorio: {routine.name} ({routine.time})")
 
-        return messages
+        return cues
 
     def acknowledge_routine(self, routine_id: str) -> str | None:
         """Marca una rutina como completada y retorna mensaje de éxito.
@@ -189,3 +205,50 @@ class RoutineScheduler:
             }
             for r in self.routines
         ]
+
+
+@dataclass(frozen=True)
+class RoutineCue:
+    """Aviso listo para hablar, con la rutina y el pictograma que le corresponden."""
+
+    routine_id: str
+    kind: str
+    message: str
+    pictogram_id: str | None = None
+
+
+def speak_routine_cues(speech: Any, eyes: Any, cues: list[RoutineCue]) -> None:
+    """Encola cada aviso. La imagen se pide solo cuando empieza su propio audio."""
+    for cue in cues:
+        on_start = None
+        on_cancel = None
+        if cue.kind == "main" and eyes is not None:
+            state: dict[str, int | None] = {"generation": None}
+
+            def on_start(
+                pid: str | None = cue.pictogram_id,
+                display: Any = eyes,
+                remembered: dict[str, int | None] = state,
+            ) -> None:
+                from pictograms import resolve_pictogram
+
+                path = resolve_pictogram(pid)
+                if path is None:
+                    if hasattr(display, "dismiss_routine_pictogram"):
+                        display.dismiss_routine_pictogram()
+                    return
+                if not hasattr(display, "show_routine_pictogram"):
+                    return
+                remembered["generation"] = display.show_routine_pictogram(str(path))
+
+            def on_cancel(display: Any = eyes, remembered: dict[str, int | None] = state) -> None:
+                generation = remembered.get("generation")
+                if generation is None or not hasattr(display, "dismiss_routine_pictogram"):
+                    return
+                display.dismiss_routine_pictogram(generation)
+
+        speech.speak(
+            cue.message,
+            on_playback_start=on_start,
+            on_playback_cancel=on_cancel,
+        )

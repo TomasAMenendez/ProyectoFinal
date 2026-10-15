@@ -12,7 +12,9 @@ import com.example.aplicacionparacelular.databinding.FragmentChildProfileBinding
 import com.example.aplicacionparacelular.network.ApiResult
 import com.example.aplicacionparacelular.network.RobotConnectionManager
 import com.example.aplicacionparacelular.onboarding.ChildProfile
+import com.example.aplicacionparacelular.ui.SystemBarInsets
 import com.google.android.material.snackbar.Snackbar
+import org.json.JSONObject
 
 class ChildProfileFragment : Fragment() {
 
@@ -42,10 +44,13 @@ class ChildProfileFragment : Fragment() {
             },
         )
 
+        SystemBarInsets.applyVertical(binding.profileScroll)
         form = ChildProfileForm(binding.form)
+        binding.form.btnSave.setText(R.string.profile_save_continue)
         form.bind { form.refreshSaveEnabled() }
         binding.form.btnSave.setOnClickListener { save() }
-        loadProfile()
+        val draft = savedInstanceState?.getString("profile_draft")
+        if (draft != null) form.restoreDraft(ChildProfile.parse(JSONObject(draft))) else loadProfile()
     }
 
     private fun loadProfile() {
@@ -93,5 +98,10 @@ class ChildProfileFragment : Fragment() {
     override fun onDestroyView() {
         super.onDestroyView()
         _binding = null
+    }
+
+    override fun onSaveInstanceState(outState: Bundle) {
+        if (_binding != null && form.hasChanges) outState.putString("profile_draft", form.payload().toString())
+        super.onSaveInstanceState(outState)
     }
 }

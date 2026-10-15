@@ -1,0 +1,43 @@
+# Propuestas de Actividad y Avisos
+
+Fecha: 13 de octubre de 2026. Etapa: preparación de bocetos, sin implementación.
+
+## Actividad P05
+
+Imagen recibida: [Actividad propuesta](actividad-propuesta-2026-10-13.png). Se conserva como propuesta visual, sin aprobación explícita ni implementación. Muestra el período Semana, los cuatro bloques y los valores previstos. Los siete valores diarios y los cuatro conteos por área suman 84 en el escenario ficticio. Gemini omitió el título Resumen del período, pero el globo y los indicadores identifican el bloque; no se solicita otra imagen solo por ese detalle. Al implementar, aumentar un poco el contraste del texto secundario Total registrado: Sin datos.
+
+Se propone una pantalla secundaria desde Inicio, con flecha de regreso, título Actividad y descripción «Los momentos compartidos con TEO». Reutiliza el estilo del [Perfil del niño](perfil-nino-propuesta-2026-10-13.png): fondo marfil, azul petróleo, tarjetas blancas redondeadas y sombras suaves. No lleva barra inferior, campana ni engranaje. Su contenido se desplaza verticalmente como el ScrollView actual; el boceto se solicita como captura extendida para no reducir la tipografía al incluir todas las secciones.
+
+El selector tiene Hoy, Semana y Mes. El ejemplo muestra Semana activa y el rótulo Últimos 7 días. Los rangos actuales son uno, siete y treinta días, no necesariamente semanas o meses calendario. Cada resumen, gráfico y etiqueta debe corresponder al período consultado; los indicadores de total acumulado se distinguen de los del período.
+
+La tarjeta Resumen del período contiene 84 interacciones dentro de un globo cian, retomando el recurso de Inicio, y tres indicadores secundarios: 6 Juegos, 12 Rutinas completadas y 2 Registros de malestar. Son datos ficticios. Registros de malestar corresponde únicamente al contador crisis_count de la telemetría, no a la cantidad de avisos recibidos ni a un diagnóstico del niño.
+
+La tarjeta Interacciones por día muestra siete barras, del 07/10 al 13/10, con valores 8, 12, 15, 10, 14, 13 y 12. Suman 84; la última fecha conserva las 12 interacciones usadas como ejemplo en Inicio. Las fechas y valores solo describen el escenario visual, no se fijan en el código.
+
+La tarjeta Áreas de interacción contiene cuatro barras horizontales con valores numéricos: Emocional 30, Cognitivo 24, Vincular 18 y Autonomía 12. Son conteos de interacciones, no porcentajes ni evaluaciones de desarrollo. En este ejemplo suman 84 porque general es cero. Al implementar no se debe forzar que estos cuatro valores sumen el total si existen registros general; deben usarse los conteos reales de cada categoría.
+
+La tarjeta Vocabulario muestra «5 palabras nuevas registradas», «En los últimos 7 días» y «Total registrado: Sin datos». Mantiene el indicador acumulado previsto sin inventar una cifra que la consulta actual de rango no proporciona. No se incluye Tiempo de juego, el límite de uso ni un reloj de interacción efectiva, que siguen pendientes según el [inventario](../01-inventario-y-pantallas.md). La última señal emocional continúa cubierta en Inicio P04; no se dibuja un historial emocional nuevo o una emoción promedio de la semana.
+
+Las fuentes son [MetricsViewModel](../../../ProyectoAndroid/app/src/main/java/com/example/aplicacionparacelular/ui/metrics/MetricsViewModel.kt), [MetricsPeriodParser](../../../ProyectoAndroid/app/src/main/java/com/example/aplicacionparacelular/ui/metrics/MetricsPeriodParser.kt), [MetricsFragment](../../../ProyectoAndroid/app/src/main/java/com/example/aplicacionparacelular/ui/metrics/MetricsFragment.kt), [telemetry.py](../../../ProyectoParaRasperrypiV5/telemetry.py) y [api_server.py](../../../ProyectoParaRasperrypiV5/api_server.py). Los contadores y las barras por día ya se consultan por período. La distribución en tarjetas, el globo y las barras horizontales sustituyendo el donut son propuestas visuales.
+
+## Ajustes identificados para implementar Actividad
+
+La respuesta GET /api/telemetry/range trae summary y events vacío. MetricsPeriodParser calcula palabras nuevas desde summary.daily, pero busca el total de vocabulario en events. En una carga nueva del recorrido actual ese total no llega, aunque la interfaz beta pueda mostrar el cero predeterminado. Se debe representar ausencia como Sin datos y definir una fuente confirmada para el total acumulado antes de mostrarlo. Esto afecta la entrega del dato a esta vista; no cuestiona el alcance del análisis emocional confirmado por el usuario.
+
+La etiqueta beta de nuevas palabras dice «esta semana» incluso al elegir Hoy o Mes; el rediseño debe ajustarla al rango solicitado. Durante carga o error no se deben presentar números de una consulta anterior bajo el rótulo de un período nuevo. Se prevén estados de carga, vacío y error recuperable dentro de P05, sin añadir otra vista principal. Estos ajustes quedan registrados; no se modificó código.
+
+## Avisos P06
+
+Imagen recibida: [Avisos propuestos](avisos-propuesta-2026-10-13.png). Se conserva como propuesta visual, sin aprobación explícita ni implementación. Respeta las tres tarjetas, las horas de ejemplo, el mensaje completo y el alcance de lectura. Al implementar, usar las etiquetas Logro, Pedido y Atención sin corchetes ni mayúsculas completas, y reemplazar los emojis por los iconos compartidos de la app. El cuerpo de cada tarjeta debe mostrar el mensaje recibido; los textos de la imagen siguen siendo ejemplos ficticios.
+
+Se propone la última vista principal del inventario: una pantalla secundaria con flecha de regreso, título Avisos y descripción «Novedades y mensajes de TEO». Reutiliza el estilo de Actividad y muestra una lista de tarjetas de solo lectura, ordenadas de la más reciente a la más antigua. No incluye barra inferior, campana o engranaje repetidos, filtros por períodos, botones de eliminar o marcar como leído, ni flechas que prometan otro detalle.
+
+El escenario tiene tres mensajes ficticios recibidos hoy: Logro a las 14:30 («TEO registró una palabra nueva durante la interacción»); Pedido a las 13:10 («El niño pidió hablar con mamá o papá»); Atención a las 11:45 («TEO registró una señal de malestar durante la interacción»). Cada tarjeta incluye un icono sencillo, una etiqueta de tipo, la hora y el mensaje completo. Logro usa cian o dorado suave; Pedido azul petróleo; Atención un acento ámbar suave. No se interpreta un aviso pasado como un incidente todavía activo ni se presenta un estado Resuelto que el código no registra. Los textos son ejemplos para el diseño, no una promesa de que esos eventos produzcan literalmente esos mensajes.
+
+La etiqueta Atención representa el tipo crisis, coherente con el título de notificación del sistema «TEO: atención recomendada». Pedido y Logro corresponden a sus tipos homónimos. El tipo aviso también tiene que poder representarse con una tarjeta neutra, aunque no figure en el escenario. La ayuda al pie será «Se muestran los avisos recientes recibidos de TEO». No se agrega un botón para llamar, responder al peluche o ejecutar una intervención desde el mensaje.
+
+Las fuentes son [ParentInbox](../../../ProyectoAndroid/app/src/main/java/com/example/aplicacionparacelular/network/ParentInbox.kt), [RobotConnectionManager](../../../ProyectoAndroid/app/src/main/java/com/example/aplicacionparacelular/network/RobotConnectionManager.kt), [DashboardFragment](../../../ProyectoAndroid/app/src/main/java/com/example/aplicacionparacelular/ui/dashboard/DashboardFragment.kt) y api_server.py, enlazado arriba. La API envía type, message y timestamp; la app acepta aviso, logro, pedido y crisis. La lista actual retiene hasta veinte avisos en memoria, mientras el endpoint devuelve y vacía la cola pendiente del robot. No se promete historial persistente ni agrupación por días con registros que ya no están disponibles.
+
+Para mostrar horas reales, conservar type y timestamp junto al texto: el consumidor actual los reduce a cadenas formateadas y descarta timestamp. Es un ajuste de presentación pendiente, usando datos ya enviados por la API; no requiere inventar una nueva ruta. Si falta la fecha, omitirla o mostrar Sin hora disponible, sin fabricarla. Ordenar también los elementos recibidos en un mismo lote por su fecha, evitando que el orden de llegada del lote se confunda con el más reciente. No se modificó código.
+
+Los estados vacío y sin conexión se resuelven dentro de P06. Vacío: «Todavía no hay avisos disponibles», sin afirmar que no ocurrió ningún evento. Sin conexión: indicar que no se reciben avisos nuevos y conservar solo los mensajes efectivamente disponibles; el acceso durante la desconexión debe respetar la decisión pendiente del recorrido general de la app.

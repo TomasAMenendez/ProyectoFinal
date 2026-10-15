@@ -1,8 +1,6 @@
 package com.example.aplicacionparacelular.ui.stories
 
 import android.app.Activity
-import android.content.Context
-import android.content.Intent
 import android.os.Bundle
 import android.view.LayoutInflater
 import android.view.View
@@ -10,362 +8,240 @@ import android.view.ViewGroup
 import android.widget.LinearLayout
 import android.widget.TextView
 import androidx.activity.result.contract.ActivityResultContracts
-import androidx.appcompat.app.AlertDialog
+import androidx.core.content.ContextCompat
+import androidx.core.os.bundleOf
+import androidx.core.view.isVisible
 import androidx.fragment.app.Fragment
 import androidx.lifecycle.ViewModelProvider
+import androidx.navigation.fragment.findNavController
 import com.example.aplicacionparacelular.R
 import com.example.aplicacionparacelular.databinding.FragmentStoriesBinding
-import com.example.aplicacionparacelular.network.RobotApiClient
-import com.google.android.material.button.MaterialButton
+import com.example.aplicacionparacelular.ui.SystemBarInsets
+import com.example.aplicacionparacelular.ui.dashboard.PlaybackSnapshot
+import com.example.aplicacionparacelular.ui.routines.RoutineDeleteDialog
 import com.google.android.material.snackbar.Snackbar
-import com.google.android.material.textfield.TextInputEditText
 
 class StoriesFragment : Fragment() {
-
     private var _binding: FragmentStoriesBinding? = null
     private val binding get() = _binding!!
     private lateinit var viewModel: StoriesViewModel
-    private var editDialog: AlertDialog? = null
-    private var editDialogView: View? = null
-    private var ignoreEditorDismiss = false
 
-    private val pdfPicker = registerForActivityResult(
-        ActivityResultContracts.StartActivityForResult()
-    ) { result ->
+    private val audioPicker = registerForActivityResult(ActivityResultContracts.StartActivityForResult()) { result ->
         if (result.resultCode != Activity.RESULT_OK) return@registerForActivityResult
         val uri = result.data?.data ?: return@registerForActivityResult
-        val context = requireContext()
-        val filename = fileNameFromUri(context, uri, "cuento.pdf", ".pdf")
-        try {
-            val bytes = context.contentResolver.openInputStream(uri)?.use { it.readBytes() }
-                ?: return@registerForActivityResult
-            promptStoryTitleThenUpload(filename, bytes)
-        } catch (exc: Exception) {
-            Snackbar.make(binding.root, "No pude leer el PDF: ${exc.message}", Snackbar.LENGTH_SHORT).show()
+        ContentFiles.read(requireContext(), uri, "cancion.mp3") { picked ->
+            if (_binding == null) return@read
+            if (picked == null) {
+                snack(getString(R.string.content_read_failed))
+            } else {
+                viewModel.uploadSong(picked.name, picked.bytes)
+            }
         }
     }
 
-    private val audioPicker = registerForActivityResult(
-        ActivityResultContracts.StartActivityForResult()
-    ) { result ->
-        if (result.resultCode != Activity.RESULT_OK) return@registerForActivityResult
-        val uri = result.data?.data ?: return@registerForActivityResult
-        val context = requireContext()
-        val filename = fileNameFromUri(context, uri, "cancion.mp3", null)
-        try {
-            val bytes = context.contentResolver.openInputStream(uri)?.use { it.readBytes() }
-                ?: return@registerForActivityResult
-            viewModel.uploadSong(filename, bytes)
-        } catch (exc: Exception) {
-            Snackbar.make(binding.root, "Error al leer archivo: ${exc.message}", Snackbar.LENGTH_SHORT).show()
-        }
-    }
-
-    override fun onCreateView(
-        inflater: LayoutInflater,
-        container: ViewGroup?,
-        savedInstanceState: Bundle?,
-    ): View {
-        viewModel = ViewModelProvider(this).get(StoriesViewModel::class.java)
+    override fun onCreateView(inflater: LayoutInflater, container: ViewGroup?, savedInstanceState: Bundle?): View {
+        viewModel = ViewModelProvider(requireActivity())[StoriesViewModel::class.java]
         _binding = FragmentStoriesBinding.inflate(inflater, container, false)
         return binding.root
     }
 
     override fun onViewCreated(view: View, savedInstanceState: Bundle?) {
         super.onViewCreated(view, savedInstanceState)
-        binding.btnUploadPdf.setOnClickListener {
-            val intent = Intent(Intent.ACTION_GET_CONTENT).apply {
-                type = "application/pdf"
-                addCategory(Intent.CATEGORY_OPENABLE)
-            }
-            pdfPicker.launch(intent)
+        SystemBarInsets.applyTop(binding.contentScroll)
+        binding.tabMusic.setOnClickListener { show(ContentSection.MUSIC) }
+        binding.tabStories.setOnClickListener { show(ContentSection.STORIES) }
+        binding.btnAdd.setOnClickListener { onAdd() }
+        binding.btnStop.setOnClickListener {
+            if (viewModel.section == ContentSection.MUSIC) viewModel.stopMusic() else viewModel.stopStory()
         }
-        binding.btnUploadSong.setOnClickListener {
-            val intent = Intent(Intent.ACTION_GET_CONTENT).apply {
-                type = "audio/*"
-                addCategory(Intent.CATEGORY_OPENABLE)
-            }
-            audioPicker.launch(intent)
-        }
-        binding.btnStopSong.setOnClickListener { viewModel.stopMusic() }
-
-        viewModel.stories.observe(viewLifecycleOwner) { rebuildStories(it) }
-        viewModel.songs.observe(viewLifecycleOwner) { rebuildSongs() }
-        viewModel.currentlyPlaying.observe(viewLifecycleOwner) { rebuildSongs() }
-        viewModel.statusMessage.observe(viewLifecycleOwner) { msg ->
-            if (!msg.isNullOrBlank()) {
-                showStoriesSnackbar(msg)
-            }
-        }
-        viewModel.storyToEdit.observe(viewLifecycleOwner) { detail ->
-            if (detail == null) {
-                dismissEditor()
-            } else {
-                showStoryEditor(detail)
+        binding.btnAlertsBell.setOnClickListener { findNavController().navigate(R.id.nav_alerts) }
+        binding.btnMyTeo.setOnClickListener { findNavController().navigate(R.id.nav_config) }
+        viewModel.songs.observe(viewLifecycleOwner) { render() }
+        viewModel.stories.observe(viewLifecycleOwner) { render() }
+        viewModel.musicLoad.observe(viewLifecycleOwner) { render() }
+        viewModel.storyLoad.observe(viewLifecycleOwner) { render() }
+        viewModel.playback.observe(viewLifecycleOwner) { render() }
+        viewModel.connected.observe(viewLifecycleOwner) { render() }
+        viewModel.uploadingName.observe(viewLifecycleOwner) { render() }
+        viewModel.pending.observe(viewLifecycleOwner) { render() }
+        viewModel.notice.observe(viewLifecycleOwner) { message ->
+            if (!message.isNullOrBlank()) {
+                snack(message)
+                viewModel.consumeNotice()
             }
         }
-        viewModel.saveInProgress.observe(viewLifecycleOwner) { saving ->
-            editDialog?.getButton(AlertDialog.BUTTON_POSITIVE)?.isEnabled = saving != true
-        }
-        if (RobotApiClient.isConfigured()) {
-            viewModel.loadStories()
+        show(viewModel.section)
+        if (viewModel.connected.value == true) {
             viewModel.loadSongs()
+            viewModel.loadStories()
         }
     }
 
     override fun onResume() {
         super.onResume()
-        if (RobotApiClient.isConfigured()) {
-            viewModel.loadSongs()
+        if (viewModel.connected.value == true) {
+            viewModel.refreshStatus()
+            if (viewModel.section == ContentSection.MUSIC) viewModel.loadSongs() else viewModel.loadStories()
         }
-    }
-
-    private fun promptStoryTitleThenUpload(filename: String, bytes: ByteArray) {
-        val dialogView = layoutInflater.inflate(R.layout.dialog_story_name, null)
-        val input = dialogView.findViewById<TextInputEditText>(R.id.edit_story_name)
-        val stem = StoryJson.pdfStem(filename)
-        input.setText(stem)
-        input.setSelection(input.text?.length ?: 0)
-        AlertDialog.Builder(requireContext())
-            .setTitle(R.string.stories_name_title)
-            .setView(dialogView)
-            .setPositiveButton(R.string.stories_name_accept) { _, _ ->
-                val title = input.text?.toString()?.trim().orEmpty()
-                viewModel.uploadPdf(filename, bytes, title.ifBlank { null })
-            }
-            .setNegativeButton(R.string.btn_cancel, null)
-            .show()
-    }
-
-    private fun showStoryEditor(detail: StoryDetail) {
-        if (editDialog?.isShowing == true) {
-            val titleInput = editDialogView?.findViewById<TextInputEditText>(R.id.edit_story_title)
-            val textInput = editDialogView?.findViewById<TextInputEditText>(R.id.edit_story_text)
-            titleInput?.setText(detail.title)
-            textInput?.setText(detail.text)
-            return
-        }
-        val dialogView = layoutInflater.inflate(R.layout.dialog_story_edit, null)
-        val titleInput = dialogView.findViewById<TextInputEditText>(R.id.edit_story_title)
-        val textInput = dialogView.findViewById<TextInputEditText>(R.id.edit_story_text)
-        titleInput.setText(detail.title)
-        textInput.setText(detail.text)
-        textInput.movementMethod = android.text.method.ScrollingMovementMethod.getInstance()
-        textInput.setOnTouchListener { v, _ ->
-            v.parent?.requestDisallowInterceptTouchEvent(true)
-            false
-        }
-        val dialog = AlertDialog.Builder(requireContext())
-            .setTitle(R.string.stories_edit_title)
-            .setView(dialogView)
-            .setPositiveButton(R.string.btn_save, null)
-            .setNegativeButton(R.string.btn_cancel) { _, _ ->
-                viewModel.clearStoryToEdit()
-            }
-            .create()
-        dialog.setOnDismissListener {
-            editDialog = null
-            editDialogView = null
-            if (!ignoreEditorDismiss) {
-                viewModel.clearStoryToEdit()
-            }
-            ignoreEditorDismiss = false
-        }
-        dialog.setOnShowListener {
-            val metrics = resources.displayMetrics
-            dialog.window?.setLayout(
-                (metrics.widthPixels * 0.94f).toInt(),
-                (metrics.heightPixels * 0.85f).toInt(),
-            )
-            dialog.getButton(AlertDialog.BUTTON_POSITIVE).setOnClickListener {
-                val title = titleInput.text?.toString().orEmpty()
-                val text = textInput.text?.toString().orEmpty()
-                viewModel.saveStory(detail.id, title, text)
-            }
-        }
-        editDialogView = dialogView
-        editDialog = dialog
-        dialog.show()
-    }
-
-    private fun dismissEditor() {
-        val dialog = editDialog ?: return
-        ignoreEditorDismiss = true
-        dialog.dismiss()
-    }
-
-    private fun showStoriesSnackbar(msg: String) {
-        val host = editDialogView?.takeIf { editDialog?.isShowing == true }
-            ?: _binding?.root
-            ?: return
-        Snackbar.make(host, msg, Snackbar.LENGTH_LONG).show()
-    }
-
-    private fun rebuildStories(stories: List<StoryItem>) {
-        binding.storiesContainer.removeAllViews()
-        if (stories.isEmpty()) {
-            val empty = TextView(requireContext()).apply {
-                text = getString(R.string.stories_empty)
-                setPadding(0, 24, 0, 24)
-                setTextColor(resources.getColor(R.color.text_hint, null))
-            }
-            binding.storiesContainer.addView(empty)
-            return
-        }
-        for (story in stories) {
-            val row = LinearLayout(requireContext()).apply {
-                orientation = LinearLayout.HORIZONTAL
-                gravity = android.view.Gravity.CENTER_VERTICAL
-                setPadding(0, 8, 0, 8)
-                isClickable = true
-                isFocusable = true
-                val typed = android.util.TypedValue()
-                requireContext().theme.resolveAttribute(
-                    android.R.attr.selectableItemBackground,
-                    typed,
-                    true,
-                )
-                setBackgroundResource(typed.resourceId)
-                minimumHeight = 48
-                setOnClickListener { viewModel.loadStory(story.id) }
-            }
-            val label = TextView(requireContext()).apply {
-                text = "${story.title}  (${story.wordCount} palabras)"
-                textSize = 14f
-                layoutParams = LinearLayout.LayoutParams(0, LinearLayout.LayoutParams.WRAP_CONTENT, 1f)
-            }
-            val deleteBtn = MaterialButton(
-                requireContext(),
-                null,
-                com.google.android.material.R.attr.materialButtonOutlinedStyle,
-            ).apply {
-                text = "Borrar"
-                textSize = 12f
-                minHeight = 48
-                setOnClickListener {
-                    AlertDialog.Builder(requireContext())
-                        .setTitle(story.title)
-                        .setMessage(getString(R.string.stories_delete_confirm))
-                        .setPositiveButton(android.R.string.ok) { _, _ -> viewModel.deleteStory(story.id) }
-                        .setNegativeButton(android.R.string.cancel, null)
-                        .show()
-                }
-            }
-            row.addView(label)
-            row.addView(deleteBtn)
-            binding.storiesContainer.addView(row)
-        }
-    }
-
-    private fun rebuildSongs() {
-        val songs = viewModel.songs.value ?: emptyList()
-        val currentlyPlaying = viewModel.currentlyPlaying.value
-        binding.songsContainer.removeAllViews()
-        if (songs.isEmpty()) {
-            val tv = TextView(requireContext()).apply {
-                text = getString(R.string.files_songs_empty)
-                setPadding(0, 16, 0, 16)
-                setTextColor(resources.getColor(R.color.text_hint, null))
-            }
-            binding.songsContainer.addView(tv)
-            return
-        }
-        for (song in songs) {
-            val isPlaying = song.filename == currentlyPlaying
-            val row = LinearLayout(requireContext()).apply {
-                orientation = LinearLayout.HORIZONTAL
-                gravity = android.view.Gravity.CENTER_VERTICAL
-                setPadding(0, 8, 0, 8)
-            }
-            val nameText = TextView(requireContext()).apply {
-                text = song.filename
-                textSize = 14f
-                layoutParams = LinearLayout.LayoutParams(0, LinearLayout.LayoutParams.WRAP_CONTENT, 1f)
-            }
-            row.addView(nameText)
-            if (isPlaying) {
-                val stopBtn = MaterialButton(
-                    requireContext(),
-                    null,
-                    com.google.android.material.R.attr.materialButtonOutlinedStyle,
-                ).apply {
-                    text = "Stop"
-                    textSize = 12f
-                    minHeight = 48
-                    contentDescription = getString(R.string.dashboard_music_stop)
-                    setOnClickListener { viewModel.stopMusic() }
-                }
-                row.addView(stopBtn)
-            } else {
-                val playBtn = MaterialButton(
-                    requireContext(),
-                    null,
-                    com.google.android.material.R.attr.materialButtonOutlinedStyle,
-                ).apply {
-                    text = "Play"
-                    textSize = 12f
-                    minHeight = 48
-                    contentDescription = getString(R.string.dashboard_music_play)
-                    setOnClickListener { viewModel.playSong(song.filename) }
-                }
-                row.addView(playBtn)
-            }
-            val deleteBtn = MaterialButton(
-                requireContext(),
-                null,
-                com.google.android.material.R.attr.materialButtonOutlinedStyle,
-            ).apply {
-                text = "Borrar"
-                textSize = 12f
-                minHeight = 48
-                setOnClickListener {
-                    AlertDialog.Builder(requireContext())
-                        .setTitle(getString(R.string.files_songs_delete_title))
-                        .setMessage("¿Eliminar '${song.filename}'?")
-                        .setPositiveButton("Eliminar") { _, _ -> viewModel.deleteSong(song.filename) }
-                        .setNegativeButton("Cancelar", null)
-                        .show()
-                }
-            }
-            row.addView(deleteBtn)
-            binding.songsContainer.addView(row)
-        }
-    }
-
-    private fun fileNameFromUri(
-        context: Context,
-        uri: android.net.Uri,
-        fallback: String,
-        forceSuffix: String?,
-    ): String {
-        var name: String? = null
-        if (uri.scheme == "content") {
-            try {
-                context.contentResolver.query(uri, null, null, null, null)?.use { cursor ->
-                    if (cursor.moveToFirst()) {
-                        val idx = cursor.getColumnIndex(android.provider.OpenableColumns.DISPLAY_NAME)
-                        if (idx != -1) name = cursor.getString(idx)
-                    }
-                }
-            } catch (_: Exception) {
-            }
-        }
-        if (name == null) {
-            name = uri.lastPathSegment?.substringAfterLast("/")
-        }
-        val safe = name?.trim() ?: fallback
-        if (forceSuffix != null) {
-            return if (safe.lowercase().endsWith(forceSuffix)) safe else "$safe$forceSuffix"
-        }
-        return if (!safe.contains(".")) "$safe.mp3" else safe
+        render()
     }
 
     override fun onDestroyView() {
-        ignoreEditorDismiss = true
-        editDialog?.dismiss()
-        editDialog = null
-        editDialogView = null
-        super.onDestroyView()
         _binding = null
+        super.onDestroyView()
+    }
+
+    private fun show(section: ContentSection) {
+        viewModel.section = section
+        render()
+    }
+
+    private fun onAdd() {
+        if (viewModel.connected.value != true || viewModel.uploadingName.value != null) return
+        if (viewModel.section == ContentSection.MUSIC) {
+            audioPicker.launch(ContentPickers.audio())
+        } else {
+            findNavController().navigate(R.id.nav_story_form, bundleOf(StoryFormFragment.ARG_MODE to StoryFormFragment.MODE_CREATE))
+        }
+    }
+
+    private fun render() {
+        if (_binding == null) return
+        val music = viewModel.section == ContentSection.MUSIC
+        val connected = viewModel.connected.value == true
+        val pending = viewModel.pending.value == true
+        val uploading = viewModel.uploadingName.value
+        val playback = viewModel.playback.value ?: PlaybackSnapshot(null, null, null)
+        paintTab(music)
+        binding.txtSubtitle.setText(if (music) R.string.content_music_subtitle else R.string.content_stories_subtitle)
+        binding.btnAdd.setText(if (music) R.string.content_add_music else R.string.content_add_story)
+        binding.btnAdd.isEnabled = connected && uploading == null && !pending
+        binding.cardUpload.isVisible = music && uploading != null
+        binding.txtUploadName.text = uploading.orEmpty()
+        binding.txtNowLabel.setText(if (music) R.string.content_now_music else R.string.content_now_story)
+        binding.imgNow.setImageResource(if (music) R.drawable.teo_ic_music else R.drawable.teo_ic_book)
+        val activeName = if (!connected) {
+            null
+        } else if (music) {
+            playback.songName
+        } else {
+            playback.storyTitle
+        }
+        binding.txtNow.text = activeName ?: getString(if (music) R.string.content_nothing_playing else R.string.content_nothing_reading)
+        val canStop = connected && !pending && !activeName.isNullOrBlank()
+        binding.btnStop.isEnabled = canStop
+        val tone = if (canStop) R.color.teo_primary else R.color.teo_outline
+        val color = ContextCompat.getColor(requireContext(), tone)
+        binding.btnStop.setTextColor(color)
+        binding.btnStop.strokeColor = android.content.res.ColorStateList.valueOf(color)
+        binding.btnStop.iconTint = android.content.res.ColorStateList.valueOf(color)
+        val load = if (music) viewModel.musicLoad.value ?: CatalogLoad.LOADING else viewModel.storyLoad.value ?: CatalogLoad.LOADING
+        val count = if (music) viewModel.songs.value.orEmpty().size else viewModel.stories.value.orEmpty().size
+        binding.progressCatalog.isVisible = load == CatalogLoad.LOADING && count == 0 && connected
+        val notice = ContentRules.catalogNotice(
+            connected = connected,
+            load = load,
+            count = count,
+            emptyText = getString(if (music) R.string.content_music_empty else R.string.content_stories_empty),
+            errorText = getString(if (music) R.string.content_music_error else R.string.content_stories_error),
+            offlineText = getString(R.string.content_offline),
+        )
+        binding.txtCatalogNotice.isVisible = notice != null
+        binding.txtCatalogNotice.text = notice.orEmpty()
+        binding.txtCatalogNotice.setTextColor(
+            ContextCompat.getColor(
+                requireContext(),
+                if (load == CatalogLoad.FAILED || !connected) R.color.teo_error else R.color.teo_secondary,
+            ),
+        )
+        binding.cardMusic.isVisible = music && count > 0
+        binding.storyList.isVisible = !music && count > 0
+        if (music) fillMusic(activeName, connected && !pending) else fillStories(connected && !pending)
+    }
+
+    private fun paintTab(music: Boolean) {
+        val primary = ContextCompat.getColor(requireContext(), R.color.teo_primary)
+        val secondary = ContextCompat.getColor(requireContext(), R.color.teo_secondary)
+        binding.txtTabMusic.setTextColor(if (music) primary else secondary)
+        binding.txtTabStories.setTextColor(if (music) secondary else primary)
+        binding.markMusic.setBackgroundColor(if (music) primary else android.graphics.Color.TRANSPARENT)
+        binding.markStories.setBackgroundColor(if (music) android.graphics.Color.TRANSPARENT else primary)
+    }
+
+    private fun fillMusic(active: String?, actionsEnabled: Boolean) {
+        val list = binding.musicList
+        list.removeAllViews()
+        val inflater = LayoutInflater.from(requireContext())
+        viewModel.songs.value.orEmpty().forEachIndexed { index, song ->
+            if (index > 0) {
+                list.addView(View(requireContext()).apply {
+                    layoutParams = LinearLayout.LayoutParams(LinearLayout.LayoutParams.MATCH_PARENT, 1)
+                    setBackgroundColor(ContextCompat.getColor(requireContext(), R.color.teo_outline))
+                })
+            }
+            val row = inflater.inflate(R.layout.item_music_row, list, false)
+            row.findViewById<TextView>(R.id.txt_song_name).text = ContentRules.wrappedName(song.filename)
+            row.findViewById<TextView>(R.id.txt_song_meta).text =
+                "${ContentRules.formatLabel(song.filename)} · ${ContentRules.sizeLabel(song.sizeBytes)}"
+            val playing = song.filename == active
+            row.findViewById<View>(R.id.txt_playing).isVisible = playing
+            val play = row.findViewById<View>(R.id.btn_play_song)
+            play.isVisible = !playing
+            play.isEnabled = actionsEnabled
+            play.alpha = if (actionsEnabled) 1f else 0.4f
+            play.setOnClickListener { viewModel.playSong(song.filename) }
+            val delete = row.findViewById<View>(R.id.btn_delete_song)
+            delete.isEnabled = actionsEnabled
+            delete.alpha = if (actionsEnabled) 1f else 0.4f
+            delete.setOnClickListener {
+                RoutineDeleteDialog.show(
+                    requireContext(),
+                    song.filename,
+                    title = getString(R.string.content_delete_music),
+                    question = ContentRules.deleteQuestion(song.filename),
+                ) { viewModel.deleteSong(song.filename) }
+            }
+            list.addView(row)
+        }
+    }
+
+    private fun fillStories(actionsEnabled: Boolean) {
+        val list = binding.storyList
+        list.removeAllViews()
+        val inflater = LayoutInflater.from(requireContext())
+        viewModel.stories.value.orEmpty().forEach { story ->
+            val row = inflater.inflate(R.layout.item_story_card, list, false)
+            row.findViewById<TextView>(R.id.txt_story_title).text = story.title
+            row.findViewById<TextView>(R.id.txt_story_words).text = getString(R.string.content_words, story.wordCount)
+            val read = row.findViewById<View>(R.id.btn_read_story)
+            read.isEnabled = actionsEnabled
+            read.alpha = if (actionsEnabled) 1f else 0.4f
+            read.setOnClickListener { viewModel.playStory(story.id) }
+            row.findViewById<View>(R.id.btn_edit_story).setOnClickListener {
+                findNavController().navigate(
+                    R.id.nav_story_form,
+                    bundleOf(
+                        StoryFormFragment.ARG_MODE to StoryFormFragment.MODE_EDIT,
+                        StoryFormFragment.ARG_ID to story.id,
+                    ),
+                )
+            }
+            val delete = row.findViewById<View>(R.id.btn_delete_story)
+            delete.isEnabled = actionsEnabled
+            delete.alpha = if (actionsEnabled) 1f else 0.4f
+            delete.setOnClickListener {
+                RoutineDeleteDialog.show(
+                    requireContext(),
+                    story.title,
+                    title = getString(R.string.content_delete_story),
+                    question = ContentRules.deleteQuestion(story.title),
+                ) { viewModel.deleteStory(story.id) }
+            }
+            list.addView(row)
+        }
+    }
+
+    private fun snack(message: String) {
+        Snackbar.make(binding.root, message, Snackbar.LENGTH_LONG).show()
     }
 }

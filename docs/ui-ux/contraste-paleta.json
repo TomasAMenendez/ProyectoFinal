@@ -1,0 +1,77 @@
+{
+  "checked": "2026-10-13",
+  "scope": "Pares de colores base propuestos; no auditoría de la app",
+  "thresholdNormalText": 4.5,
+  "pairs": [
+    {
+      "name": "Botón principal",
+      "foreground": "#FFFFFF",
+      "background": "#255763",
+      "ratio": 8.0088,
+      "passes": true
+    },
+    {
+      "name": "Texto sobre fondo",
+      "foreground": "#1D343B",
+      "background": "#F8F5ED",
+      "ratio": 11.9975,
+      "passes": true
+    },
+    {
+      "name": "Texto secundario",
+      "foreground": "#52636A",
+      "background": "#FFFFFF",
+      "ratio": 6.2656,
+      "passes": true
+    },
+    {
+      "name": "Globo",
+      "foreground": "#193F48",
+      "background": "#B6E2E8",
+      "ratio": 8.1438,
+      "passes": true
+    },
+    {
+      "name": "Dorado",
+      "foreground": "#3A2C16",
+      "background": "#E8BE73",
+      "ratio": 7.7615,
+      "passes": true
+    },
+    {
+      "name": "Conectado",
+      "foreground": "#245B2C",
+      "background": "#C6E6BD",
+      "ratio": 5.9263,
+      "passes": true
+    },
+    {
+      "name": "Dormido",
+      "foreground": "#354866",
+      "background": "#DEE3F3",
+      "ratio": 7.2187,
+      "passes": true
+    },
+    {
+      "name": "Desconectado",
+      "foreground": "#4C565A",
+      "background": "#E3E5E4",
+      "ratio": 5.9562,
+      "passes": true
+    },
+    {
+      "name": "Deshabilitado",
+      "foreground": "#596569",
+      "background": "#E0E3E2",
+      "ratio": 4.6574,
+      "passes": true
+    },
+    {
+      "name": "Error",
+      "foreground": "#A12E2E",
+      "background": "#FBE9E7",
+      "ratio": 6.0806,
+      "passes": true
+    }
+  ]
+}

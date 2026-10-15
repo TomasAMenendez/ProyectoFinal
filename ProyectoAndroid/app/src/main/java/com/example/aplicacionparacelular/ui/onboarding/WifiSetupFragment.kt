@@ -61,6 +61,7 @@ class WifiSetupFragment : Fragment() {
      * En ese caso, al abandonar la pantalla hay que avisarle que corte el BLE.
      */
     private var startedFromConfig = false
+    private var fromMyTeo = false
     private var joinedWifi = false
 
     private val mainHandler = Handler(Looper.getMainLooper())
@@ -99,6 +100,11 @@ class WifiSetupFragment : Fragment() {
         } else {
             RobotConnectionManager.isConnected.value == true
         }
+        fromMyTeo = if (savedInstanceState?.containsKey(KEY_FROM_MY_TEO) == true) {
+            savedInstanceState.getBoolean(KEY_FROM_MY_TEO)
+        } else {
+            arguments?.getBoolean(KEY_FROM_MY_TEO) == true
+        }
 
         requireActivity().onBackPressedDispatcher.addCallback(
             viewLifecycleOwner,
@@ -106,7 +112,7 @@ class WifiSetupFragment : Fragment() {
                 override fun handleOnBackPressed() {
                     // Si hay LAN llegamos desde "Cambiar red WiFi" y volver es
                     // legítimo. Sin LAN esta pantalla es una pared.
-                    if (RobotConnectionManager.isConnected.value == true) {
+                    if (fromMyTeo || RobotConnectionManager.isConnected.value == true) {
                         findNavController().popBackStack()
                     } else {
                         requireActivity().moveTaskToBack(true)
@@ -121,7 +127,11 @@ class WifiSetupFragment : Fragment() {
             } else if (sawDisconnected) {
                 // El peluche volvió a aparecer en la LAN: el onboarding sigue
                 // en MainActivity (perfil del chico o app normal).
-                findNavController().popBackStack(R.id.nav_dashboard, false)
+                if (fromMyTeo) {
+                    findNavController().popBackStack()
+                } else {
+                    findNavController().popBackStack(R.id.nav_dashboard, false)
+                }
             }
         }
 
@@ -579,11 +589,13 @@ class WifiSetupFragment : Fragment() {
     override fun onSaveInstanceState(outState: Bundle) {
         super.onSaveInstanceState(outState)
         outState.putBoolean(KEY_FROM_CONFIG, startedFromConfig)
+        outState.putBoolean(KEY_FROM_MY_TEO, fromMyTeo)
     }
 
     companion object {
         private const val TAG = "WifiSetupFragment"
         private const val KEY_FROM_CONFIG = "started_from_config"
+        const val KEY_FROM_MY_TEO = "fromMyTeo"
 
         /** Máximo que esperamos una respuesta de la Pi antes de ofrecer salida. */
         private const val STALL_TIMEOUT_MS = 45_000L

@@ -1,0 +1,125 @@
+<?xml version="1.0" encoding="utf-8"?>
+<com.google.android.material.card.MaterialCardView xmlns:android="http://schemas.android.com/apk/res/android"
+    xmlns:app="http://schemas.android.com/apk/res-auto"
+    xmlns:tools="http://schemas.android.com/tools"
+    style="@style/Widget.Teo.Home.Card"
+    android:layout_width="match_parent"
+    android:layout_height="wrap_content"
+    android:layout_marginBottom="8dp"
+    app:contentPaddingBottom="8dp"
+    app:contentPaddingLeft="12dp"
+    app:contentPaddingRight="12dp"
+    app:contentPaddingTop="12dp">
+
+    <LinearLayout
+        android:layout_width="match_parent"
+        android:layout_height="wrap_content"
+        android:orientation="vertical">
+
+        <LinearLayout
+            android:layout_width="match_parent"
+            android:layout_height="wrap_content"
+            android:gravity="top"
+            android:orientation="horizontal">
+
+            <ImageView
+                android:layout_width="36dp"
+                android:layout_height="36dp"
+                android:contentDescription="@null"
+                android:src="@drawable/teo_ic_book" />
+
+            <LinearLayout
+                android:layout_width="0dp"
+                android:layout_height="wrap_content"
+                android:layout_marginStart="10dp"
+                android:layout_weight="1"
+                android:orientation="vertical">
+
+                <TextView
+                    android:id="@+id/txt_story_title"
+                    android:layout_width="match_parent"
+                    android:layout_height="wrap_content"
+                    android:breakStrategy="simple"
+                    android:hyphenationFrequency="none"
+                    android:textAppearance="@style/TextAppearance.Teo.Routine.Name"
+                    tools:text="El bosque de las luces" />
+
+                <TextView
+                    android:id="@+id/txt_story_words"
+                    android:layout_width="match_parent"
+                    android:layout_height="wrap_content"
+                    android:layout_marginTop="2dp"
+                    android:textAppearance="@style/TextAppearance.Teo.Routine.Message"
+                    tools:text="650 palabras" />
+            </LinearLayout>
+        </LinearLayout>
+
+        <LinearLayout
+            android:layout_width="match_parent"
+            android:layout_height="wrap_content"
+            android:layout_marginTop="8dp"
+            android:gravity="start|center_vertical"
+            android:orientation="horizontal">
+
+            <com.google.android.material.button.MaterialButton
+                android:id="@+id/btn_read_story"
+                style="@style/Widget.Teo.Home.Button"
+                android:layout_width="wrap_content"
+                android:layout_height="48dp"
+                android:insetTop="0dp"
+                android:insetBottom="0dp"
+                android:minWidth="0dp"
+                android:paddingStart="12dp"
+                android:paddingEnd="12dp"
+                android:text="@string/content_read"
+                android:textSize="14sp"
+                app:icon="@drawable/teo_ic_play"
+                app:iconPadding="4dp"
+                app:iconSize="16dp" />
+
+            <com.google.android.material.button.MaterialButton
+                android:id="@+id/btn_edit_story"
+                style="@style/Widget.MaterialComponents.Button.OutlinedButton"
+                android:layout_width="wrap_content"
+                android:layout_height="48dp"
+                android:layout_marginStart="8dp"
+                android:insetTop="0dp"
+                android:insetBottom="0dp"
+                android:minWidth="0dp"
+                android:paddingStart="10dp"
+                android:paddingEnd="10dp"
+                android:text="@string/routines_edit"
+                android:textAllCaps="false"
+                android:textColor="@color/teo_primary"
+                android:textSize="14sp"
+                app:cornerRadius="24dp"
+                app:icon="@drawable/teo_ic_edit"
+                app:iconPadding="4dp"
+                app:iconSize="16dp"
+                app:iconTint="@color/teo_primary"
+                app:strokeColor="@color/teo_primary" />
+
+            <com.google.android.material.button.MaterialButton
+                android:id="@+id/btn_delete_story"
+                style="@style/Widget.MaterialComponents.Button.OutlinedButton"
+                android:layout_width="wrap_content"
+                android:layout_height="48dp"
+                android:layout_marginStart="8dp"
+                android:insetTop="0dp"
+                android:insetBottom="0dp"
+                android:minWidth="0dp"
+                android:paddingStart="10dp"
+                android:paddingEnd="10dp"
+                android:text="@string/routines_delete"
+                android:textAllCaps="false"
+                android:textColor="@color/teo_secondary"
+                android:textSize="14sp"
+                app:cornerRadius="24dp"
+                app:icon="@drawable/teo_ic_delete"
+                app:iconPadding="4dp"
+                app:iconSize="16dp"
+                app:iconTint="@color/teo_secondary"
+                app:strokeColor="@color/teo_outline" />
+        </LinearLayout>
+    </LinearLayout>
+</com.google.android.material.card.MaterialCardView>

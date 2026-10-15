@@ -1,0 +1,21 @@
+{
+  "date": "2026-10-13",
+  "scope": "Muestra HTML de la guia; no app Android ni prueba en S25",
+  "desktop": {
+    "viewport": 1120,
+    "overflow": false,
+    "brokenImages": 0,
+    "skinOptions": 9,
+    "clipped": []
+  },
+  "compact": {
+    "viewport": 360,
+    "overflow": false,
+    "brokenImages": 0,
+    "skinOptions": 9,
+    "clipped": []
+  },
+  "sendStateWorks": true,
+  "navigationStateWorks": true,
+  "pageErrors": []
+}

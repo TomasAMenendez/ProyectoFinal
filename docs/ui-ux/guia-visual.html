@@ -1,0 +1,149 @@
+<!doctype html>
+<html lang="es">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width,initial-scale=1">
+<title>TEO · Guía visual común</title>
+<style>
+:root{
+--teo-background:#F8F5ED;
+--teo-surface:#FFFFFF;
+--teo-primary:#255763;
+--teo-primary-pressed:#1D4650;
+--teo-text:#1D343B;
+--teo-secondary:#52636A;
+--teo-cyan:#B6E2E8;
+--teo-on-cyan:#193F48;
+--teo-gold:#E8BE73;
+--teo-on-gold:#3A2C16;
+--teo-success:#C6E6BD;
+--teo-on-success:#245B2C;
+--teo-sleep:#DEE3F3;
+--teo-on-sleep:#354866;
+--teo-neutral:#E3E5E4;
+--teo-on-neutral:#4C565A;
+--teo-disabled:#E0E3E2;
+--teo-on-disabled:#596569;
+--teo-outline:#788A8E;
+--teo-error:#A12E2E;
+--teo-error-bg:#FBE9E7;
+}
+*{box-sizing:border-box}
+body{margin:0;background:var(--teo-background);color:var(--teo-text);font:16px/1.45 Roboto,Arial,sans-serif}
+main{max-width:1120px;margin:auto;padding:32px 16px 48px}
+header{display:flex;gap:16px;align-items:center;flex-wrap:wrap;margin-bottom:24px}
+header img{width:72px;height:72px;object-fit:contain;border-radius:50%}
+header .intro{flex:1;min-width:220px}
+h1{font-size:28px;line-height:1.2;margin:0 0 8px;font-weight:700}
+h2{font-size:18px;line-height:1.3;margin:0 0 16px}
+h3{font-size:16px;margin:12px 0 8px}
+p{margin:0 0 12px}
+small,.secondary{color:var(--teo-secondary);font-size:14px}
+a{color:var(--teo-primary);text-underline-offset:3px}
+.links{display:flex;flex-wrap:wrap;gap:12px;font-size:14px;margin-top:12px}
+.grid{display:grid;grid-template-columns:repeat(2,minmax(0,1fr));gap:16px}
+.card{background:var(--teo-surface);border-radius:16px;padding:24px;box-shadow:0 2px 8px #1d343b14;min-width:0}
+.wide{grid-column:1/-1}
+.palette{display:grid;grid-template-columns:repeat(6,minmax(0,1fr));gap:16px}
+.swatch{display:flex;flex-direction:column;gap:5px;min-width:0}
+.swatch-color{height:56px;border-radius:12px;border:1px solid #d7dcdb}
+.swatch strong{font-size:14px}
+code{font:13px/1.4 Consolas,monospace;color:var(--teo-secondary)}
+.wrap{display:flex;flex-wrap:wrap;align-items:center;gap:12px}
+button,.button{min-height:48px;padding:10px 20px;border:2px solid transparent;border-radius:24px;background:var(--teo-primary);color:white;font-family:inherit;font-size:14px;font-weight:500;line-height:1.3;cursor:pointer;display:inline-flex;gap:8px;align-items:center;justify-content:center;text-decoration:none}
+button{font-family:inherit;font-size:14px;font-weight:500}
+button.secondary-btn{background:white;border-color:var(--teo-primary);color:var(--teo-primary)}
+button.danger{background:var(--teo-error);color:white}
+button:disabled{background:var(--teo-disabled);color:var(--teo-on-disabled);cursor:default}
+button:not(:disabled):active{background:var(--teo-primary-pressed);color:white}
+button:focus-visible,a:focus-visible,input:focus-visible,select:focus-visible{outline:3px solid var(--teo-primary);outline-offset:3px}
+.badge{display:inline-flex;align-items:center;gap:6px;min-height:28px;padding:4px 10px;border-radius:14px;font-size:12px;font-weight:500;background:var(--teo-neutral);color:var(--teo-on-neutral)}
+.online{background:var(--teo-success);color:var(--teo-on-success)}
+.awake{background:var(--teo-gold);color:var(--teo-on-gold)}
+.sleep{background:var(--teo-sleep);color:var(--teo-on-sleep)}
+.pending{background:var(--teo-cyan);color:var(--teo-on-cyan)}
+.dot{width:8px;height:8px;border-radius:50%;background:currentColor}
+label{display:block;font-size:14px;font-weight:500;margin-bottom:6px}
+input,select{width:100%;min-height:56px;border:1px solid var(--teo-outline);border-radius:12px;padding:12px 16px;font-family:inherit;font-size:16px;line-height:1.4;color:var(--teo-text);background:white}
+input,select{font-family:inherit;font-size:16px}
+.form-field{margin-bottom:16px}
+.help{font-size:12px;color:var(--teo-secondary);margin-top:4px}
+.error-example{border-left:4px solid var(--teo-error);background:var(--teo-error-bg);color:var(--teo-error);padding:12px 16px;border-radius:8px;font-size:14px}
+.metric-demo{display:flex;gap:24px;align-items:center;padding:8px 0 16px;flex-wrap:wrap}
+.bubble{position:relative;min-width:88px;padding:10px 12px;border-radius:16px;background:var(--teo-cyan);color:var(--teo-on-cyan);text-align:center}
+.bubble:after{content:"";position:absolute;bottom:-10px;left:40%;border-top:12px solid var(--teo-cyan);border-right:12px solid transparent}
+.bubble strong{display:block;font-size:40px;line-height:1.1}
+.bubble span{font-size:12px}
+.sizes{display:grid;grid-template-columns:1fr auto;gap:8px 12px;font-size:14px}
+.type-screen{font-size:28px;font-weight:700;line-height:1.25}
+.type-card{font-size:18px;font-weight:700}
+.type-body{font-size:16px}
+.type-secondary{font-size:14px;color:var(--teo-secondary)}
+.nav{display:grid;grid-template-columns:repeat(4,minmax(0,1fr));gap:4px;border-top:1px solid #d7dcdb;margin-top:16px;padding-top:12px}
+.nav button{display:flex;flex-direction:column;gap:2px;padding:8px 4px;background:transparent;color:var(--teo-secondary);border-radius:8px;font-size:12px;min-width:0}
+.nav button[aria-current="page"]{color:var(--teo-primary);font-weight:700}
+.nav svg{width:24px;height:24px;fill:none;stroke:currentColor;stroke-width:2;stroke-linecap:round;stroke-linejoin:round}
+.demo-note{min-height:22px;margin:12px 0 0;font-size:12px;color:var(--teo-secondary)}
+.golden{background:var(--teo-gold);color:var(--teo-on-gold);position:relative;overflow:hidden}
+.confetti{position:absolute;right:12px;top:8px;pointer-events:none;width:90px;height:50px;opacity:.7}
+.confetti i{position:absolute;width:6px;height:11px;transform:rotate(30deg);background:var(--teo-primary);border-radius:2px}
+.confetti i:nth-child(1){top:3px;left:0}.confetti i:nth-child(2){top:27px;left:24px;background:#b34d63;transform:rotate(-30deg)}.confetti i:nth-child(3){top:7px;left:48px;background:var(--teo-on-gold);transform:rotate(65deg)}.confetti i:nth-child(4){top:35px;left:66px;background:var(--teo-primary);transform:rotate(10deg)}
+.golden p{font-size:14px;max-width:75%}
+footer{margin-top:24px;color:var(--teo-secondary);font-size:14px}
+@media(max-width:760px){.grid{grid-template-columns:1fr}.palette{grid-template-columns:repeat(3,minmax(0,1fr))}.card{padding:16px}main{padding-top:24px}}
+@media(max-width:400px){.palette{grid-template-columns:repeat(2,minmax(0,1fr))}.wrap button{flex:1 1 auto}.metric-demo{gap:20px}.golden p{max-width:100%}}
+@media print{button,select,input{print-color-adjust:exact}main{max-width:none}.grid{display:block}.card{break-inside:avoid;margin-bottom:16px;box-shadow:none;border:1px solid #d7dcdb}}
+</style>
+</head>
+<body>
+<main>
+<header>
+<img src="referencias/logo-teo.png" alt="Logo original de TEO">
+<div class="intro"><h1>Una misma identidad para toda la app</h1><p class="secondary">Guía visual común v1 · Propuesta para revisión · 13 de octubre de 2026</p><div class="links"><a href="04-guia-visual-comun.md">Reglas completas</a><a href="05-speckit-y-cursor.md">Pasos para Cursor</a><a href="bocetos/inicio-principal-elegido-2026-10-13.png">Inicio elegido</a></div></div>
+</header>
+<div class="grid">
+<section class="card wide"><h2>Paleta compartida</h2><div class="palette"><div class="swatch"><span class="swatch-color" style="background:#F8F5ED"></span><strong>Fondo</strong><code>#F8F5ED</code></div>
+<div class="swatch"><span class="swatch-color" style="background:#FFFFFF"></span><strong>Superficie</strong><code>#FFFFFF</code></div>
+<div class="swatch"><span class="swatch-color" style="background:#255763"></span><strong>Petróleo</strong><code>#255763</code></div>
+<div class="swatch"><span class="swatch-color" style="background:#1D343B"></span><strong>Texto</strong><code>#1D343B</code></div>
+<div class="swatch"><span class="swatch-color" style="background:#52636A"></span><strong>Secundario</strong><code>#52636A</code></div>
+<div class="swatch"><span class="swatch-color" style="background:#B6E2E8"></span><strong>Cian</strong><code>#B6E2E8</code></div>
+<div class="swatch"><span class="swatch-color" style="background:#E8BE73"></span><strong>Dorado</strong><code>#E8BE73</code></div>
+<div class="swatch"><span class="swatch-color" style="background:#C6E6BD"></span><strong>Conectado</strong><code>#C6E6BD</code></div>
+<div class="swatch"><span class="swatch-color" style="background:#DEE3F3"></span><strong>Dormido</strong><code>#DEE3F3</code></div>
+<div class="swatch"><span class="swatch-color" style="background:#E3E5E4"></span><strong>Neutro</strong><code>#E3E5E4</code></div>
+<div class="swatch"><span class="swatch-color" style="background:#E0E3E2"></span><strong>Deshabilitado</strong><code>#E0E3E2</code></div>
+<div class="swatch"><span class="swatch-color" style="background:#A12E2E"></span><strong>Error</strong><code>#A12E2E</code></div></div><p class="demo-note">Los colores y tamaños son una normalización propuesta de los bocetos. La comparación final se hace en Android, con el Samsung S25.</p></section>
+<section class="card"><h2>Jerarquía de texto</h2><p class="type-screen">Título de pantalla</p><p class="type-card">Título de tarjeta · 18 sp</p><p class="type-body">Texto principal legible · 16 sp</p><p class="type-secondary">Ayudas y textos secundarios · 14 sp</p><p class="help">Etiquetas de estado · 12 sp</p><p class="demo-note">En Android: familia sans-serif, texto en sp y escalado del sistema. Esta muestra usa la fuente disponible en el navegador.</p></section>
+<section class="card"><h2>Acciones y sus estados</h2><div class="wrap"><button type="button" id="send-demo">Aplicar cambios</button><button type="button" class="secondary-btn">Cancelar</button><button type="button" class="danger">Eliminar</button><button type="button" disabled>Detener</button></div><p class="demo-note" id="send-status" role="status">Probá Aplicar cambios para ver el estado de envío. Es una demostración sin conexión con TEO.</p></section>
+<section class="card"><h2>Conexión y actividad son distintas</h2><div class="wrap"><span class="badge online"><span class="dot"></span>Conectado</span><span class="badge awake">☀ Despierto</span><span class="badge sleep">☾ Dormido</span><span class="badge pending">Preparándose</span><span class="badge">Desconectado</span></div><p class="demo-note">Cada estado tiene texto. Las etiquetas no son botones y su color no es la única señal.</p></section>
+<section class="card"><h2>Una métrica reconocible</h2><div class="metric-demo"><div class="bubble" aria-label="12 interacciones"><strong>12</strong><span>interacciones</span></div><div><strong>Hoy con TEO</strong><p class="secondary">Última señal emocional registrada</p><span class="badge pending">Tranquilo</span></div></div><p class="demo-note">Número ficticio. El globo crece si el dato necesita más espacio.</p></section>
+<section class="card"><h2>Campos y mensajes</h2><div class="form-field"><label for="name-demo">Nombre (obligatorio)</label><input id="name-demo" value="Luna" maxlength="40" aria-describedby="name-help"><div id="name-help" class="help">Máximo 40 caracteres · dato ficticio</div></div><div class="form-field"><label for="skin-demo">Disfraz de TEO</label><select id="skin-demo"><option>Oso</option><option>Perro</option><option>Oveja</option><option>Dinosaurio</option><option>Chancho</option><option>Tiburón</option><option>Stitch</option><option>Spiderman</option><option>Chimuelo</option></select></div><div class="error-example">Ejemplo de error: revisá la conexión e intentá de nuevo. Los datos escritos se conservan.</div></section>
+<section class="card"><h2>Espacios y superficies</h2><div class="sizes"><span>Margen de pantalla</span><strong>16 dp</strong><span>Padding de tarjeta</span><strong>16 dp</strong><span>Separación de tarjetas</span><strong>12 dp</strong><span>Radio de tarjeta</span><strong>16 dp</strong><span>Elevación</span><strong>2 dp</strong><span>Alto mínimo de botón</span><strong>48 dp</strong><span>Alto mínimo de campo</span><strong>56 dp</strong><span>Icono / área táctil</span><strong>24 / 48 dp</strong></div><p class="demo-note">Medidas iniciales y mínimas. El contenido, la fuente ampliada y los insets pueden exigir más espacio.</p></section>
+<section class="card golden"><h2>Celebrar un logro</h2><p>TEO acompaña el festejo.</p><span class="confetti" aria-hidden="true"><i></i><i></i><i></i><i></i></span><p class="demo-note" style="color:inherit">El confeti se conserva. Esta decoración es una muestra; el recurso final se prepara por separado.</p></section>
+<section class="card"><h2>Cuatro destinos principales</h2><nav class="nav" aria-label="Ejemplo visual de navegación">
+<button type="button" aria-current="page"><svg aria-hidden="true" viewBox="0 0 24 24"><path d="m3 10 9-7 9 7v11H3zM9 21v-7h6v7"/></svg>Inicio</button>
+<button type="button"><svg aria-hidden="true" viewBox="0 0 24 24"><circle cx="12" cy="12" r="9"/><path d="M12 7v5l4 3"/></svg>Rutinas</button>
+<button type="button"><svg aria-hidden="true" viewBox="0 0 24 24"><rect x="5" y="3" width="16" height="16" rx="1"/><path d="M2 7v15h15M11 7l6 4-6 4z"/></svg>Contenido</button>
+<button type="button"><svg aria-hidden="true" viewBox="0 0 24 24"><rect x="3" y="5" width="18" height="16" rx="1"/><path d="M7 2v6m10-6v6M3 10h18"/></svg>Agenda</button>
+</nav><p class="demo-note">Podés cambiar la selección para revisar el estado visual. Las vistas secundarias usan su recorrido de regreso.</p></section>
+</div>
+<footer>Esta muestra explica componentes compartidos; no es la app ni controla el peluche. El personaje individual, los recursos de celebración y la fidelidad del Inicio se revisan antes de cerrar el primer bloque.</footer>
+</main>
+<script id="teo-design-tokens" type="application/json">{"schemaVersion":1,"status":"propuesta-para-revision","reference":"bocetos/inicio-principal-elegido-2026-10-13.png","primaryTestDevice":"Samsung Galaxy S25","updated":"2026-10-13","colors":{"teo_background":"#F8F5ED","teo_surface":"#FFFFFF","teo_primary":"#255763","teo_primary_pressed":"#1D4650","teo_text":"#1D343B","teo_secondary":"#52636A","teo_cyan":"#B6E2E8","teo_on_cyan":"#193F48","teo_gold":"#E8BE73","teo_on_gold":"#3A2C16","teo_success":"#C6E6BD","teo_on_success":"#245B2C","teo_sleep":"#DEE3F3","teo_on_sleep":"#354866","teo_neutral":"#E3E5E4","teo_on_neutral":"#4C565A","teo_disabled":"#E0E3E2","teo_on_disabled":"#596569","teo_outline":"#788A8E","teo_error":"#A12E2E","teo_error_bg":"#FBE9E7"},"spacingDp":[4,8,12,16,24,32],"dimensionsDp":{"screenMargin":16,"cardPadding":16,"cardGap":12,"cardRadius":16,"cardElevation":2,"buttonMinHeight":48,"buttonRadius":24,"fieldMinHeight":56,"fieldRadius":12,"iconSize":24,"touchTargetMin":48,"headerMinHeight":64,"bottomNavMinHeight":64,"metricBubbleMinWidth":88,"badgeMinHeight":28},"typography":{"familyAndroid":"sans-serif","screenTitle":{"sizeSp":28,"weight":700},"cardTitle":{"sizeSp":18,"weight":700},"compactCardTitle":{"sizeSp":16,"weight":700},"body":{"sizeSp":16,"weight":400},"button":{"sizeSp":14,"weight":500},"secondary":{"sizeSp":14,"weight":400},"badge":{"sizeSp":12,"weight":500},"metric":{"sizeSp":40,"weight":700}},"notes":["Dimensiones en dp y texto en sp; no convertir pixels del boceto a dp de forma directa.","Medidas mínimas; permitir crecer con el contenido y la escala de texto.","Tokens propuestos para revisión; no son recursos Android ya implementados.","El modo noche pertenece al peluche y no cambia esta guía de tema claro."]}</script>
+<script>
+(function(){
+  var send=document.getElementById("send-demo");
+  var status=document.getElementById("send-status");
+  send.addEventListener("click",function(){
+    send.disabled=true;send.textContent="Enviando…";
+    status.textContent="Demostración de estado de carga; no se realiza una solicitud real.";
+    window.setTimeout(function(){send.disabled=false;send.textContent="Aplicar cambios";status.textContent="Demostración terminada. No se enviaron cambios al peluche.";},1200);
+  });
+  document.querySelectorAll(".nav button").forEach(function(button){
+    button.addEventListener("click",function(){document.querySelectorAll(".nav button").forEach(function(other){other.removeAttribute("aria-current");});button.setAttribute("aria-current","page");});
+  });
+})();
+</script>
+</body>
+</html>

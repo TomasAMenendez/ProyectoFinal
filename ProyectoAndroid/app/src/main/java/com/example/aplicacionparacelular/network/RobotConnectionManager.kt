@@ -8,6 +8,9 @@ import androidx.lifecycle.LiveData
 import androidx.lifecycle.MutableLiveData
 import androidx.lifecycle.Observer
 import com.example.aplicacionparacelular.onboarding.OnboardingGate
+import com.example.aplicacionparacelular.ui.character.TeoAppearance
+import com.example.aplicacionparacelular.ui.character.ProfileAppearanceGate
+import com.example.aplicacionparacelular.ui.character.TeoAppearanceRules
 import org.json.JSONObject
 import java.util.concurrent.Executors
 import java.util.concurrent.ScheduledFuture
@@ -37,11 +40,12 @@ object RobotConnectionManager {
 
     private var appContext: Context? = null
     private var initialized = false
+    private val profileAppearanceGate = ProfileAppearanceGate()
 
-    private val _parentAlerts = MutableLiveData<List<String>>(emptyList())
-    val parentAlerts: LiveData<List<String>> = _parentAlerts
+    private val _parentAlerts = MutableLiveData<List<ParentNotice>>(emptyList())
+    val parentAlerts: LiveData<List<ParentNotice>> = _parentAlerts
 
-    private val recentAlerts = mutableListOf<String>()
+    private val recentNotices = mutableListOf<ParentNotice>()
 
     // ------------------------------------------------------------------
     // LiveData observables
@@ -80,6 +84,7 @@ object RobotConnectionManager {
 
         val ctx = context.applicationContext
         appContext = ctx
+        TeoAppearance.init(ctx)
         RobotApiClient.init(ctx)
         com.example.aplicacionparacelular.notifications.AppNotificationHelper.ensureChannels(ctx)
 
@@ -198,12 +203,14 @@ object RobotConnectionManager {
         when (val result = RobotApiClient.getStatus()) {
             is ApiResult.Success -> {
                 postToMain {
+                    val justConnected = _isConnected.value != true
                     _isConnected.value = true
                     _robotStatus.value = result.data
                     _lastError.value = null
                     // Si el JSON no trae has_child_profile (firmware viejo), true evita
                     // dejar la app bloqueada para siempre. Tras actualizar la Pi, el campo existe.
                     _hasChildProfile.value = result.data.optBoolean("has_child_profile", true)
+                    if (justConnected) fetchChildProfile { }
                 }
                 pollNotifications()
             }
@@ -233,6 +240,17 @@ object RobotConnectionManager {
         executor.execute {
             val result = call()
             postToMain { onResult(result) }
+        }
+    }
+
+    fun fetchStatus(onResult: (ApiResult<JSONObject>) -> Unit) {
+        executeAsync({ RobotApiClient.getStatus() }) { result ->
+            if (result is ApiResult.Success) {
+                _isConnected.value = true
+                _robotStatus.value = result.data
+                _lastError.value = null
+            }
+            onResult(result)
         }
     }
 
@@ -277,6 +295,14 @@ object RobotConnectionManager {
         onResult: (ApiResult<JSONObject>) -> Unit
     ) {
         executeAsync({ RobotApiClient.postConfig(volumeLimit, brightness, playtimeLimitMinutes) }, onResult)
+    }
+
+    fun updateSensory(
+        volumeLimit: Int,
+        brightnessPercent: Int,
+        onResult: (ApiResult<JSONObject>) -> Unit,
+    ) {
+        executeAsync({ RobotApiClient.postSensory(volumeLimit, brightnessPercent) }, onResult)
     }
 
     /**
@@ -409,13 +435,23 @@ object RobotConnectionManager {
     }
 
     fun fetchChildProfile(onResult: (ApiResult<JSONObject>) -> Unit) {
-        executeAsync({ RobotApiClient.getChildProfile() }, onResult)
+        val read = profileAppearanceGate.beginRead()
+        executeAsync({ RobotApiClient.getChildProfile() }) { result ->
+            if (profileAppearanceGate.accepts(read) && result is ApiResult.Success) {
+                TeoAppearance.acceptConfirmed(result.data)
+            }
+            onResult(result)
+        }
     }
 
     fun saveChildProfile(body: JSONObject, onResult: (ApiResult<JSONObject>) -> Unit) {
+        val version = profileAppearanceGate.beginSave()
         executeAsync({ RobotApiClient.putChildProfile(body) }) { result ->
+            val confirmed = result is ApiResult.Success && TeoAppearanceRules.confirmedCostume(result.data) != null
+            val latestSave = profileAppearanceGate.finishSave(version, confirmed)
             if (result is ApiResult.Success && result.data.optBoolean("complete", false)) {
                 _hasChildProfile.value = true
+                if (latestSave) TeoAppearance.acceptConfirmed(result.data)
             }
             onResult(result)
         }
@@ -430,22 +466,27 @@ object RobotConnectionManager {
             is ApiResult.Success -> {
                 val arr = result.data.optJSONArray("notifications") ?: return
                 if (arr.length() == 0) return
-                val incoming = mutableListOf<String>()
+                val incoming = mutableListOf<ParentNotice>()
+                val receivedAt = System.currentTimeMillis()
                 for (i in 0 until arr.length()) {
                     val obj = arr.optJSONObject(i) ?: continue
                     val type = obj.optString("type", "aviso")
                     val message = obj.optString("message", "")
-                    if (!ParentInbox.accepts(type) || message.isBlank()) continue
-                    incoming.add(ParentInbox.formatLine(type, message))
+                    val notice = ParentInbox.notice(
+                        type,
+                        message,
+                        obj.optString("timestamp", ""),
+                        receivedAt + i,
+                    ) ?: continue
+                    incoming.add(notice)
                     showSystemNotification(type, message)
                 }
                 if (incoming.isEmpty()) return
                 postToMain {
-                    recentAlerts.addAll(0, incoming)
-                    while (recentAlerts.size > 20) {
-                        recentAlerts.removeAt(recentAlerts.lastIndex)
-                    }
-                    _parentAlerts.value = recentAlerts.toList()
+                    val merged = ParentInbox.merge(recentNotices, incoming)
+                    recentNotices.clear()
+                    recentNotices.addAll(merged)
+                    _parentAlerts.value = recentNotices.toList()
                 }
             }
             is ApiResult.Error -> {

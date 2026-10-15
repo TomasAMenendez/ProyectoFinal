@@ -4,6 +4,7 @@ import android.app.AlarmManager
 import android.app.PendingIntent
 import android.content.Context
 import android.content.Intent
+import android.content.SharedPreferences
 import android.os.Build
 import org.json.JSONArray
 import org.json.JSONObject
@@ -20,9 +21,9 @@ object ReminderScheduler {
     private const val KEY_ROUTINES = "routines_json"
     private const val KEY_VACCINES = "vaccines_json"
     private const val KEY_APPOINTMENTS = "appointments_json"
+    private const val KEY_CODES = "alarm_codes"
+    private const val KEY_NEXT = "next_alarm_code"
     private const val BASE_ROUTINE = 42000
-    private const val BASE_VACCINE = 43000
-    private const val BASE_APPT = 44000
 
     fun restoreAll(context: Context) {
         val prefs = context.getSharedPreferences(PREFS, Context.MODE_PRIVATE)
@@ -48,32 +49,34 @@ object ReminderScheduler {
         context: Context,
         items: List<VaccineReminder>,
     ) {
-        val arr = JSONArray()
-        items.forEach { v ->
-            arr.put(
-                JSONObject()
-                    .put("id", v.id)
-                    .put("name", v.name)
-                    .put("dueDate", v.dueDateIso)
-                    .put("applied", v.applied)
-            )
-        }
-        context.getSharedPreferences(PREFS, Context.MODE_PRIVATE)
-            .edit().putString(KEY_VACCINES, arr.toString()).apply()
-        scheduleVaccinesFromJson(context, arr.toString())
+        val prefs = context.getSharedPreferences(PREFS, Context.MODE_PRIVATE)
+        val previous = prefs.getString(KEY_VACCINES, "[]") ?: "[]"
+        cancelCodes(
+            context,
+            ReminderPlan.codesToCancel(previous, routineCodes(prefs)) { obj ->
+                ReminderPlan.legacyVaccineCodes(obj.optString("id"))
+            },
+        )
+        val alarms = ReminderPlan.planVaccines(items, System.currentTimeMillis()) { stableCode(prefs, it) }
+        alarms.forEach { setAlarm(context, it.requestCode, it.atMillis, it.kind, it.title, it.message, null) }
+        prefs.edit().putString(KEY_VACCINES, ReminderPlan.storedVaccines(items, alarms)).apply()
     }
 
     fun saveAndScheduleAppointments(
         context: Context,
-        items: List<Pair<String, String>>,
+        items: List<AppointmentReminder>,
     ) {
-        val arr = JSONArray()
-        items.forEach { (title, dateText) ->
-            arr.put(JSONObject().put("title", title).put("date", dateText))
-        }
-        context.getSharedPreferences(PREFS, Context.MODE_PRIVATE)
-            .edit().putString(KEY_APPOINTMENTS, arr.toString()).apply()
-        scheduleAppointmentsFromJson(context, arr.toString())
+        val prefs = context.getSharedPreferences(PREFS, Context.MODE_PRIVATE)
+        val previous = prefs.getString(KEY_APPOINTMENTS, "[]") ?: "[]"
+        cancelCodes(
+            context,
+            ReminderPlan.codesToCancel(previous, routineCodes(prefs)) { obj ->
+                ReminderPlan.legacyAppointmentCodes(obj.optString("title"))
+            },
+        )
+        val alarms = ReminderPlan.planAppointments(items, System.currentTimeMillis()) { stableCode(prefs, it) }
+        alarms.forEach { setAlarm(context, it.requestCode, it.atMillis, it.kind, it.title, it.message, null) }
+        prefs.edit().putString(KEY_APPOINTMENTS, ReminderPlan.storedAppointments(items, alarms)).apply()
     }
 
     fun rescheduleRoutineFromIntent(context: Context, intent: Intent) {
@@ -105,7 +108,7 @@ object ReminderScheduler {
             val hour = minutes / 60
             val minute = minutes % 60
             val name = obj.optString("name", "Rutina")
-            val id = BASE_ROUTINE + (obj.optString("id").hashCode() and 0x0FFF)
+            val id = ReminderPlan.routineCode(obj.optString("id"))
             setAlarm(
                 context,
                 id,
@@ -119,72 +122,40 @@ object ReminderScheduler {
     }
 
     private fun scheduleVaccinesFromJson(context: Context, json: String) {
+        val items = mutableListOf<VaccineReminder>()
         val arr = JSONArray(json)
         for (i in 0 until arr.length()) {
             val obj = arr.optJSONObject(i) ?: continue
-            val name = obj.optString("name")
-            val applied = obj.optBoolean("applied")
-            val due = obj.optString("dueDate")
-            if (applied || due.isBlank()) continue
-            val day = parseIsoDate(due) ?: continue
-            val id = BASE_VACCINE + (obj.optString("id").hashCode() and 0x0FFF)
-            val morning = day.clone() as Calendar
-            morning.set(Calendar.HOUR_OF_DAY, 9)
-            morning.set(Calendar.MINUTE, 0)
-            morning.set(Calendar.SECOND, 0)
-            if (morning.timeInMillis > System.currentTimeMillis()) {
-                setAlarm(
-                    context,
-                    id,
-                    morning,
-                    ReminderReceiver.KIND_VACUNA,
-                    "TEO: vacunación",
-                    "Hoy toca la vacuna $name",
-                    null,
-                )
-            }
-            val eve = morning.clone() as Calendar
-            eve.add(Calendar.DAY_OF_YEAR, -1)
-            if (eve.timeInMillis > System.currentTimeMillis()) {
-                setAlarm(
-                    context,
-                    id + 8000,
-                    eve,
-                    ReminderReceiver.KIND_VACUNA,
-                    "TEO: vacunación mañana",
-                    "Mañana es la vacuna $name",
-                    null,
-                )
-            }
+            items.add(
+                VaccineReminder(
+                    id = obj.optString("id"),
+                    name = obj.optString("name"),
+                    dueDateIso = obj.optString("dueDate"),
+                    applied = obj.optBoolean("applied"),
+                ),
+            )
         }
+        saveAndScheduleVaccines(context, items)
     }
 
     private fun scheduleAppointmentsFromJson(context: Context, json: String) {
+        val items = mutableListOf<AppointmentReminder>()
         val arr = JSONArray(json)
         for (i in 0 until arr.length()) {
             val obj = arr.optJSONObject(i) ?: continue
-            val title = obj.optString("title")
-            val whenCal = parseAppointmentDate(obj.optString("date")) ?: continue
-            if (whenCal.timeInMillis <= System.currentTimeMillis()) continue
-            val isVaccine = title.contains("vacun", ignoreCase = true)
-            val kind = if (isVaccine) ReminderReceiver.KIND_VACUNA else ReminderReceiver.KIND_TURNO
-            val channelTitle = if (isVaccine) "TEO: vacunación" else "TEO: turno médico"
-            val id = BASE_APPT + (title.hashCode() and 0x0FFF)
-            setAlarm(context, id, whenCal, kind, channelTitle, "$title · ${obj.optString("date")}", null)
-            val hourBefore = whenCal.clone() as Calendar
-            hourBefore.add(Calendar.HOUR_OF_DAY, -1)
-            if (hourBefore.timeInMillis > System.currentTimeMillis()) {
-                setAlarm(
-                    context,
-                    id + 9000,
-                    hourBefore,
-                    kind,
-                    channelTitle,
-                    "En una hora: $title",
-                    null,
-                )
-            }
+            val at = obj.optLong("at", 0L).takeIf { it > 0L }
+                ?: parseAppointmentDate(obj.optString("date"))?.timeInMillis
+                ?: 0L
+            items.add(
+                AppointmentReminder(
+                    id = obj.optString("id").ifBlank { "legacy-$i" },
+                    title = obj.optString("title"),
+                    atMillis = at,
+                    label = obj.optString("date"),
+                ),
+            )
         }
+        saveAndScheduleAppointments(context, items)
     }
 
     private fun setAlarm(
@@ -272,21 +243,72 @@ object ReminderScheduler {
             "mayo" to 4, "junio" to 5, "julio" to 6, "agosto" to 7,
             "septiembre" to 8, "octubre" to 9, "noviembre" to 10, "diciembre" to 11,
         )
-        val named = Regex("""(\d{1,2})\s+de\s+([a-záéíóú]+).*?(\d{1,2}):(\d{2})""", RegexOption.IGNORE_CASE).find(text)
-        if (named != null) {
-            val (d, monthName, h, min) = named.destructured
-            val month = months[monthName.lowercase(Locale("es"))] ?: return null
-            val year = Calendar.getInstance().get(Calendar.YEAR)
-            return Calendar.getInstance().apply {
-                set(Calendar.YEAR, year)
-                set(Calendar.MONTH, month)
-                set(Calendar.DAY_OF_MONTH, d.toInt())
-                set(Calendar.HOUR_OF_DAY, h.toInt())
-                set(Calendar.MINUTE, min.toInt())
-                set(Calendar.SECOND, 0)
-            }
+        val named = Regex(
+            """(\d{1,2})\s+de\s+([a-záéíóúñ]+)\s+de\s+(\d{4}).*?(\d{1,2}):(\d{2})""",
+            RegexOption.IGNORE_CASE,
+        ).find(text) ?: return null
+        val (day, monthName, year, hour, minute) = named.destructured
+        val month = months[monthName.lowercase(Locale("es"))] ?: return null
+        return Calendar.getInstance().apply {
+            isLenient = false
+            set(Calendar.YEAR, year.toInt())
+            set(Calendar.MONTH, month)
+            set(Calendar.DAY_OF_MONTH, day.toInt())
+            set(Calendar.HOUR_OF_DAY, hour.toInt())
+            set(Calendar.MINUTE, minute.toInt())
+            set(Calendar.SECOND, 0)
+            set(Calendar.MILLISECOND, 0)
         }
-        return null
+    }
+
+    private fun cancelCodes(context: Context, codes: List<Int>) {
+        val alarm = context.getSystemService(Context.ALARM_SERVICE) as AlarmManager
+        codes.distinct().forEach { code ->
+            val intent = Intent(context, ReminderReceiver::class.java).apply {
+                action = ReminderReceiver.ACTION_REMINDER
+            }
+            val pending = PendingIntent.getBroadcast(
+                context,
+                code,
+                intent,
+                PendingIntent.FLAG_UPDATE_CURRENT or PendingIntent.FLAG_IMMUTABLE,
+            )
+            alarm.cancel(pending)
+            pending.cancel()
+        }
+    }
+
+    private fun routineCodes(prefs: SharedPreferences): Set<Int> {
+        val arr = runCatching { JSONArray(prefs.getString(KEY_ROUTINES, "[]") ?: "[]") }.getOrDefault(JSONArray())
+        val codes = mutableSetOf<Int>()
+        for (i in 0 until arr.length()) {
+            val obj = arr.optJSONObject(i) ?: continue
+            codes.add(ReminderPlan.routineCode(obj.optString("id")))
+        }
+        return codes
+    }
+
+    private fun stableCode(prefs: SharedPreferences, key: String): Int {
+        val map = JSONObject(prefs.getString(KEY_CODES, "{}") ?: "{}")
+        if (map.has(key)) return map.getInt(key)
+        val next = prefs.getInt(KEY_NEXT, 80_000)
+        map.put(key, next)
+        prefs.edit().putString(KEY_CODES, map.toString()).putInt(KEY_NEXT, next + 1).commit()
+        return next
+    }
+
+    private fun setAlarm(
+        context: Context,
+        requestCode: Int,
+        atMillis: Long,
+        kind: String,
+        title: String,
+        message: String,
+        hhmm: String?,
+    ) {
+        val whenCal = Calendar.getInstance()
+        whenCal.timeInMillis = atMillis
+        setAlarm(context, requestCode, whenCal, kind, title, message, hhmm)
     }
 
     data class VaccineReminder(

@@ -1,46 +1,47 @@
 <?xml version="1.0" encoding="utf-8"?>
 <ScrollView xmlns:android="http://schemas.android.com/apk/res/android"
     xmlns:tools="http://schemas.android.com/tools"
+    android:id="@+id/profile_scroll"
     android:layout_width="match_parent"
     android:layout_height="match_parent"
+    android:background="@color/teo_background"
     android:clipToPadding="false"
-    android:paddingBottom="16dp"
+    android:fillViewport="true"
     tools:context=".ui.onboarding.ChildProfileFragment">
 
     <LinearLayout
         android:layout_width="match_parent"
         android:layout_height="wrap_content"
         android:orientation="vertical"
-        android:padding="16dp">
+        android:paddingStart="@dimen/teo_screen_margin"
+        android:paddingTop="24dp"
+        android:paddingEnd="@dimen/teo_screen_margin"
+        android:paddingBottom="24dp">
 
         <TextView
-            android:layout_width="wrap_content"
-            android:layout_height="wrap_content"
-            android:text="@string/onboarding_child_title"
-            android:textAppearance="@style/TextAppearance.App.SectionTitle" />
-
-        <com.google.android.material.card.MaterialCardView
-            style="@style/Widget.App.CardView"
             android:layout_width="match_parent"
             android:layout_height="wrap_content"
-            android:layout_marginBottom="16dp">
+            android:gravity="center"
+            android:text="@string/profile_edit_title"
+            android:textAppearance="@style/TextAppearance.Teo.Home.Title" />
 
-            <LinearLayout
-                android:layout_width="match_parent"
-                android:layout_height="wrap_content"
-                android:orientation="vertical">
+        <TextView
+            android:layout_width="match_parent"
+            android:layout_height="wrap_content"
+            android:layout_marginTop="8dp"
+            android:gravity="center"
+            android:text="@string/profile_intro"
+            android:textAppearance="@style/TextAppearance.Teo.Home.Body" />
 
-                <TextView
-                    android:layout_width="match_parent"
-                    android:layout_height="wrap_content"
-                    android:layout_marginBottom="12dp"
-                    android:text="@string/onboarding_child_subtitle"
-                    android:textAppearance="@style/TextAppearance.App.CardSubtitle" />
+        <TextView
+            android:layout_width="match_parent"
+            android:layout_height="wrap_content"
+            android:layout_marginTop="8dp"
+            android:text="@string/onboarding_child_subtitle"
+            android:textAppearance="@style/TextAppearance.Teo.Home.Secondary" />
 
-                <include
-                    android:id="@+id/form"
-                    layout="@layout/include_child_profile_fields" />
-            </LinearLayout>
-        </com.google.android.material.card.MaterialCardView>
+        <include
+            android:id="@+id/form"
+            layout="@layout/include_child_profile_fields" />
     </LinearLayout>
 </ScrollView>

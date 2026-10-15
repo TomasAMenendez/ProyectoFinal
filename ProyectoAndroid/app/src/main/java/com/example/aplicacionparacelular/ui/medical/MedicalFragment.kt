@@ -1,279 +1,181 @@
 package com.example.aplicacionparacelular.ui.medical
 
-import android.app.DatePickerDialog
-import android.app.TimePickerDialog
+import android.content.Intent
 import android.os.Bundle
+import android.provider.Settings
 import android.view.LayoutInflater
 import android.view.View
 import android.view.ViewGroup
-import android.widget.CheckBox
-import android.widget.EditText
-import android.widget.LinearLayout
-import android.widget.TextView
-import androidx.appcompat.app.AlertDialog
+import android.content.res.ColorStateList
+import androidx.core.content.ContextCompat
+import androidx.core.view.isVisible
 import androidx.fragment.app.Fragment
 import androidx.lifecycle.ViewModelProvider
+import androidx.navigation.fragment.findNavController
 import com.example.aplicacionparacelular.R
 import com.example.aplicacionparacelular.databinding.FragmentMedicalBinding
-import com.google.android.material.card.MaterialCardView
-import java.util.Calendar
+import com.example.aplicacionparacelular.databinding.ItemAppointmentBinding
+import com.example.aplicacionparacelular.databinding.ItemVaccineBinding
+import com.example.aplicacionparacelular.ui.SystemBarInsets
+import com.example.aplicacionparacelular.ui.routines.RoutineDeleteDialog
+import com.google.android.material.snackbar.Snackbar
 
 class MedicalFragment : Fragment() {
-
     private var _binding: FragmentMedicalBinding? = null
     private val binding get() = _binding!!
     private lateinit var viewModel: MedicalViewModel
+    private var warnedNotifications = false
 
-    override fun onCreateView(
-        inflater: LayoutInflater,
-        container: ViewGroup?,
-        savedInstanceState: Bundle?
-    ): View {
-        viewModel = ViewModelProvider(this).get(MedicalViewModel::class.java)
+    override fun onCreateView(inflater: LayoutInflater, container: ViewGroup?, savedInstanceState: Bundle?): View {
+        viewModel = ViewModelProvider(requireActivity())[MedicalViewModel::class.java]
         _binding = FragmentMedicalBinding.inflate(inflater, container, false)
         return binding.root
     }
 
     override fun onViewCreated(view: View, savedInstanceState: Bundle?) {
         super.onViewCreated(view, savedInstanceState)
-
-        // Observe appointments
-        viewModel.appointments.observe(viewLifecycleOwner) { appointments ->
-            binding.appointmentsContainer.removeAllViews()
-            if (appointments.isEmpty()) {
-                val tv = TextView(requireContext()).apply {
-                    text = getString(R.string.medical_no_appointments)
-                    setPadding(0, 24, 0, 24)
-                    setTextColor(resources.getColor(R.color.text_hint, null))
-                }
-                binding.appointmentsContainer.addView(tv)
-            } else {
-                appointments.forEachIndexed { index, appt ->
-                    val card = createAppointmentCard(appt, index)
-                    binding.appointmentsContainer.addView(card)
-                }
-            }
-        }
-
-        // Observe vaccines
-        viewModel.vaccines.observe(viewLifecycleOwner) { vaccines ->
-            binding.vaccinesContainer.removeAllViews()
-            vaccines.forEachIndexed { index, vaccine ->
-                val row = createVaccineRow(vaccine, index)
-                binding.vaccinesContainer.addView(row)
-            }
-        }
-
-        // Add appointment button
-        binding.btnAddAppointment.setOnClickListener {
-            showAddAppointmentDialog()
-        }
-
-        // Load data
+        SystemBarInsets.applyTop(binding.agendaScroll)
         viewModel.loadData(requireContext())
-        viewModel.appointments.observe(viewLifecycleOwner) {
+        if (viewModel.appointmentLoad.value == RecordLoad.READY && viewModel.vaccineLoad.value == RecordLoad.READY) {
             viewModel.scheduleReminders(requireContext())
         }
-        viewModel.vaccines.observe(viewLifecycleOwner) {
-            viewModel.scheduleReminders(requireContext())
-        }
-    }
-
-    private fun createAppointmentCard(appointment: Appointment, position: Int): View {
-        val dp = resources.displayMetrics.density
-        val radius = resources.getDimension(R.dimen.card_corner_radius)
-        val elevation = resources.getDimension(R.dimen.card_elevation)
-        val padding = resources.getDimensionPixelSize(R.dimen.card_padding)
-
-        val card = MaterialCardView(requireContext()).apply {
-            this.radius = radius
-            cardElevation = elevation
-            setContentPadding(padding, padding, padding, padding)
-            layoutParams = LinearLayout.LayoutParams(
-                LinearLayout.LayoutParams.MATCH_PARENT,
-                LinearLayout.LayoutParams.WRAP_CONTENT
-            ).apply { bottomMargin = (8 * dp).toInt() }
-        }
-
-        val layout = LinearLayout(requireContext()).apply {
-            orientation = LinearLayout.HORIZONTAL
-            gravity = android.view.Gravity.CENTER_VERTICAL
-        }
-
-        val textLayout = LinearLayout(requireContext()).apply {
-            orientation = LinearLayout.VERTICAL
-            layoutParams = LinearLayout.LayoutParams(0, LinearLayout.LayoutParams.WRAP_CONTENT, 1f)
-        }
-
-        textLayout.addView(TextView(requireContext()).apply {
-            text = "📅 ${appointment.title}"
-            textSize = 15f
-            setTextColor(resources.getColor(R.color.on_background_light, null))
-        })
-
-        textLayout.addView(TextView(requireContext()).apply {
-            text = appointment.date
-            textSize = 13f
-            setTextColor(resources.getColor(R.color.text_hint, null))
-        })
-
-        if (appointment.notes.isNotBlank()) {
-            textLayout.addView(TextView(requireContext()).apply {
-                text = appointment.notes
-                textSize = 12f
-                setTextColor(resources.getColor(R.color.text_hint, null))
-                setPadding(0, (4 * dp).toInt(), 0, 0)
-            })
-        }
-
-        val touch = (48 * dp).toInt()
-        val deleteBtn = com.google.android.material.button.MaterialButton(
-            requireContext(), null,
-            com.google.android.material.R.attr.materialButtonOutlinedStyle
-        ).apply {
-            text = "✕"
-            textSize = 14f
-            minWidth = touch
-            minHeight = touch
-            minimumWidth = touch
-            minimumHeight = touch
-            insetTop = 0
-            insetBottom = 0
-            setPadding((8 * dp).toInt(), 0, (8 * dp).toInt(), 0)
-            contentDescription = "Eliminar turno"
-            setOnClickListener {
-                AlertDialog.Builder(requireContext())
-                    .setTitle("Eliminar turno")
-                    .setMessage("¿Eliminar '${appointment.title}'?")
-                    .setPositiveButton("Eliminar") { _, _ ->
-                        viewModel.removeAppointment(requireContext(), position)
-                    }
-                    .setNegativeButton("Cancelar", null)
-                    .show()
-            }
-        }
-
-        layout.addView(textLayout)
-        layout.addView(deleteBtn)
-        card.addView(layout)
-        return card
-    }
-
-    private fun createVaccineRow(vaccine: Vaccine, position: Int): View {
-        val dp = resources.displayMetrics.density
-
-        val row = LinearLayout(requireContext()).apply {
-            orientation = LinearLayout.HORIZONTAL
-            gravity = android.view.Gravity.CENTER_VERTICAL
-            minimumHeight = (48 * dp).toInt()
-            setPadding(0, (6 * dp).toInt(), 0, (6 * dp).toInt())
-        }
-
-        val checkbox = CheckBox(requireContext()).apply {
-            isChecked = vaccine.applied
-            setOnCheckedChangeListener { _, _ ->
-                viewModel.toggleVaccine(requireContext(), position)
-            }
-        }
-
-        val nameText = TextView(requireContext()).apply {
-            text = vaccine.name
-            textSize = 14f
-            layoutParams = LinearLayout.LayoutParams(0, LinearLayout.LayoutParams.WRAP_CONTENT, 1f)
-            setPadding((8 * dp).toInt(), 0, 0, 0)
-            if (vaccine.applied) {
-                paintFlags = paintFlags or android.graphics.Paint.STRIKE_THRU_TEXT_FLAG
-                setTextColor(resources.getColor(R.color.text_hint, null))
-            }
-        }
-
-        val ageText = TextView(requireContext()).apply {
-            text = if (vaccine.applied) {
-                "${vaccine.scheduledAge} ✓"
-            } else if (vaccine.dueDate.isNotBlank()) {
-                "${vaccine.scheduledAge} · ${vaccine.dueDate}"
-            } else {
-                vaccine.scheduledAge
-            }
-            textSize = 12f
-            setTextColor(
-                if (vaccine.applied) resources.getColor(R.color.card_connection_online, null)
-                else resources.getColor(R.color.text_hint, null)
-            )
-        }
-
-        row.addView(checkbox)
-        row.addView(nameText)
-        row.addView(ageText)
-        if (!vaccine.applied) {
-            row.setOnLongClickListener {
-                val cal = Calendar.getInstance()
-                DatePickerDialog(requireContext(), { _, year, month, day ->
-                    val iso = "%04d-%02d-%02d".format(year, month + 1, day)
-                    viewModel.setVaccineDueDate(requireContext(), position, iso)
-                }, cal.get(Calendar.YEAR), cal.get(Calendar.MONTH), cal.get(Calendar.DAY_OF_MONTH)).show()
-                true
-            }
-        }
-        return row
-    }
-
-    private fun showAddAppointmentDialog() {
-        val titleInput = EditText(requireContext()).apply {
-            hint = "Título (ej. Control pediátrico)"
-            setPadding(48, 32, 48, 16)
-        }
-        val dateText = TextView(requireContext()).apply {
-            text = "Seleccionar fecha y hora"
-            setPadding(48, 16, 48, 16)
-            textSize = 16f
-            setTextColor(resources.getColor(R.color.primary, null))
-            setOnClickListener {
-                val cal = Calendar.getInstance()
-                DatePickerDialog(requireContext(), { _, year, month, day ->
-                    TimePickerDialog(requireContext(), { _, hour, minute ->
-                        val dateStr = "${day}/${month + 1}/$year ${String.format("%02d:%02d", hour, minute)}"
-                        text = dateStr
-                        tag = dateStr
-                    }, cal.get(Calendar.HOUR_OF_DAY), cal.get(Calendar.MINUTE), true).show()
-                }, cal.get(Calendar.YEAR), cal.get(Calendar.MONTH), cal.get(Calendar.DAY_OF_MONTH)).show()
-            }
-        }
-        val notesInput = EditText(requireContext()).apply {
-            hint = "Notas (opcional)"
-            setPadding(48, 16, 48, 16)
-        }
-
-        val container = LinearLayout(requireContext()).apply {
-            orientation = LinearLayout.VERTICAL
-            addView(titleInput)
-            addView(dateText)
-            addView(notesInput)
-        }
-
-        AlertDialog.Builder(requireContext())
-            .setTitle("Nuevo Turno Médico")
-            .setView(container)
-            .setPositiveButton("Agregar") { _, _ ->
-                val title = titleInput.text.toString().trim()
-                val date = dateText.tag?.toString() ?: ""
-                val notes = notesInput.text.toString().trim()
-                if (title.isNotBlank() && date.isNotBlank()) {
-                    val appointment = Appointment(
-                        id = "appt_${System.currentTimeMillis()}",
-                        title = title,
-                        date = date,
-                        notes = notes
-                    )
-                    viewModel.addAppointment(requireContext(), appointment)
-                }
-            }
-            .setNegativeButton("Cancelar", null)
-            .show()
+        binding.tabAppointments.setOnClickListener { show(false) }
+        binding.tabVaccines.setOnClickListener { show(true) }
+        binding.btnAdd.setOnClickListener { findNavController().navigate(R.id.nav_appointment_form) }
+        binding.btnAlertsBell.setOnClickListener { findNavController().navigate(R.id.nav_alerts) }
+        binding.btnMyTeo.setOnClickListener { findNavController().navigate(R.id.nav_config) }
+        viewModel.appointments.observe(viewLifecycleOwner) { render() }
+        viewModel.vaccines.observe(viewLifecycleOwner) { render() }
+        viewModel.appointmentLoad.observe(viewLifecycleOwner) { render() }
+        viewModel.vaccineLoad.observe(viewLifecycleOwner) { render() }
+        show(viewModel.sectionIsVaccines)
+        warnIfNotificationsDisabled()
     }
 
     override fun onDestroyView() {
-        super.onDestroyView()
         _binding = null
+        super.onDestroyView()
+    }
+
+    private fun show(vaccines: Boolean) {
+        viewModel.sectionIsVaccines = vaccines
+        render()
+    }
+
+    private fun render() {
+        if (_binding == null) return
+        val vaccines = viewModel.sectionIsVaccines
+        paintTab(!vaccines)
+        binding.txtSubtitle.setText(
+            if (vaccines) R.string.agenda_vaccines_subtitle else R.string.agenda_appointments_subtitle,
+        )
+        binding.txtLocal.setText(
+            if (vaccines) R.string.agenda_local_vaccines else R.string.agenda_local_appointments,
+        )
+        binding.btnAdd.isVisible = !vaccines
+        binding.listContainer.removeAllViews()
+        if (vaccines) renderVaccines() else renderAppointments()
+    }
+
+    private fun renderAppointments() {
+        if (viewModel.appointmentLoad.value == RecordLoad.FAILED) {
+            binding.txtEmpty.isVisible = true
+            binding.txtEmpty.setText(R.string.agenda_read_failed)
+            return
+        }
+        val items = viewModel.appointments.value.orEmpty()
+        binding.txtEmpty.isVisible = items.isEmpty()
+        binding.txtEmpty.setText(R.string.agenda_empty_appointments)
+        val inflater = LayoutInflater.from(requireContext())
+        items.forEach { item ->
+            val row = ItemAppointmentBinding.inflate(inflater, binding.listContainer, true)
+            row.txtTitle.text = item.title
+            row.txtWhen.text = AgendaRules.displayWhen(item)
+            row.txtNotes.isVisible = item.notes.isNotBlank()
+            row.txtNotes.text = item.notes
+            row.btnDelete.setOnClickListener {
+                RoutineDeleteDialog.show(
+                    requireContext(),
+                    item.title,
+                    title = getString(R.string.agenda_delete_title),
+                    question = getString(R.string.agenda_delete_question, item.title),
+                ) {
+                    viewModel.removeAppointment(requireContext(), item.id)
+                }
+            }
+        }
+    }
+
+    private fun renderVaccines() {
+        if (viewModel.vaccineLoad.value == RecordLoad.FAILED) {
+            binding.txtEmpty.isVisible = true
+            binding.txtEmpty.setText(R.string.agenda_read_failed)
+            return
+        }
+        binding.txtEmpty.isVisible = false
+        val inflater = LayoutInflater.from(requireContext())
+        viewModel.vaccines.value.orEmpty().forEach { item ->
+            val row = ItemVaccineBinding.inflate(inflater, binding.listContainer, true)
+            val presentation = AgendaRules.vaccine(item)
+            row.txtName.text = item.name
+            row.txtAge.text = getString(R.string.agenda_age, item.scheduledAge)
+            row.checkApplied.setText(
+                if (presentation.status == VaccineStatus.APPLIED) R.string.agenda_applied else R.string.agenda_pending,
+            )
+            row.rowSchedule.isVisible = presentation.showSchedule
+            if (presentation.dueText == null) {
+                row.txtSchedule.setText(R.string.agenda_no_date)
+                row.btnSchedule.setText(R.string.agenda_schedule)
+            } else {
+                row.txtSchedule.text = getString(R.string.agenda_scheduled, presentation.dueText)
+                row.btnSchedule.setText(R.string.agenda_change_date)
+            }
+            row.checkApplied.setOnCheckedChangeListener(null)
+            row.checkApplied.isChecked = item.applied
+            row.checkApplied.setOnCheckedChangeListener { _, checked ->
+                if (checked != item.applied) viewModel.toggleVaccine(requireContext(), item.id)
+            }
+            row.btnSchedule.setOnClickListener { pickDueDate(item) }
+        }
+    }
+
+    private fun pickDueDate(item: Vaccine) {
+        val initial = item.dueDate.split("-")
+        val now = java.util.Calendar.getInstance()
+        val year = initial.getOrNull(0)?.toIntOrNull() ?: now.get(java.util.Calendar.YEAR)
+        val month = initial.getOrNull(1)?.toIntOrNull()?.minus(1) ?: now.get(java.util.Calendar.MONTH)
+        val day = initial.getOrNull(2)?.toIntOrNull() ?: now.get(java.util.Calendar.DAY_OF_MONTH)
+        android.app.DatePickerDialog(requireContext(), { _, y, m, d ->
+            val iso = String.format(java.util.Locale.US, "%04d-%02d-%02d", y, m + 1, d)
+            viewModel.setVaccineDueDate(requireContext(), item.id, iso)
+        }, year, month, day).show()
+    }
+
+    private fun paintTab(appointments: Boolean) {
+        val active = ContextCompat.getColor(requireContext(), R.color.teo_primary)
+        val idle = ContextCompat.getColor(requireContext(), R.color.teo_secondary)
+        binding.txtTabAppointments.setTextColor(if (appointments) active else idle)
+        binding.txtTabVaccines.setTextColor(if (appointments) idle else active)
+        binding.markAppointments.setBackgroundColor(if (appointments) active else android.graphics.Color.TRANSPARENT)
+        binding.markVaccines.setBackgroundColor(if (appointments) android.graphics.Color.TRANSPARENT else active)
+        binding.txtTabAppointments.compoundDrawableTintList = ColorStateList.valueOf(if (appointments) active else idle)
+        binding.txtTabVaccines.compoundDrawableTintList = ColorStateList.valueOf(if (appointments) idle else active)
+    }
+
+    private fun warnIfNotificationsDisabled() {
+        if (warnedNotifications) return
+        val enabled = androidx.core.app.NotificationManagerCompat.from(requireContext()).areNotificationsEnabled()
+        if (enabled) return
+        warnedNotifications = true
+        Snackbar.make(binding.root, R.string.agenda_notifications_off, Snackbar.LENGTH_LONG)
+            .setAction(R.string.agenda_notifications_open) {
+                startActivity(
+                    Intent(Settings.ACTION_APP_NOTIFICATION_SETTINGS).putExtra(
+                        Settings.EXTRA_APP_PACKAGE,
+                        requireContext().packageName,
+                    ),
+                )
+            }
+            .show()
     }
 }

@@ -25,7 +25,15 @@ data class MetricsPeriodSnapshot(
     val pillars: PillarData,
     val days: List<DailySummary>,
     val newWords: Int,
-    val vocabularyTotal: Int,
+    val vocabularyTotal: Int?,
+    val summaryKnown: Boolean,
+    val interactionsKnown: Boolean,
+    val gamesKnown: Boolean,
+    val routinesKnown: Boolean,
+    val crisesKnown: Boolean,
+    val pillarsKnown: Boolean,
+    val daysKnown: Boolean,
+    val newWordsKnown: Boolean,
 )
 
 object MetricsPeriodParser {
@@ -59,6 +67,7 @@ object MetricsPeriodParser {
         val daily = summary.optJSONArray("daily")
         val days = mutableListOf<DailySummary>()
         var totalNewWords = headline.newWords
+        val daysKnown = summary.has("daily") && daily != null
         if (daily != null) {
             totalNewWords = 0
             for (i in 0 until daily.length()) {
@@ -76,26 +85,34 @@ object MetricsPeriodParser {
                 totalNewWords += ds.newWords
             }
         }
-        var vocabularyTotal = 0
-        val events = data.optJSONArray("events")
-        if (events != null) {
-            for (i in events.length() - 1 downTo 0) {
-                val event = events.optJSONObject(i) ?: continue
-                if (event.optString("type") == "vocabulary") {
-                    val total = event.optInt("total_known_words", 0)
-                    if (total > 0) {
-                        vocabularyTotal = total
-                        break
-                    }
-                }
-            }
-        }
+        val newWordsKnown = daysKnown || known(summary, "new_words_today")
         return MetricsPeriodSnapshot(
             headline = headline,
             pillars = pillars,
             days = days,
             newWords = totalNewWords,
-            vocabularyTotal = vocabularyTotal,
+            vocabularyTotal = vocabularyTotal(data),
+            summaryKnown = known(summary, "total_interactions"),
+            interactionsKnown = known(summary, "total_interactions"),
+            gamesKnown = known(summary, "games_played"),
+            routinesKnown = known(summary, "routines_completed"),
+            crisesKnown = known(summary, "crisis_count"),
+            pillarsKnown = summary.has("pillar_counts") && pillarCounts != null,
+            daysKnown = daysKnown,
+            newWordsKnown = newWordsKnown,
         )
+    }
+
+    private fun known(source: JSONObject, key: String): Boolean = source.has(key) && !source.isNull(key)
+
+    private fun vocabularyTotal(data: JSONObject): Int? {
+        val events = data.optJSONArray("events") ?: return null
+        for (i in events.length() - 1 downTo 0) {
+            val event = events.optJSONObject(i) ?: continue
+            if (event.optString("type") == "vocabulary" && known(event, "total_known_words")) {
+                return event.optInt("total_known_words", 0)
+            }
+        }
+        return null
     }
 }

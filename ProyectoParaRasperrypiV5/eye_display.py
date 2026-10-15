@@ -117,6 +117,21 @@ class EyeDisplay:
         self._anim.set_pictogram(name)
         self._sync_from_animator()
 
+    def show_routine_pictogram(self, path: str | None, hold_seconds: float = 8.0) -> int:
+        """Muestra el PNG a pantalla completa. None restaura los ojos."""
+        if not path:
+            return self._anim.show_routine_image(None, hold_seconds)
+        try:
+            from PIL import Image
+
+            source = Image.open(path)
+        except Exception:
+            return self._anim._routine_generation
+        return self._anim.show_routine_image(source, hold_seconds)
+
+    def dismiss_routine_pictogram(self, generation: int | None = None) -> None:
+        self._anim.dismiss_routine_image(generation)
+
     def get_expression(self) -> str:
         """Retorna la expresión actual."""
         return self._anim.get_expression()
@@ -282,6 +297,8 @@ class EyeDisplay:
         if self.canvas is not None:
             if override is not None:
                 self._blit_override_canvas(override)
+            elif self._anim.routine_image_showing:
+                self._blit_sprite_canvas()
             elif self._anim.has_sprite():
                 try:
                     self._blit_sprite_canvas()

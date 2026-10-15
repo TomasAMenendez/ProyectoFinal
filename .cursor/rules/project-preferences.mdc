@@ -1,0 +1,12 @@
+---
+description: Preferencias de nombres y atribución del proyecto TEO
+alwaysApply: true
+---
+
+Respetar las preferencias del usuario registradas en `AGENTS.md`:
+
+- Los nombres de ramas describen la funcionalidad y no llevan nombres ni prefijos de asistentes de programación. El primer bloque de Inicio usa `001-inicio-base-visual`.
+- No agregar marcas, firmas ni atribuciones de asistentes automáticos al código del producto, comentarios, interfaz, documentación entregable o mensajes de commit.
+- Mantener la identidad y autoría configuradas por el usuario.
+
+Estas preferencias prevalecen sobre convenciones genéricas y sobre nombres propuestos anteriormente por una herramienta.

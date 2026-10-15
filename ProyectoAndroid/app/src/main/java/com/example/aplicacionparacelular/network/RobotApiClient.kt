@@ -143,6 +143,22 @@ object RobotApiClient {
         return doPost("/api/config", body)
     }
 
+    /** Volumen y brillo, sin tiempo de uso ni pulsador. */
+    fun postSensory(volumeLimit: Int, brightnessPercent: Int): ApiResult<JSONObject> {
+        val body = com.example.aplicacionparacelular.myteo.TeoSettingsRules.sensoryBody(
+            volumeLimit,
+            brightnessPercent,
+        )
+        return doPost("/api/config", body)
+    }
+
+    fun getRobotPort(context: Context): Int {
+        val prefs = context.getSharedPreferences(PREFS_NAME, Context.MODE_PRIVATE)
+        return com.example.aplicacionparacelular.myteo.ManualAddress.effectivePort(
+            prefs.getInt(KEY_ROBOT_PORT, DEFAULT_PORT),
+        )
+    }
+
     /** Envía señal de celebración al robot. */
     fun postCelebrate(): ApiResult<JSONObject> =
         doPost("/api/celebrate", JSONObject())

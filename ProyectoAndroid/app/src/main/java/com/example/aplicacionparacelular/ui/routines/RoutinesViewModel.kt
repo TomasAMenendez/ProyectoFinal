@@ -19,7 +19,8 @@ data class RoutineItem(
     val preReminderMinutes: Int,
     val enabled: Boolean,
     val reminded: Boolean = false,
-    val completed: Boolean = false
+    val completed: Boolean = false,
+    val pictogramId: String? = null,
 ) {
     fun toJson(): JSONObject {
         return JSONObject().apply {
@@ -32,6 +33,8 @@ data class RoutineItem(
             put("success_message", successMessage)
             put("pre_reminder_minutes", preReminderMinutes)
             put("enabled", enabled)
+            val pictogram = pictogramId?.trim().orEmpty()
+            if (pictogram.isNotEmpty()) put("pictogram_id", pictogram)
         }
     }
 
@@ -48,7 +51,12 @@ data class RoutineItem(
                 preReminderMinutes = json.optInt("pre_reminder_minutes", 5),
                 enabled = json.optBoolean("enabled", true),
                 reminded = json.optBoolean("reminded", false),
-                completed = json.optBoolean("completed", false)
+                completed = json.optBoolean("completed", false),
+                pictogramId = if (!json.has("pictogram_id") || json.isNull("pictogram_id")) {
+                    null
+                } else {
+                    json.optString("pictogram_id").trim().ifEmpty { null }
+                },
             )
         }
     }
@@ -81,62 +89,65 @@ class RoutinesViewModel : ViewModel() {
                     scheduleLocalReminders()
                 }
                 is ApiResult.Error -> {
-                    _syncStatus.value = "Error: ${result.message}"
+                    _syncStatus.value = result.message.ifBlank { "No se pudieron leer las rutinas" }
                 }
             }
         }
     }
 
-    fun addRoutine(routine: RoutineItem) {
-        val current = _routines.value?.toMutableList() ?: mutableListOf()
-        current.add(routine)
-        _routines.value = current
-        syncRoutines()
+    fun consumeStatus() {
+        _syncStatus.value = null
     }
 
-    fun removeRoutine(position: Int) {
-        val current = _routines.value?.toMutableList() ?: return
-        if (position in current.indices) {
-            current.removeAt(position)
-            _routines.value = current
-            syncRoutines()
+    fun save(item: RoutineItem, isNew: Boolean, onResult: (Boolean, String?) -> Unit) {
+        val previous = _routines.value.orEmpty()
+        val next = if (isNew) {
+            previous + item
+        } else if (previous.none { it.id == item.id }) {
+            onResult(false, "No se encontró la rutina")
+            return
+        } else {
+            previous.map { if (it.id == item.id) item else it }
         }
+        persist(previous, next, onResult)
     }
 
-    fun toggleRoutine(position: Int) {
-        val current = _routines.value?.toMutableList() ?: return
-        if (position in current.indices) {
-            val routine = current[position]
-            current[position] = routine.copy(enabled = !routine.enabled)
-            _routines.value = current
-            syncRoutines()
+    fun removeRoutine(id: String) {
+        val previous = _routines.value.orEmpty()
+        persist(previous, previous.filterNot { it.id == id }) { _, _ -> }
+    }
+
+    fun toggleRoutine(id: String) {
+        val previous = _routines.value.orEmpty()
+        val next = previous.map { routine ->
+            if (routine.id == id) routine.copy(enabled = !routine.enabled) else routine
         }
+        persist(previous, next) { _, _ -> }
     }
 
-    fun updateRoutine(position: Int, routine: RoutineItem) {
-        val current = _routines.value?.toMutableList() ?: return
-        if (position in current.indices) {
-            current[position] = routine
-            _routines.value = current
-            syncRoutines()
-        }
-    }
-
-    private fun syncRoutines() {
-        val routinesList = _routines.value ?: return
+    private fun persist(
+        previous: List<RoutineItem>,
+        next: List<RoutineItem>,
+        onResult: (Boolean, String?) -> Unit,
+    ) {
+        _routines.value = next
         val jsonArray = JSONArray()
-        for (routine in routinesList) {
+        for (routine in next) {
             jsonArray.put(routine.toJson())
         }
         val body = JSONObject().apply { put("routines", jsonArray) }
-
         RobotConnectionManager.updateRoutines(body) { result ->
             when (result) {
                 is ApiResult.Success -> {
-                    _syncStatus.value = "✅ Sincronizado"
                     scheduleLocalReminders()
+                    onResult(true, null)
                 }
-                is ApiResult.Error -> _syncStatus.value = "⚠ No sincronizado: ${result.message}"
+                is ApiResult.Error -> {
+                    _routines.value = previous
+                    val message = result.message.ifBlank { "No se pudieron guardar las rutinas" }
+                    _syncStatus.value = message
+                    onResult(false, message)
+                }
             }
         }
     }

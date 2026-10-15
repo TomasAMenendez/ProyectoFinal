@@ -8,6 +8,7 @@ import android.os.Handler
 import android.os.Looper
 import android.view.Menu
 import android.view.MenuItem
+import android.content.res.ColorStateList
 import android.view.View
 import androidx.core.app.ActivityCompat
 import androidx.core.content.ContextCompat
@@ -24,10 +25,13 @@ import androidx.lifecycle.LiveData
 import androidx.lifecycle.MutableLiveData
 import com.example.aplicacionparacelular.databinding.ActivityMainBinding
 import com.example.aplicacionparacelular.network.RobotConnectionManager
+import com.example.aplicacionparacelular.onboarding.GateMove
+import com.example.aplicacionparacelular.onboarding.GatePlace
 import com.example.aplicacionparacelular.onboarding.OnboardingGate
 import com.example.aplicacionparacelular.onboarding.OnboardingScreen
 import com.example.aplicacionparacelular.onboarding.TeoBleClient
 import com.example.aplicacionparacelular.onboarding.TeoBlePresence
+import com.example.aplicacionparacelular.ui.SystemBarInsets
 import com.google.android.material.navigation.NavigationView
 
 class MainActivity : AppCompatActivity() {
@@ -46,6 +50,9 @@ class MainActivity : AppCompatActivity() {
     private var blePresenceScanning = false
     private var bleLoopScheduled = false
     private var blePermissionRequested = false
+    private var savedNavIconTint: ColorStateList? = null
+    private var savedNavTextColor: ColorStateList? = null
+    private var navColorsCaptured = false
 
     override fun onCreate(savedInstanceState: Bundle?) {
         super.onCreate(savedInstanceState)
@@ -82,6 +89,10 @@ class MainActivity : AppCompatActivity() {
         setupActionBarWithNavController(navController, appBarConfiguration)
         navView?.setupWithNavController(navController)
         binding.appBarMain.contentMain.bottomNavView?.setupWithNavController(navController)
+        binding.appBarMain.contentMain.bottomNavView?.let { SystemBarInsets.applyBottom(it) }
+        navController.addOnDestinationChangedListener { _, destination, _ ->
+            applyDestinationChrome(destination.id)
+        }
 
         RobotConnectionManager.isConnected.observe(this) {
             applyOnboardingGate()
@@ -146,23 +157,12 @@ class MainActivity : AppCompatActivity() {
 
         val navController = findNavController(R.id.nav_host_fragment_content_main)
         val dest = navController.currentDestination?.id
-        when (screen) {
-            OnboardingScreen.WIFI -> navigateToOnboarding(R.id.nav_wifi_setup, dest)
-            OnboardingScreen.RETRY -> {
-                // Si el padre ya está tipeando el PIN, un scan BLE que no vio a TEO
-                // no tiene que arrancarlo de la pantalla de WiFi.
-                if (dest != R.id.nav_wifi_setup) {
-                    navigateToOnboarding(R.id.nav_onboarding_retry, dest)
-                }
-            }
-            OnboardingScreen.CHILD_PROFILE -> navigateToOnboarding(R.id.nav_child_profile, dest)
-            OnboardingScreen.NONE -> {
-                // nav_wifi_setup no se cierra desde acá: puede venir de "Cambiar
-                // red WiFi" con LAN viva, y el fragment se saca solo al terminar.
-                if (dest in ONBOARDING_POP_DESTINATIONS) {
-                    navController.popBackStack(R.id.nav_dashboard, false)
-                }
-            }
+        when (OnboardingGate.move(screen, gatePlace(dest))) {
+            GateMove.TO_WIFI -> navigateToOnboarding(R.id.nav_wifi_setup, dest)
+            GateMove.TO_RETRY -> navigateToOnboarding(R.id.nav_onboarding_retry, dest)
+            GateMove.TO_PROFILE -> navigateToOnboarding(R.id.nav_child_profile, dest)
+            GateMove.POP_TO_HOME -> navController.popBackStack(R.id.nav_dashboard, false)
+            GateMove.STAY -> Unit
         }
 
         val destAfter = navController.currentDestination?.id
@@ -184,6 +184,59 @@ class MainActivity : AppCompatActivity() {
         findViewById<DrawerLayout>(R.id.drawer_layout)?.setDrawerLockMode(
             if (showChrome) DrawerLayout.LOCK_MODE_UNLOCKED else DrawerLayout.LOCK_MODE_LOCKED_CLOSED,
         )
+        if (!blocking) {
+            applyDestinationChrome(destAfter)
+        }
+    }
+
+    private fun applyDestinationChrome(destinationId: Int?) {
+        if (onboardingLocked) return
+        val light = destinationId == R.id.nav_dashboard ||
+            destinationId == R.id.nav_alerts ||
+            destinationId == R.id.nav_routines ||
+            destinationId == R.id.nav_routine_editor ||
+            destinationId == R.id.nav_stories ||
+            destinationId == R.id.nav_story_form ||
+            destinationId == R.id.nav_medical ||
+            destinationId == R.id.nav_appointment_form ||
+            destinationId == R.id.nav_metrics ||
+            isMyTeo(destinationId)
+        val appBar = binding.appBarMain.toolbar.parent as View
+        appBar.visibility = if (light) View.GONE else View.VISIBLE
+        binding.appBarMain.toolbar.visibility = if (light) View.GONE else View.VISIBLE
+        findViewById<DrawerLayout>(R.id.drawer_layout)?.setDrawerLockMode(
+            if (light) DrawerLayout.LOCK_MODE_LOCKED_CLOSED else DrawerLayout.LOCK_MODE_UNLOCKED,
+        )
+        val content = binding.appBarMain.contentMain.root
+        if (light) {
+            content.setBackgroundColor(ContextCompat.getColor(this, R.color.teo_background))
+        } else {
+            content.background = null
+        }
+        val bottom = binding.appBarMain.contentMain.bottomNavView ?: return
+        bottom.visibility = if (
+            destinationId == R.id.nav_routine_editor ||
+                destinationId == R.id.nav_story_form ||
+                destinationId == R.id.nav_appointment_form ||
+                destinationId == R.id.nav_metrics ||
+                destinationId == R.id.nav_alerts ||
+                isMyTeo(destinationId)
+        ) View.GONE else View.VISIBLE
+        if (!navColorsCaptured) {
+            savedNavIconTint = bottom.itemIconTintList
+            savedNavTextColor = bottom.itemTextColor
+            navColorsCaptured = true
+        }
+        if (light) {
+            val tint = ContextCompat.getColorStateList(this, R.color.teo_nav_item)
+            bottom.setBackgroundColor(ContextCompat.getColor(this, R.color.teo_surface))
+            bottom.itemIconTintList = tint
+            bottom.itemTextColor = tint
+        } else {
+            bottom.background = null
+            bottom.itemIconTintList = savedNavIconTint
+            bottom.itemTextColor = savedNavTextColor
+        }
     }
 
     private fun navigateToOnboarding(destinationId: Int, currentDestination: Int?) {
@@ -308,9 +361,26 @@ class MainActivity : AppCompatActivity() {
         /** Ventana de scan (8 s) más margen: si no contestó, algo se colgó. */
         private const val BLE_PRESENCE_GUARD_MS = 15_000L
 
-        private val ONBOARDING_POP_DESTINATIONS = setOf(
-            R.id.nav_child_profile,
-            R.id.nav_onboarding_retry,
-        )
     }
+}
+
+private fun isMyTeo(destinationId: Int?): Boolean = destinationId == R.id.nav_config ||
+    destinationId == R.id.nav_teo_settings ||
+    destinationId == R.id.nav_connection ||
+    destinationId == R.id.nav_diagnostics ||
+    destinationId == R.id.nav_wifi_change ||
+    destinationId == R.id.nav_profile_edit
+
+private fun gatePlace(destinationId: Int?): GatePlace = when (destinationId) {
+    R.id.nav_wifi_setup -> GatePlace.WIFI_SETUP
+    R.id.nav_child_profile -> GatePlace.FIRST_USE_PROFILE
+    R.id.nav_onboarding_retry -> GatePlace.RETRY
+    R.id.nav_config,
+    R.id.nav_teo_settings,
+    R.id.nav_connection,
+    R.id.nav_diagnostics,
+    R.id.nav_wifi_change,
+    R.id.nav_profile_edit,
+    -> GatePlace.FORM
+    else -> GatePlace.OTHER
 }

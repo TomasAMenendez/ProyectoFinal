@@ -1,0 +1,48 @@
+<?xml version="1.0" encoding="utf-8"?>
+<resources>
+    <string name="profile_name_label">Nombre (obligatorio)</string>
+    <string name="profile_name_placeholder">Ej.: Luna</string>
+    <string name="profile_gender_label">Género (obligatorio)</string>
+    <string name="profile_interests_label">Qué le gusta (opcional)</string>
+    <string name="profile_extra_label">Algo más que TEO deba saber (opcional)</string>
+    <string name="profile_interests_placeholder">Animales, música, cuentos…</string>
+    <string name="profile_extra_placeholder">Preferencias que quieras compartir</string>
+    <string name="profile_choose_costume">Elegí el disfraz de TEO</string>
+    <string name="profile_change_costume">Cambiar disfraz</string>
+    <string name="profile_costume_selected">Disfraz de TEO: %1$s. Cambiar disfraz</string>
+    <string name="profile_costume_applies">Al guardar, vas a ver este disfraz en las imágenes de TEO de la app.</string>
+    <string name="profile_costume_apply">Elegir disfraz</string>
+    <style name="Widget.Teo.Profile.Field" parent="Widget.Teo.Field">
+        <item name="hintEnabled">false</item>
+        <item name="counterTextColor">@color/teo_secondary</item>
+        <item name="counterOverflowTextColor">@color/teo_error</item>
+        <item name="counterTextAppearance">@style/TextAppearance.Teo.Home.Caption</item>
+        <item name="boxStrokeColor">@color/teo_outline</item>
+    </style>
+    <style name="Widget.Teo.Profile.Input" parent="Widget.MaterialComponents.TextInputEditText.OutlinedBox">
+        <item name="android:textAppearance">@style/TextAppearance.Teo.Home.Body</item>
+        <item name="android:textSize">16sp</item>
+        <item name="android:textColor">@color/teo_text</item>
+        <item name="android:textColorHint">@color/teo_secondary</item>
+        <item name="android:paddingStart">14dp</item>
+        <item name="android:paddingEnd">14dp</item>
+        <item name="android:paddingTop">14dp</item>
+        <item name="android:paddingBottom">14dp</item>
+        <item name="android:minHeight">52dp</item>
+    </style>
+    <style name="Widget.Teo.Profile.Gender" parent="Widget.MaterialComponents.Chip.Choice">
+        <item name="android:textAppearance">@style/TextAppearance.Teo.Home.Body</item>
+        <item name="android:textColor">@color/teo_choice_text</item>
+        <item name="chipBackgroundColor">@color/teo_choice_bg</item>
+        <item name="chipStrokeColor">@color/teo_outline</item>
+        <item name="chipStrokeWidth">1dp</item>
+        <item name="chipCornerRadius">24dp</item>
+        <item name="chipMinHeight">44dp</item>
+        <item name="ensureMinTouchTargetSize">true</item>
+        <item name="checkedIconVisible">false</item>
+        <item name="chipStartPadding">12dp</item>
+        <item name="chipEndPadding">12dp</item>
+        <item name="textStartPadding">0dp</item>
+        <item name="textEndPadding">0dp</item>
+    </style>
+</resources>

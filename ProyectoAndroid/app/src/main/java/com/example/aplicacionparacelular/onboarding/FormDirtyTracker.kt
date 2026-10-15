@@ -24,4 +24,8 @@ class FormDirtyTracker {
     fun markClean() {
         dirty = false
     }
+
+    fun markDirty() {
+        dirty = true
+    }
 }
