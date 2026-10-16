@@ -1,0 +1,18 @@
+---
+description: Referencias visuales y validación del rediseño Android de TEO
+alwaysApply: true
+---
+
+# Fidelidad visual de TEO
+
+El usuario aprobó el Inicio ajustado en el Samsung Galaxy S25 el 14 de octubre de 2026. Su implementación y la captura `docs/ui-ux/validacion/s25-inicio-detalles-2026-10-14.png` son la base validada para la identidad y los componentes compartidos. Conservar sus ajustes.
+
+- Leer las imágenes de referencia del bloque, además de sus notas; los nombres de archivo y las descripciones no sustituyen la inspección visual. Usar `docs/ui-ux/03-indice-bocetos.md` para localizar la imagen elegida.
+- Las instrucciones actuales del usuario y las correcciones funcionales documentadas prevalecen. El boceto de cada pantalla define su composición: posición de bloques, columnas, alineaciones, tamaños relativos, jerarquía tipográfica y protagonismo de las acciones. Mantener también accesibilidad, controles nativos, datos reales e insets.
+- `docs/ui-ux/04-guia-visual-comun.md` y `teo-ui-tokens.json` contienen medidas iniciales y ajustes validados. Ajustar medidas de partida al contenido y a la captura; no aplicar un padding, alto, ancho máximo o tamaño de letra uniforme cuando aleje la composición del boceto. No trasladar píxeles del PNG directamente a dp.
+- Reutilizar la paleta, tipografía sin tracking excesivo, logo transparente e iconos de Inicio. Adaptar la geometría al boceto de cada pantalla; reutilizar un estilo no implica copiar la distribución de Inicio.
+- Antes de programar un layout, dejar un mapa breve de su composición y las diferencias relevantes respecto de la interfaz beta. Después implementar; no crear otra ronda de diseño si el usuario ya eligió la referencia.
+- Las vistas previas de depuración deben usar los mismos layouts y componentes de presentación que las pantallas reales. Sus ejemplos no consultan al peluche, no envían comandos y no guardan datos reales. Mantener el primer uso de producción.
+- La aceptación visual requiere capturas renderizadas y comparación con el boceto. Compilar y ejecutar pruebas es necesario, pero no demuestra fidelidad visual. Corregir diferencias observables antes de presentar el bloque como listo. Si no hay teléfono o emulador disponible, informar qué comparación queda pendiente.
+- Si se extraen o modifican componentes compartidos, comprobar que Inicio conserve su composición aprobada. No recuperar los márgenes, espaciado de letras ni límites de ancho de versiones anteriores.
+- Respetar la constitución y trabajar por módulos completos. Cuando el usuario autorice preparar e implementar un módulo de corrido, continuar entre las etapas necesarias sin pedir una nueva confirmación para cada documento. Consultar únicamente decisiones de producto no resueltas o bloqueos reales.

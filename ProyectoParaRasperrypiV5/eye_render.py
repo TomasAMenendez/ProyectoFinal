@@ -170,6 +170,9 @@ class EyeAnimator:
         self.pulse_phase: float = 0.0
         self.pictogram: str | None = None
         self._pictogram_until: float = 0.0
+        self._routine_source: Image.Image | None = None
+        self._routine_until: float = 0.0
+        self._routine_generation: int = 0
         self._blink_mode: str = "idle"
         self._blink_step: int = 0
         self._next_blink_at: float = time.monotonic() + random.uniform(3.0, 6.0)
@@ -206,6 +209,9 @@ class EyeAnimator:
     def set_expression(self, expression: str, transition_ms: int = 300) -> None:
         del transition_ms
         incoming = (expression or "neutral").strip()
+        if incoming.lower() in self._SLEEP_EXPRESSIONS:
+            self._routine_source = None
+            self._routine_until = 0.0
         if (
             incoming.lower() in self._TRANSIENT_EXPRESSIONS
             and self._bank_clip(self.expression) is not None
@@ -231,6 +237,28 @@ class EyeAnimator:
         if name:
             self._pictogram_until = time.monotonic() + 8.0
 
+    @property
+    def routine_image_showing(self) -> bool:
+        return self._routine_source is not None
+
+    def show_routine_image(self, source: Image.Image | None, hold_seconds: float = 8.0) -> int:
+        """Muestra un PNG contenido durante ``hold_seconds`` desde este instante."""
+        self._routine_generation += 1
+        if source is None:
+            self._routine_source = None
+            self._routine_until = 0.0
+            return self._routine_generation
+        self._routine_source = source.convert("RGB")
+        self._routine_until = time.monotonic() + max(0.0, hold_seconds)
+        return self._routine_generation
+
+    def dismiss_routine_image(self, generation: int | None = None) -> None:
+        """Quita la imagen solo si sigue siendo la de ``generation``."""
+        if generation is not None and generation != self._routine_generation:
+            return
+        self._routine_source = None
+        self._routine_until = 0.0
+
     def tick(self) -> None:
         lerp_speed = 0.15
         blinking = self._blink_mode != "idle"
@@ -247,6 +275,9 @@ class EyeAnimator:
         now = time.monotonic()
         if self.pictogram and now >= self._pictogram_until:
             self.pictogram = None
+        if self._routine_source is not None and now >= self._routine_until:
+            self._routine_source = None
+            self._routine_until = 0.0
         self._tick_blink(now)
 
     def _tick_blink(self, now: float) -> None:
@@ -273,6 +304,16 @@ class EyeAnimator:
             self._next_blink_at = now + random.uniform(3.0, 6.0)
 
     def render(self, width: int, height: int) -> Image.Image:
+        if (
+            self._routine_source is not None
+            and self.expression.lower() not in self._SLEEP_EXPRESSIONS
+        ):
+            return compose_contained_image(
+                self._routine_source,
+                max(1, width),
+                max(1, height),
+                self.brightness,
+            )
         clip = self._clip_for(self.expression)
         if clip is not None:
             elapsed = time.monotonic() - self._clip_started_at
@@ -431,6 +472,27 @@ class EyeAnimator:
         track = _scale_rgb((50, 70, 80), self.brightness)
         draw.arc(bbox, start=0, end=360, fill=track, width=width)
         draw.arc(bbox, start=start, end=start + 280, fill=color, width=width)
+
+
+def compose_contained_image(
+    source: Image.Image,
+    width: int,
+    height: int,
+    brightness: float = 1.0,
+) -> Image.Image:
+    """Centra la imagen entera. No la estira ni la recorta."""
+    width = max(1, int(width))
+    height = max(1, int(height))
+    canvas = Image.new("RGB", (width, height), _BG)
+    fitted = source.convert("RGB")
+    fitted.thumbnail((width, height), Image.Resampling.LANCZOS)
+    x = (width - fitted.width) // 2
+    y = (height - fitted.height) // 2
+    canvas.paste(fitted, (x, y))
+    level = max(0.0, min(1.0, brightness))
+    if level < 0.999:
+        canvas = canvas.point(lambda channel: int(channel * level))
+    return canvas
 
 
 def _pictogram_font(size: int) -> ImageFont.ImageFont:

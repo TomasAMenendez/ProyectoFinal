@@ -1,0 +1,115 @@
+{
+  "schemaVersion": 1,
+  "status": "base-validada-en-inicio",
+  "reference": "bocetos/inicio-principal-elegido-2026-10-13.png",
+  "primaryTestDevice": "Samsung Galaxy S25",
+  "updated": "2026-10-14",
+  "validatedBaseline": {
+    "screenshot": "validacion/s25-inicio-detalles-2026-10-14.png",
+    "layout": "ProyectoAndroid/app/src/main/res/layout/fragment_dashboard.xml",
+    "styles": "ProyectoAndroid/app/src/main/res/values/teo_home_styles.xml",
+    "scope": "Identidad y componentes de Inicio; la composición del resto sigue su boceto."
+  },
+  "colors": {
+    "teo_background": "#F8F5ED",
+    "teo_surface": "#FFFFFF",
+    "teo_primary": "#255763",
+    "teo_primary_pressed": "#1D4650",
+    "teo_text": "#1D343B",
+    "teo_secondary": "#52636A",
+    "teo_cyan": "#B6E2E8",
+    "teo_on_cyan": "#193F48",
+    "teo_gold": "#E8BE73",
+    "teo_on_gold": "#3A2C16",
+    "teo_success": "#C6E6BD",
+    "teo_on_success": "#245B2C",
+    "teo_sleep": "#DEE3F3",
+    "teo_on_sleep": "#354866",
+    "teo_neutral": "#E3E5E4",
+    "teo_on_neutral": "#4C565A",
+    "teo_disabled": "#E0E3E2",
+    "teo_on_disabled": "#596569",
+    "teo_outline": "#788A8E",
+    "teo_error": "#A12E2E",
+    "teo_error_bg": "#FBE9E7"
+  },
+  "spacingDp": [
+    4,
+    8,
+    12,
+    16,
+    24,
+    32
+  ],
+  "dimensionsDp": {
+    "screenMargin": 16,
+    "cardPadding": 16,
+    "cardGap": 12,
+    "cardRadius": 16,
+    "cardElevation": 2,
+    "buttonMinHeight": 48,
+    "buttonRadius": 24,
+    "fieldMinHeight": 56,
+    "fieldRadius": 12,
+    "iconSize": 24,
+    "touchTargetMin": 48,
+    "headerMinHeight": 64,
+    "bottomNavMinHeight": 64,
+    "metricBubbleMinWidth": 88,
+    "badgeMinHeight": 28
+  },
+  "typography": {
+    "familyAndroid": "sans-serif",
+    "screenTitle": {
+      "sizeSp": 28,
+      "weight": 700
+    },
+    "cardTitle": {
+      "sizeSp": 18,
+      "weight": 700
+    },
+    "compactCardTitle": {
+      "sizeSp": 16,
+      "weight": 700
+    },
+    "body": {
+      "sizeSp": 16,
+      "weight": 400
+    },
+    "button": {
+      "sizeSp": 14,
+      "weight": 500
+    },
+    "secondary": {
+      "sizeSp": 14,
+      "weight": 400
+    },
+    "badge": {
+      "sizeSp": 12,
+      "weight": 500
+    },
+    "metric": {
+      "sizeSp": 40,
+      "weight": 700
+    }
+  },
+  "validatedHomeOverrides": {
+    "cardPaddingHorizontalDp": 12,
+    "cardPaddingTopDp": 12,
+    "cardPaddingBottomDp": 4,
+    "headerMinHeightDp": 56,
+    "characterNameSp": 30,
+    "bodySp": 15,
+    "buttonSp": 15,
+    "letterSpacing": 0,
+    "statusRow": "Dos estados con igual ancho y bordes externos alineados con el botón de encendido.",
+    "signalCaption": "Todo el ancho de su columna, sin un máximo fijo de 200 dp."
+  },
+  "notes": [
+    "Dimensiones en dp y texto en sp; no convertir pixels del boceto a dp de forma directa.",
+    "Medidas mínimas; permitir crecer con el contenido y la escala de texto.",
+    "Las dimensiones generales son puntos de partida; los ajustes validados de Inicio figuran aparte y en sus recursos Android.",
+    "El boceto de cada pantalla define su composición; ajustar las medidas mediante comparación de capturas, conservando accesibilidad y controles nativos.",
+    "El modo noche pertenece al peluche y no cambia esta guía de tema claro."
+  ]
+}

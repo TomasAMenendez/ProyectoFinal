@@ -1,10 +1,20 @@
 package com.example.aplicacionparacelular.ui.stories
 
+import android.net.Uri
 import androidx.lifecycle.LiveData
 import androidx.lifecycle.MutableLiveData
+import androidx.lifecycle.Observer
 import androidx.lifecycle.ViewModel
 import com.example.aplicacionparacelular.network.ApiResult
 import com.example.aplicacionparacelular.network.RobotConnectionManager
+import com.example.aplicacionparacelular.ui.dashboard.NowPlaying
+import com.example.aplicacionparacelular.ui.dashboard.PlaybackSnapshot
+import org.json.JSONObject
+
+enum class ContentSection {
+    MUSIC,
+    STORIES,
+}
 
 data class StoryItem(
     val id: String,
@@ -19,160 +29,252 @@ data class SongItem(
 )
 
 class StoriesViewModel : ViewModel() {
+    var section: ContentSection = ContentSection.MUSIC
 
     private val _stories = MutableLiveData<List<StoryItem>>(emptyList())
     val stories: LiveData<List<StoryItem>> = _stories
 
-    private val _statusMessage = MutableLiveData<String?>()
-    val statusMessage: LiveData<String?> = _statusMessage
+    private val _storyLoad = MutableLiveData(CatalogLoad.LOADING)
+    val storyLoad: LiveData<CatalogLoad> = _storyLoad
+
+    private val _songs = MutableLiveData<List<SongItem>>(emptyList())
+    val songs: LiveData<List<SongItem>> = _songs
+
+    private val _musicLoad = MutableLiveData(CatalogLoad.LOADING)
+    val musicLoad: LiveData<CatalogLoad> = _musicLoad
+
+    private val _playback = MutableLiveData(PlaybackSnapshot(null, null, null))
+    val playback: LiveData<PlaybackSnapshot> = _playback
+
+    private val _connected = MutableLiveData(false)
+    val connected: LiveData<Boolean> = _connected
+
+    private val _uploadingName = MutableLiveData<String?>(null)
+    val uploadingName: LiveData<String?> = _uploadingName
+
+    private val _pending = MutableLiveData(false)
+    val pending: LiveData<Boolean> = _pending
+
+    private val _notice = MutableLiveData<String?>()
+    val notice: LiveData<String?> = _notice
 
     private val _storyToEdit = MutableLiveData<StoryDetail?>()
     val storyToEdit: LiveData<StoryDetail?> = _storyToEdit
 
-    private val _saveInProgress = MutableLiveData(false)
-    val saveInProgress: LiveData<Boolean> = _saveInProgress
+    private val _formMessage = MutableLiveData<String?>()
+    val formMessage: LiveData<String?> = _formMessage
+
+    private val _formAccepted = MutableLiveData(false)
+    val formAccepted: LiveData<Boolean> = _formAccepted
+
+    var pdfUri: Uri? = null
+        private set
+    var pdfName: String? = null
+        private set
+    var pdfSize: Long = -1
+        private set
+
+    private val connectionObserver = Observer<Boolean> { value ->
+        _connected.value = value == true
+    }
+    private val statusObserver = Observer<JSONObject?> { status ->
+        if (status != null) _playback.value = NowPlaying.snapshot(status)
+    }
+
+    init {
+        RobotConnectionManager.isConnected.observeForever(connectionObserver)
+        RobotConnectionManager.robotStatus.observeForever(statusObserver)
+    }
+
+    override fun onCleared() {
+        RobotConnectionManager.isConnected.removeObserver(connectionObserver)
+        RobotConnectionManager.robotStatus.removeObserver(statusObserver)
+        super.onCleared()
+    }
+
+    fun consumeNotice() {
+        _notice.value = null
+    }
+
+    fun refreshStatus() {
+        if (_connected.value == true) RobotConnectionManager.fetchStatus { }
+    }
 
     fun loadStories() {
+        if (_storyLoad.value != CatalogLoad.READY) _storyLoad.value = CatalogLoad.LOADING
         RobotConnectionManager.fetchStories { result ->
             when (result) {
                 is ApiResult.Success -> {
-                    val arr = result.data.optJSONArray("stories")
-                    val list = mutableListOf<StoryItem>()
-                    if (arr != null) {
-                        for (i in 0 until arr.length()) {
-                            val obj = arr.optJSONObject(i) ?: continue
-                            list.add(
-                                StoryItem(
-                                    id = obj.optString("id", ""),
-                                    title = obj.optString("title", ""),
-                                    wordCount = obj.optInt("word_count", 0),
-                                )
-                            )
-                        }
-                    }
-                    _stories.value = list
+                    _stories.value = parseStories(result.data)
+                    _storyLoad.value = CatalogLoad.READY
                 }
-                is ApiResult.Error -> {
-                    _statusMessage.value = "Error al cargar cuentos: ${result.message}"
-                }
+                is ApiResult.Error -> _storyLoad.value = CatalogLoad.FAILED
             }
         }
     }
 
-    fun uploadPdf(filename: String, data: ByteArray, title: String? = null) {
-        _statusMessage.value = "Subiendo PDF..."
-        val headerTitle = title?.trim()?.ifBlank { null }?.take(StoryJson.TITLE_MAX_LEN)
-        RobotConnectionManager.uploadStory(filename, data, headerTitle) { result ->
+    fun loadSongs() {
+        if (_musicLoad.value != CatalogLoad.READY) _musicLoad.value = CatalogLoad.LOADING
+        RobotConnectionManager.fetchMusic { result ->
             when (result) {
                 is ApiResult.Success -> {
-                    val status = result.data.optString("status")
-                    if (status == "ready") {
-                        val readyTitle = result.data.optString("title", filename)
-                        _statusMessage.value = "Cuento listo: $readyTitle"
-                        loadStories()
+                    _songs.value = parseSongs(result.data)
+                    _musicLoad.value = CatalogLoad.READY
+                }
+                is ApiResult.Error -> _musicLoad.value = CatalogLoad.FAILED
+            }
+        }
+    }
+
+    fun uploadSong(filename: String, data: ByteArray) {
+        if (_uploadingName.value != null || _pending.value == true) return
+        val audioProblem = ContentRules.audioProblem(filename)
+        if (audioProblem != null) {
+            _notice.value = audioProblem
+            return
+        }
+        _uploadingName.value = filename
+        RobotConnectionManager.uploadMusic(filename, data) { result ->
+            _uploadingName.value = null
+            when (result) {
+                is ApiResult.Success -> {
+                    val rejected = NowPlaying.rejection(result.data)
+                    if (rejected != null) {
+                        _notice.value = rejected
                     } else {
-                        val reason = result.data.optString("reason", "No se pudo publicar")
-                        _statusMessage.value = reason
+                        loadSongs()
                     }
                 }
-                is ApiResult.Error -> {
-                    _statusMessage.value = "Error: ${result.message}"
+                is ApiResult.Error -> _notice.value = result.message.ifBlank { "No se pudo enviar la música." }
+            }
+        }
+    }
+
+    fun playSong(filename: String) {
+        if (_pending.value == true || _connected.value != true) return
+        _pending.value = true
+        RobotConnectionManager.playMusic(filename) { result ->
+            confirmPlay(result, expectedSong = filename, expectedStoryId = null)
+        }
+    }
+
+    fun playStory(storyId: String) {
+        if (_pending.value == true || _connected.value != true) return
+        _pending.value = true
+        RobotConnectionManager.playStory(storyId) { result ->
+            confirmPlay(result, expectedSong = null, expectedStoryId = storyId)
+        }
+    }
+
+    fun stopMusic() {
+        val before = _playback.value ?: PlaybackSnapshot(null, null, null)
+        if (before.songName.isNullOrBlank() || _pending.value == true) return
+        _pending.value = true
+        RobotConnectionManager.stopMusic { result -> confirmStop(result, before) }
+    }
+
+    fun stopStory() {
+        val before = _playback.value ?: PlaybackSnapshot(null, null, null)
+        if (before.storyId.isNullOrBlank() || _pending.value == true) return
+        _pending.value = true
+        RobotConnectionManager.stopStory { result -> confirmStop(result, before) }
+    }
+
+    fun uploadPdf(filename: String, data: ByteArray, title: String?) {
+        if (_pending.value == true) return
+        val problem = ContentRules.pdfProblem(filename, data.size.toLong())
+        if (problem != null) {
+            _formMessage.value = problem
+            return
+        }
+        val (storedTitle, titleProblem) = ContentRules.createTitle(title.orEmpty())
+        if (titleProblem != null) {
+            _formMessage.value = titleProblem
+            return
+        }
+        _pending.value = true
+        _formAccepted.value = false
+        RobotConnectionManager.uploadStory(filename, data, storedTitle) { result ->
+            _pending.value = false
+            when (result) {
+                is ApiResult.Success -> {
+                    if (ContentRules.storyReady(result.data)) {
+                        _formAccepted.value = true
+                        loadStories()
+                    } else {
+                        _formMessage.value = ContentRules.storyReason(result.data)
+                    }
                 }
+                is ApiResult.Error -> _formMessage.value = result.message.ifBlank { "No se pudo enviar el cuento." }
             }
         }
     }
 
     fun loadStory(id: String) {
-        _statusMessage.value = "Cargando cuento..."
+        _formAccepted.value = false
         RobotConnectionManager.fetchStory(id) { result ->
             when (result) {
-                is ApiResult.Success -> {
-                    _storyToEdit.value = StoryJson.parseDetail(result.data)
-                }
-                is ApiResult.Error -> {
-                    _statusMessage.value = "Error: ${result.message}"
-                }
+                is ApiResult.Success -> _storyToEdit.value = StoryJson.parseDetail(result.data)
+                is ApiResult.Error -> _formMessage.value = result.message.ifBlank { "No se pudo abrir el cuento." }
             }
         }
     }
 
     fun saveStory(id: String, title: String, text: String) {
-        val trimmedTitle = title.trim().take(StoryJson.TITLE_MAX_LEN)
-        if (trimmedTitle.isEmpty()) {
-            _statusMessage.value = "El nombre no puede estar vacío"
+        val problem = ContentRules.editTitleProblem(title)
+        if (problem != null) {
+            _formMessage.value = problem
             return
         }
-        _saveInProgress.value = true
-        RobotConnectionManager.updateStory(id, trimmedTitle, text) { result ->
-            _saveInProgress.value = false
+        _pending.value = true
+        _formAccepted.value = false
+        RobotConnectionManager.updateStory(id, title.trim(), text) { result ->
+            _pending.value = false
             when (result) {
                 is ApiResult.Success -> {
                     val update = StoryJson.parseUpdateStatus(result.data)
                     if (update.status == "rejected") {
-                        _statusMessage.value = update.reason ?: "No se pudo guardar"
+                        _formMessage.value = update.reason ?: "No se pudo guardar"
+                    } else if (NowPlaying.rejection(result.data) != null) {
+                        _formMessage.value = NowPlaying.rejection(result.data)
                     } else {
-                        _statusMessage.value = "Cuento actualizado"
+                        _formAccepted.value = true
                         _storyToEdit.value = null
                         loadStories()
                     }
                 }
-                is ApiResult.Error -> {
-                    _statusMessage.value = "Error: ${result.message}"
-                }
+                is ApiResult.Error -> _formMessage.value = result.message.ifBlank { "No se pudo guardar el cuento." }
             }
         }
     }
 
+    fun rememberPdf(uri: Uri, name: String, sizeBytes: Long) {
+        pdfUri = uri
+        pdfName = name
+        pdfSize = sizeBytes
+    }
+
+    fun clearPdf() {
+        pdfUri = null
+        pdfName = null
+        pdfSize = -1
+    }
+
     fun clearStoryToEdit() {
         _storyToEdit.value = null
+        _formMessage.value = null
+        _formAccepted.value = false
+        clearPdf()
     }
 
     fun deleteStory(id: String) {
         RobotConnectionManager.deleteStory(id) { result ->
             when (result) {
                 is ApiResult.Success -> {
-                    _statusMessage.value = "Cuento eliminado"
-                    loadStories()
+                    val rejected = NowPlaying.rejection(result.data)
+                    if (rejected != null) _notice.value = rejected else loadStories()
                 }
-                is ApiResult.Error -> {
-                    _statusMessage.value = "Error: ${result.message}"
-                }
-            }
-        }
-    }
-
-    private val _songs = MutableLiveData<List<SongItem>>(emptyList())
-    val songs: LiveData<List<SongItem>> = _songs
-
-    private val _currentlyPlaying = MutableLiveData<String?>(null)
-    val currentlyPlaying: LiveData<String?> = _currentlyPlaying
-
-    fun loadSongs() {
-        RobotConnectionManager.fetchMusic { result ->
-            when (result) {
-                is ApiResult.Success -> {
-                    val songsArray = result.data.optJSONArray("songs")
-                    val list = mutableListOf<SongItem>()
-                    if (songsArray != null) {
-                        for (i in 0 until songsArray.length()) {
-                            val obj = songsArray.optJSONObject(i) ?: continue
-                            list.add(
-                                SongItem(
-                                    filename = obj.optString("filename", ""),
-                                    sizeBytes = obj.optLong("size_bytes", 0),
-                                    modified = obj.optString("modified", ""),
-                                )
-                            )
-                        }
-                    }
-                    _songs.value = list
-                    val playing = if (result.data.isNull("currently_playing")) null
-                    else result.data.optString("currently_playing", null)?.ifBlank { null }
-                    _currentlyPlaying.value = playing
-                }
-                is ApiResult.Error -> {
-                    _statusMessage.value = "Error al cargar canciones: ${result.message}"
-                }
+                is ApiResult.Error -> _notice.value = result.message.ifBlank { "No se pudo eliminar el cuento." }
             }
         }
     }
@@ -181,54 +283,99 @@ class StoriesViewModel : ViewModel() {
         RobotConnectionManager.deleteMusic(filename) { result ->
             when (result) {
                 is ApiResult.Success -> {
-                    _statusMessage.value = "Canción eliminada"
-                    loadSongs()
+                    val rejected = NowPlaying.rejection(result.data)
+                    if (rejected != null) _notice.value = rejected else loadSongs()
                 }
-                is ApiResult.Error -> {
-                    _statusMessage.value = "Error: ${result.message}"
+                is ApiResult.Error -> _notice.value = result.message.ifBlank { "No se pudo eliminar la música." }
+            }
+        }
+    }
+
+    private fun confirmPlay(result: ApiResult<JSONObject>, expectedSong: String?, expectedStoryId: String?) {
+        when (result) {
+            is ApiResult.Error -> {
+                _pending.value = false
+                _notice.value = result.message.ifBlank { NowPlaying.NOT_CONFIRMED }
+            }
+            is ApiResult.Success -> {
+                if (NowPlaying.rejection(result.data) != null) {
+                    _pending.value = false
+                    _notice.value = NowPlaying.rejection(result.data)
+                    return
+                }
+                RobotConnectionManager.fetchStatus { statusResult ->
+                    _pending.value = false
+                    when (statusResult) {
+                        is ApiResult.Error -> _notice.value = NowPlaying.NOT_CONFIRMED
+                        is ApiResult.Success -> {
+                            val after = NowPlaying.snapshot(statusResult.data)
+                            if (!ContentRules.markPlaying(result.data, expectedSong, expectedStoryId, after)) {
+                                _notice.value = NowPlaying.NOT_CONFIRMED
+                            }
+                        }
+                    }
                 }
             }
         }
     }
 
-    fun uploadSong(filename: String, data: ByteArray) {
-        _statusMessage.value = "Subiendo canción..."
-        RobotConnectionManager.uploadMusic(filename, data) { result ->
-            when (result) {
-                is ApiResult.Success -> {
-                    _statusMessage.value = "Canción subida correctamente"
-                    loadSongs()
+    private fun confirmStop(result: ApiResult<JSONObject>, before: PlaybackSnapshot) {
+        when (result) {
+            is ApiResult.Error -> {
+                _pending.value = false
+                _notice.value = result.message.ifBlank { NowPlaying.NOT_CONFIRMED }
+            }
+            is ApiResult.Success -> {
+                if (NowPlaying.rejection(result.data) != null) {
+                    _pending.value = false
+                    _notice.value = NowPlaying.rejection(result.data)
+                    return
                 }
-                is ApiResult.Error -> {
-                    _statusMessage.value = "Error: ${result.message}"
+                RobotConnectionManager.fetchStatus { statusResult ->
+                    _pending.value = false
+                    when (statusResult) {
+                        is ApiResult.Error -> _notice.value = NowPlaying.NOT_CONFIRMED
+                        is ApiResult.Success -> {
+                            val after = NowPlaying.snapshot(statusResult.data)
+                            if (!NowPlaying.stopConfirmed(before, after)) {
+                                _notice.value = NowPlaying.NOT_CONFIRMED
+                            }
+                        }
+                    }
                 }
             }
         }
     }
 
-    fun playSong(filename: String) {
-        _currentlyPlaying.value = filename
-        RobotConnectionManager.playMusic(filename) { result ->
-            when (result) {
-                is ApiResult.Success -> loadSongs()
-                is ApiResult.Error -> {
-                    _currentlyPlaying.value = null
-                    _statusMessage.value = "Error al reproducir: ${result.message}"
-                }
-            }
+    private fun parseStories(data: JSONObject): List<StoryItem> {
+        val arr = data.optJSONArray("stories") ?: return emptyList()
+        val list = mutableListOf<StoryItem>()
+        for (i in 0 until arr.length()) {
+            val obj = arr.optJSONObject(i) ?: continue
+            list.add(
+                StoryItem(
+                    id = obj.optString("id", ""),
+                    title = obj.optString("title", ""),
+                    wordCount = obj.optInt("word_count", 0),
+                ),
+            )
         }
+        return list
     }
 
-    fun stopMusic() {
-        _currentlyPlaying.value = null
-        RobotConnectionManager.stopMusic { result ->
-            when (result) {
-                is ApiResult.Success -> loadSongs()
-                is ApiResult.Error -> {
-                    _statusMessage.value = "Error al detener: ${result.message}"
-                    loadSongs()
-                }
-            }
+    private fun parseSongs(data: JSONObject): List<SongItem> {
+        val songsArray = data.optJSONArray("songs") ?: return emptyList()
+        val list = mutableListOf<SongItem>()
+        for (i in 0 until songsArray.length()) {
+            val obj = songsArray.optJSONObject(i) ?: continue
+            list.add(
+                SongItem(
+                    filename = obj.optString("filename", ""),
+                    sizeBytes = obj.optLong("size_bytes", 0),
+                    modified = obj.optString("modified", ""),
+                ),
+            )
         }
+        return list
     }
 }

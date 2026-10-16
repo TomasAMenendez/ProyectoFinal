@@ -1,0 +1,10 @@
+{
+  "schema_version": 1,
+  "items": [
+    { "id": "banio", "label": "Baño", "source": "Pictograma_Baño.png" },
+    { "id": "cepillar_dientes", "label": "Cepillar los dientes", "source": "Pictograma_Cepillar los dientes.png" },
+    { "id": "comer", "label": "Comer", "source": "Pictograma_Comer.png" },
+    { "id": "jardin", "label": "Jardín", "source": "Pictograma_Jardín.png" },
+    { "id": "medico", "label": "Médico", "source": "Pictograma_Médico.png" }
+  ]
+}

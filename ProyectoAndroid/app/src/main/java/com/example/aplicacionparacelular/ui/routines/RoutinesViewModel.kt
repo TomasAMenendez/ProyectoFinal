@@ -19,7 +19,8 @@ data class RoutineItem(
     val preReminderMinutes: Int,
     val enabled: Boolean,
     val reminded: Boolean = false,
-    val completed: Boolean = false
+    val completed: Boolean = false,
+    val pictogramId: String? = null,
 ) {
     fun toJson(): JSONObject {
         return JSONObject().apply {
@@ -32,6 +33,8 @@ data class RoutineItem(
             put("success_message", successMessage)
             put("pre_reminder_minutes", preReminderMinutes)
             put("enabled", enabled)
+            val pictogram = pictogramId?.trim().orEmpty()
+            if (pictogram.isNotEmpty()) put("pictogram_id", pictogram)
         }
     }
 
@@ -48,13 +51,25 @@ data class RoutineItem(
                 preReminderMinutes = json.optInt("pre_reminder_minutes", 5),
                 enabled = json.optBoolean("enabled", true),
                 reminded = json.optBoolean("reminded", false),
-                completed = json.optBoolean("completed", false)
+                completed = json.optBoolean("completed", false),
+                pictogramId = if (!json.has("pictogram_id") || json.isNull("pictogram_id")) {
+                    null
+                } else {
+                    json.optString("pictogram_id").trim().ifEmpty { null }
+                },
             )
         }
     }
 }
 
-class RoutinesViewModel : ViewModel() {
+class RoutinesViewModel(
+    private val fetchRoutines: ((ApiResult<JSONObject>) -> Unit) -> Unit = {
+        RobotConnectionManager.fetchRoutines(it)
+    },
+    private val updateRoutines: (JSONObject, (ApiResult<JSONObject>) -> Unit) -> Unit = { body, callback ->
+        RobotConnectionManager.updateRoutines(body, callback)
+    },
+) : ViewModel() {
 
     private val _routines = MutableLiveData<List<RoutineItem>>(emptyList())
     val routines: LiveData<List<RoutineItem>> = _routines
@@ -65,78 +80,110 @@ class RoutinesViewModel : ViewModel() {
     private val _syncStatus = MutableLiveData<String?>()
     val syncStatus: LiveData<String?> = _syncStatus
 
+    private var hasLoaded = false
+    private val _canEdit = MutableLiveData(false)
+    val canEdit: LiveData<Boolean> = _canEdit
+
     fun loadRoutines() {
+        if (_isLoading.value == true) return
+        hasLoaded = false
         _isLoading.value = true
-        RobotConnectionManager.fetchRoutines { result ->
+        publishEditable()
+        fetchRoutines { result ->
             _isLoading.value = false
             when (result) {
                 is ApiResult.Success -> {
-                    val routinesArray = result.data.optJSONArray("routines") ?: JSONArray()
-                    val list = mutableListOf<RoutineItem>()
-                    for (i in 0 until routinesArray.length()) {
-                        val json = routinesArray.optJSONObject(i) ?: continue
-                        list.add(RoutineItem.fromJson(json))
+                    val routinesArray = result.data.optJSONArray("routines")
+                    if (routinesArray == null) {
+                        _syncStatus.value = "No se pudieron leer las rutinas"
+                    } else {
+                        val list = mutableListOf<RoutineItem>()
+                        for (i in 0 until routinesArray.length()) {
+                            val json = routinesArray.optJSONObject(i) ?: continue
+                            list.add(RoutineItem.fromJson(json))
+                        }
+                        hasLoaded = true
+                        _routines.value = list
+                        scheduleLocalReminders()
                     }
-                    _routines.value = list
-                    scheduleLocalReminders()
                 }
                 is ApiResult.Error -> {
-                    _syncStatus.value = "Error: ${result.message}"
+                    _syncStatus.value = result.message.ifBlank { "No se pudieron leer las rutinas" }
                 }
             }
+            publishEditable()
         }
     }
 
-    fun addRoutine(routine: RoutineItem) {
-        val current = _routines.value?.toMutableList() ?: mutableListOf()
-        current.add(routine)
-        _routines.value = current
-        syncRoutines()
+    fun consumeStatus() {
+        _syncStatus.value = null
     }
 
-    fun removeRoutine(position: Int) {
-        val current = _routines.value?.toMutableList() ?: return
-        if (position in current.indices) {
-            current.removeAt(position)
-            _routines.value = current
-            syncRoutines()
+    fun save(item: RoutineItem, isNew: Boolean, onResult: (Boolean, String?) -> Unit) {
+        val previous = _routines.value.orEmpty()
+        val next = if (isNew) {
+            previous + item
+        } else if (previous.none { it.id == item.id }) {
+            onResult(false, "No se encontró la rutina")
+            return
+        } else {
+            previous.map { if (it.id == item.id) item else it }
         }
+        persist(next, onResult)
     }
 
-    fun toggleRoutine(position: Int) {
-        val current = _routines.value?.toMutableList() ?: return
-        if (position in current.indices) {
-            val routine = current[position]
-            current[position] = routine.copy(enabled = !routine.enabled)
-            _routines.value = current
-            syncRoutines()
+    fun removeRoutine(id: String) {
+        val previous = _routines.value.orEmpty()
+        persist(previous.filterNot { it.id == id }) { _, _ -> }
+    }
+
+    fun toggleRoutine(id: String) {
+        val previous = _routines.value.orEmpty()
+        val next = previous.map { routine ->
+            if (routine.id == id) routine.copy(enabled = !routine.enabled) else routine
         }
+        persist(next) { _, _ -> }
     }
 
-    fun updateRoutine(position: Int, routine: RoutineItem) {
-        val current = _routines.value?.toMutableList() ?: return
-        if (position in current.indices) {
-            current[position] = routine
-            _routines.value = current
-            syncRoutines()
+    private fun persist(
+        next: List<RoutineItem>,
+        onResult: (Boolean, String?) -> Unit,
+    ) {
+        if (_canEdit.value != true) {
+            val message = if (_isLoading.value == true) {
+                "Esperá a que termine la operación de rutinas"
+            } else {
+                "Primero hay que leer las rutinas de TEO. Reintentá la carga"
+            }
+            _syncStatus.value = message
+            onResult(false, message)
+            return
         }
-    }
-
-    private fun syncRoutines() {
-        val routinesList = _routines.value ?: return
+        _isLoading.value = true
+        publishEditable()
         val jsonArray = JSONArray()
-        for (routine in routinesList) {
+        for (routine in next) {
             jsonArray.put(routine.toJson())
         }
         val body = JSONObject().apply { put("routines", jsonArray) }
-
-        RobotConnectionManager.updateRoutines(body) { result ->
-            when (result) {
-                is ApiResult.Success -> {
-                    _syncStatus.value = "✅ Sincronizado"
-                    scheduleLocalReminders()
-                }
-                is ApiResult.Error -> _syncStatus.value = "⚠ No sincronizado: ${result.message}"
+        updateRoutines(body) { result ->
+            _isLoading.value = false
+            if (result is ApiResult.Success && result.data.optString("status") == "ok") {
+                _routines.value = next
+                scheduleLocalReminders()
+                publishEditable()
+                onResult(true, null)
+            } else {
+                hasLoaded = false
+                val message = when (result) {
+                    is ApiResult.Error -> result.message
+                    is ApiResult.Success -> result.data.optString("reason").ifBlank {
+                        result.data.optString("message").ifBlank { result.data.optString("error") }
+                    }
+                }.ifBlank { "No se pudieron guardar las rutinas" }
+                publishEditable()
+                _syncStatus.value = message
+                onResult(false, message)
             }
         }
     }
@@ -148,7 +195,12 @@ class RoutinesViewModel : ViewModel() {
 
     private var appContext: android.content.Context? = null
 
+    private fun publishEditable() {
+        _canEdit.value = hasLoaded && _isLoading.value != true
+    }
+
     private fun scheduleLocalReminders() {
+        if (!hasLoaded) return
         val ctx = appContext ?: return
         val items = _routines.value.orEmpty()
             .filter { it.enabled }

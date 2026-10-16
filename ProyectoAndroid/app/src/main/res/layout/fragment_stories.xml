@@ -2,104 +2,383 @@
 <ScrollView xmlns:android="http://schemas.android.com/apk/res/android"
     xmlns:app="http://schemas.android.com/apk/res-auto"
     xmlns:tools="http://schemas.android.com/tools"
+    android:id="@+id/content_scroll"
     android:layout_width="match_parent"
     android:layout_height="match_parent"
+    android:background="@color/teo_background"
     android:clipToPadding="false"
-    android:paddingBottom="16dp"
+    android:fillViewport="true"
     tools:context=".ui.stories.StoriesFragment">
 
     <LinearLayout
         android:layout_width="match_parent"
         android:layout_height="wrap_content"
         android:orientation="vertical"
-        android:padding="16dp">
+        android:paddingStart="@dimen/teo_screen_margin"
+        android:paddingEnd="@dimen/teo_screen_margin"
+        android:paddingBottom="12dp">
 
-        <TextView
-            android:layout_width="wrap_content"
-            android:layout_height="wrap_content"
-            android:text="@string/stories_section_read"
-            android:textAppearance="@style/TextAppearance.App.SectionTitle"
-            android:layout_marginBottom="8dp" />
-
-        <TextView
+        <androidx.constraintlayout.widget.ConstraintLayout
             android:layout_width="match_parent"
             android:layout_height="wrap_content"
-            android:text="@string/stories_subtitle"
-            android:textAppearance="@style/TextAppearance.App.CardSubtitle"
-            android:layout_marginBottom="16dp" />
+            android:minHeight="56dp">
+
+            <LinearLayout
+                android:id="@+id/header_brand"
+                android:layout_width="0dp"
+                android:layout_height="wrap_content"
+                android:gravity="center_vertical"
+                android:orientation="horizontal"
+                app:layout_constraintBottom_toBottomOf="parent"
+                app:layout_constraintEnd_toStartOf="@id/header_actions"
+                app:layout_constraintHorizontal_bias="0"
+                app:layout_constraintStart_toStartOf="parent"
+                app:layout_constraintTop_toTopOf="parent">
+
+                <ImageView
+                    android:layout_width="40dp"
+                    android:layout_height="40dp"
+                    android:contentDescription="@string/home_logo"
+                    android:src="@drawable/teo_logo" />
+
+                <TextView
+                    android:layout_width="wrap_content"
+                    android:layout_height="wrap_content"
+                    android:layout_marginStart="8dp"
+                    android:text="@string/menu_stories"
+                    android:textAppearance="@style/TextAppearance.Teo.Home.Title" />
+            </LinearLayout>
+
+            <LinearLayout
+                android:id="@+id/header_actions"
+                android:layout_width="wrap_content"
+                android:layout_height="wrap_content"
+                android:gravity="center_vertical"
+                android:orientation="horizontal"
+                app:layout_constraintBottom_toBottomOf="parent"
+                app:layout_constraintEnd_toEndOf="parent"
+                app:layout_constraintTop_toTopOf="parent">
+
+                <LinearLayout
+                    android:id="@+id/btn_alerts_bell"
+                    android:layout_width="wrap_content"
+                    android:layout_height="wrap_content"
+                    android:background="?attr/selectableItemBackgroundBorderless"
+                    android:clickable="true"
+                    android:focusable="true"
+                    android:gravity="center"
+                    android:minWidth="48dp"
+                    android:minHeight="48dp"
+                    android:orientation="vertical">
+
+                    <ImageView
+                        android:layout_width="24dp"
+                        android:layout_height="24dp"
+                        android:contentDescription="@null"
+                        android:src="@drawable/teo_ic_bell"
+                        app:tint="@color/teo_primary" />
+
+                    <TextView
+                        android:layout_width="wrap_content"
+                        android:layout_height="wrap_content"
+                        android:text="@string/home_alerts_title"
+                        android:textAppearance="@style/TextAppearance.Teo.Home.Caption"
+                        android:textColor="@color/teo_primary" />
+                </LinearLayout>
+
+                <LinearLayout
+                    android:id="@+id/btn_my_teo"
+                    android:layout_width="wrap_content"
+                    android:layout_height="wrap_content"
+                    android:layout_marginStart="4dp"
+                    android:background="?attr/selectableItemBackgroundBorderless"
+                    android:clickable="true"
+                    android:focusable="true"
+                    android:gravity="center"
+                    android:minWidth="48dp"
+                    android:minHeight="48dp"
+                    android:orientation="vertical">
+
+                    <ImageView
+                        android:layout_width="24dp"
+                        android:layout_height="24dp"
+                        android:contentDescription="@null"
+                        android:src="@drawable/teo_ic_gear"
+                        app:tint="@color/teo_primary" />
+
+                    <TextView
+                        android:layout_width="wrap_content"
+                        android:layout_height="wrap_content"
+                        android:text="@string/home_my_teo"
+                        android:textAppearance="@style/TextAppearance.Teo.Home.Caption"
+                        android:textColor="@color/teo_primary" />
+                </LinearLayout>
+            </LinearLayout>
+        </androidx.constraintlayout.widget.ConstraintLayout>
+
+        <LinearLayout
+            android:layout_width="match_parent"
+            android:layout_height="wrap_content"
+            android:layout_marginTop="4dp"
+            android:orientation="horizontal">
+
+            <LinearLayout
+                android:id="@+id/tab_music"
+                android:layout_width="0dp"
+                android:layout_height="wrap_content"
+                android:layout_weight="1"
+                android:background="?attr/selectableItemBackground"
+                android:clickable="true"
+                android:focusable="true"
+                android:gravity="center"
+                android:minHeight="48dp"
+                android:orientation="vertical">
+
+                <TextView
+                    android:id="@+id/txt_tab_music"
+                    android:layout_width="wrap_content"
+                    android:layout_height="wrap_content"
+                    android:drawablePadding="6dp"
+                    android:gravity="center"
+                    android:text="@string/content_tab_music"
+                    android:textAppearance="@style/TextAppearance.Teo.Home.Section"
+                    android:textColor="@color/teo_primary"
+                    app:drawableStartCompat="@drawable/teo_ic_music"
+                    app:drawableTint="@color/teo_primary" />
+
+                <View
+                    android:id="@+id/mark_music"
+                    android:layout_width="72dp"
+                    android:layout_height="3dp"
+                    android:layout_marginTop="6dp"
+                    android:background="@color/teo_primary" />
+            </LinearLayout>
+
+            <LinearLayout
+                android:id="@+id/tab_stories"
+                android:layout_width="0dp"
+                android:layout_height="wrap_content"
+                android:layout_weight="1"
+                android:background="?attr/selectableItemBackground"
+                android:clickable="true"
+                android:focusable="true"
+                android:gravity="center"
+                android:minHeight="48dp"
+                android:orientation="vertical">
+
+                <TextView
+                    android:id="@+id/txt_tab_stories"
+                    android:layout_width="wrap_content"
+                    android:layout_height="wrap_content"
+                    android:drawablePadding="6dp"
+                    android:gravity="center"
+                    android:text="@string/content_tab_stories"
+                    android:textAppearance="@style/TextAppearance.Teo.Home.Section"
+                    android:textColor="@color/teo_secondary"
+                    app:drawableStartCompat="@drawable/teo_ic_book"
+                    app:drawableTint="@color/teo_secondary" />
+
+                <View
+                    android:id="@+id/mark_stories"
+                    android:layout_width="72dp"
+                    android:layout_height="3dp"
+                    android:layout_marginTop="6dp"
+                    android:background="@android:color/transparent" />
+            </LinearLayout>
+        </LinearLayout>
+
+        <TextView
+            android:id="@+id/txt_subtitle"
+            android:layout_width="match_parent"
+            android:layout_height="wrap_content"
+            android:layout_marginTop="12dp"
+            android:gravity="center"
+            android:text="@string/content_music_subtitle"
+            android:textAppearance="@style/TextAppearance.Teo.Home.Body" />
+
+        <com.google.android.material.button.MaterialButton
+            android:id="@+id/btn_add"
+            style="@style/Widget.Teo.Home.Button"
+            android:layout_width="match_parent"
+            android:layout_height="wrap_content"
+            android:layout_marginTop="12dp"
+            android:text="@string/content_add_music"
+            android:textColor="@color/teo_button_text"
+            app:backgroundTint="@color/teo_button_bg"
+            app:icon="@drawable/teo_ic_add"
+            app:iconGravity="textStart"
+            app:iconTint="@color/teo_button_text" />
 
         <com.google.android.material.card.MaterialCardView
-            style="@style/Widget.App.CardView"
+            android:id="@+id/card_upload"
+            style="@style/Widget.Teo.Home.Card"
             android:layout_width="match_parent"
-            android:layout_height="wrap_content">
+            android:layout_height="wrap_content"
+            android:layout_marginTop="12dp"
+            android:visibility="gone"
+            tools:visibility="visible">
+
+            <LinearLayout
+                android:layout_width="match_parent"
+                android:layout_height="wrap_content"
+                android:gravity="center_vertical"
+                android:orientation="horizontal">
+
+                <ProgressBar
+                    android:layout_width="36dp"
+                    android:layout_height="36dp"
+                    android:indeterminate="true"
+                    android:indeterminateTint="@color/teo_primary" />
+
+                <LinearLayout
+                    android:layout_width="0dp"
+                    android:layout_height="wrap_content"
+                    android:layout_marginStart="12dp"
+                    android:layout_weight="1"
+                    android:orientation="vertical">
+
+                    <TextView
+                        android:layout_width="match_parent"
+                        android:layout_height="wrap_content"
+                        android:text="@string/content_uploading"
+                        android:textAppearance="@style/TextAppearance.Teo.Routine.Name" />
+
+                    <TextView
+                        android:id="@+id/txt_upload_name"
+                        android:layout_width="match_parent"
+                        android:layout_height="wrap_content"
+                        android:layout_marginTop="2dp"
+                        android:textAppearance="@style/TextAppearance.Teo.Home.Body"
+                        tools:text="melodia_suave.mp3" />
+
+                    <TextView
+                        android:id="@+id/txt_upload_size"
+                        android:layout_width="match_parent"
+                        android:layout_height="wrap_content"
+                        android:textAppearance="@style/TextAppearance.Teo.Routine.Message"
+                        android:visibility="gone"
+                        tools:text="MP3 · 3,2 MB"
+                        tools:visibility="visible" />
+
+                    <TextView
+                        android:id="@+id/txt_upload_hint"
+                        android:layout_width="match_parent"
+                        android:layout_height="wrap_content"
+                        android:text="@string/content_uploading_hint"
+                        android:textAppearance="@style/TextAppearance.Teo.Routine.Message" />
+                </LinearLayout>
+            </LinearLayout>
+        </com.google.android.material.card.MaterialCardView>
+
+        <com.google.android.material.card.MaterialCardView
+            android:id="@+id/card_now"
+            style="@style/Widget.Teo.Home.Card"
+            android:layout_width="match_parent"
+            android:layout_height="wrap_content"
+            android:layout_marginTop="12dp">
 
             <LinearLayout
                 android:layout_width="match_parent"
                 android:layout_height="wrap_content"
                 android:orientation="vertical">
 
-                <LinearLayout
-                    android:id="@+id/stories_container"
+                <TextView
+                    android:id="@+id/txt_now_label"
                     android:layout_width="match_parent"
                     android:layout_height="wrap_content"
-                    android:orientation="vertical" />
+                    android:text="@string/content_now_music"
+                    android:textAppearance="@style/TextAppearance.Teo.Routine.Name" />
 
-                <com.google.android.material.button.MaterialButton
-                    android:id="@+id/btn_upload_pdf"
-                    style="@style/Widget.MaterialComponents.Button.OutlinedButton"
+                <LinearLayout
                     android:layout_width="match_parent"
                     android:layout_height="wrap_content"
                     android:layout_marginTop="8dp"
-                    android:minHeight="48dp"
-                    android:text="@string/stories_upload"
-                    app:cornerRadius="8dp" />
+                    android:gravity="center_vertical"
+                    android:orientation="horizontal">
+
+                    <ImageView
+                        android:id="@+id/img_now"
+                        android:layout_width="28dp"
+                        android:layout_height="28dp"
+                        android:contentDescription="@null"
+                        android:src="@drawable/teo_ic_music" />
+
+                    <TextView
+                        android:id="@+id/txt_now"
+                        android:layout_width="0dp"
+                        android:layout_height="wrap_content"
+                        android:layout_marginStart="8dp"
+                        android:layout_marginEnd="8dp"
+                        android:layout_weight="1"
+                        android:breakStrategy="simple"
+                        android:text="@string/content_nothing_playing"
+                        android:textAppearance="@style/TextAppearance.Teo.Home.Body" />
+
+                    <com.google.android.material.button.MaterialButton
+                        android:id="@+id/btn_stop"
+                        style="@style/Widget.MaterialComponents.Button.OutlinedButton"
+                        android:layout_width="wrap_content"
+                        android:layout_height="48dp"
+                        android:enabled="false"
+                        android:insetTop="0dp"
+                        android:insetBottom="0dp"
+                        android:minWidth="48dp"
+                        android:text="@string/home_stop"
+                        android:textAllCaps="false"
+                        android:textColor="@color/teo_outline"
+                        app:cornerRadius="16dp"
+                        app:icon="@drawable/teo_ic_stop"
+                        app:iconTint="@color/teo_outline"
+                        app:strokeColor="@color/teo_outline" />
+                </LinearLayout>
             </LinearLayout>
         </com.google.android.material.card.MaterialCardView>
 
         <TextView
+            android:id="@+id/txt_catalog_notice"
+            android:layout_width="match_parent"
+            android:layout_height="wrap_content"
+            android:layout_marginTop="12dp"
+            android:gravity="center"
+            android:textAppearance="@style/TextAppearance.Teo.Home.Secondary"
+            android:visibility="gone"
+            tools:text="No hay música cargada."
+            tools:visibility="visible" />
+
+        <ProgressBar
+            android:id="@+id/progress_catalog"
             android:layout_width="wrap_content"
             android:layout_height="wrap_content"
-            android:layout_marginTop="@dimen/section_margin_top"
-            android:text="@string/files_songs_section"
-            android:textAppearance="@style/TextAppearance.App.SectionTitle"
-            android:layout_marginBottom="8dp" />
+            android:layout_gravity="center_horizontal"
+            android:layout_marginTop="12dp"
+            android:indeterminate="true"
+            android:indeterminateTint="@color/teo_primary"
+            android:visibility="gone" />
 
         <com.google.android.material.card.MaterialCardView
-            style="@style/Widget.App.CardView"
+            android:id="@+id/card_music"
+            style="@style/Widget.Teo.Home.Card"
             android:layout_width="match_parent"
-            android:layout_height="wrap_content">
+            android:layout_height="wrap_content"
+            android:layout_marginTop="12dp"
+            app:contentPaddingBottom="4dp"
+            app:contentPaddingLeft="12dp"
+            app:contentPaddingRight="8dp"
+            app:contentPaddingTop="4dp">
 
             <LinearLayout
+                android:id="@+id/music_list"
                 android:layout_width="match_parent"
                 android:layout_height="wrap_content"
-                android:orientation="vertical">
-
-                <LinearLayout
-                    android:id="@+id/songs_container"
-                    android:layout_width="match_parent"
-                    android:layout_height="wrap_content"
-                    android:orientation="vertical" />
-
-                <com.google.android.material.button.MaterialButton
-                    android:id="@+id/btn_stop_song"
-                    style="@style/Widget.MaterialComponents.Button.OutlinedButton"
-                    android:layout_width="match_parent"
-                    android:layout_height="wrap_content"
-                    android:layout_marginTop="8dp"
-                    android:minHeight="48dp"
-                    android:text="@string/files_songs_stop"
-                    app:cornerRadius="8dp" />
-
-                <com.google.android.material.button.MaterialButton
-                    android:id="@+id/btn_upload_song"
-                    style="@style/Widget.MaterialComponents.Button.OutlinedButton"
-                    android:layout_width="match_parent"
-                    android:layout_height="wrap_content"
-                    android:layout_marginTop="8dp"
-                    android:minHeight="48dp"
-                    android:text="@string/files_songs_upload"
-                    app:cornerRadius="8dp" />
-            </LinearLayout>
+                android:orientation="vertical" />
         </com.google.android.material.card.MaterialCardView>
+
+        <LinearLayout
+            android:id="@+id/story_list"
+            android:layout_width="match_parent"
+            android:layout_height="wrap_content"
+            android:layout_marginTop="12dp"
+            android:orientation="vertical"
+            android:visibility="gone" />
     </LinearLayout>
 </ScrollView>

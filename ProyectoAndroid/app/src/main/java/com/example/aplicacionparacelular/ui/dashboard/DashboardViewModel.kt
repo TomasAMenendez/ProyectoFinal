@@ -3,185 +3,138 @@ package com.example.aplicacionparacelular.ui.dashboard
 import androidx.lifecycle.LiveData
 import androidx.lifecycle.MutableLiveData
 import androidx.lifecycle.ViewModel
+import androidx.lifecycle.Observer
 import com.example.aplicacionparacelular.network.ApiResult
 import com.example.aplicacionparacelular.network.RobotConnectionManager
 import org.json.JSONObject
 
 class DashboardViewModel : ViewModel() {
+    private val gate = HomeActionGate()
 
-    private val _totalInteractions = MutableLiveData("0")
-    val totalInteractions: LiveData<String> = _totalInteractions
+    private val _interactions = MutableLiveData<String?>(null)
+    val interactions: LiveData<String?> = _interactions
 
-    private val _playtimeMinutes = MutableLiveData("0 min")
-    val playtimeMinutes: LiveData<String> = _playtimeMinutes
+    private val _signal = MutableLiveData<String?>(null)
+    val signal: LiveData<String?> = _signal
 
-    private val _moodLabel = MutableLiveData("Sin datos")
-    val moodLabel: LiveData<String> = _moodLabel
+    private val _playback = MutableLiveData(PlaybackSnapshot(null, null, null))
+    val playback: LiveData<PlaybackSnapshot> = _playback
 
-    private val _powerOn = MutableLiveData(false)
-    val powerOn: LiveData<Boolean> = _powerOn
+    private val _catalogCount = MutableLiveData(-1)
+    val catalogCount: LiveData<Int> = _catalogCount
 
-    private val _bellyWakeEnabled = MutableLiveData(true)
-    val bellyWakeEnabled: LiveData<Boolean> = _bellyWakeEnabled
+    private val _message = MutableLiveData<String?>()
+    val message: LiveData<String?> = _message
+
+    private val _busy = MutableLiveData(false)
+    val busy: LiveData<Boolean> = _busy
+
+    private var readingStoryId: String? = null
+    private var connected = false
+    private val connectionObserver = Observer<Boolean> { value ->
+        connected = value == true
+    }
+
+    init {
+        RobotConnectionManager.isConnected.observeForever(connectionObserver)
+    }
+
+    override fun onCleared() {
+        RobotConnectionManager.isConnected.removeObserver(connectionObserver)
+        super.onCleared()
+    }
 
     fun refreshTelemetry() {
         RobotConnectionManager.fetchTelemetryToday { result ->
             when (result) {
-                is ApiResult.Success -> parseTelemetry(result.data)
-                is ApiResult.Error -> { /* Keep current values */ }
-            }
-        }
-    }
-
-    private fun parseTelemetry(data: JSONObject) {
-        val summary = data.optJSONObject("summary") ?: return
-
-        val interactions = summary.optInt("total_interactions", 0)
-        _totalInteractions.value = interactions.toString()
-
-        val durationSecs = summary.optDouble("total_duration_s", 0.0)
-        val minutes = (durationSecs / 60).toInt()
-        _playtimeMinutes.value = "$minutes min"
-
-        val events = data.optJSONArray("events")
-        var lastEmotion: String? = null
-        if (events != null) {
-            for (i in events.length() - 1 downTo 0) {
-                val event = events.optJSONObject(i) ?: continue
-                val emotion = event.optString("emotion", "")
-                if (emotion.isNotBlank() && emotion != "null") {
-                    lastEmotion = emotion
-                    break
+                is ApiResult.Success -> {
+                    val summary = TodaySummary.parse(result.data)
+                    _interactions.value = summary.interactions
+                    _signal.value = summary.signal
+                }
+                is ApiResult.Error -> {
+                    val absent = TodaySummary.absent()
+                    _interactions.value = absent.interactions
+                    _signal.value = absent.signal
                 }
             }
         }
-        _moodLabel.value = translateEmotion(lastEmotion)
     }
-
-    private fun translateEmotion(emotion: String?): String {
-        return when (emotion?.lowercase()) {
-            "happy", "feliz" -> "Feliz 😊"
-            "sad", "triste" -> "Triste 😢"
-            "angry", "enojado" -> "Enojado 😠"
-            "surprised", "sorprendido" -> "Sorprendido 😲"
-            "neutral" -> "Tranquilo 😐"
-            "calm", "calmo" -> "Tranquilo 😊"
-            "fear", "miedo" -> "Asustado 😨"
-            null, "" -> "Sin datos"
-            else -> emotion ?: "Sin datos"
-        }
-    }
-
-    fun togglePower() {
-        val currentPower = _powerOn.value ?: false
-        val newPower = !currentPower
-        RobotConnectionManager.setPower(newPower) { result ->
-            when (result) {
-                is ApiResult.Success -> _powerOn.value = newPower
-                is ApiResult.Error -> { /* Revert, keep current state */ }
-            }
-        }
-    }
-
-    fun setBellyWakeEnabled(enabled: Boolean) {
-        if (enabled == (_bellyWakeEnabled.value ?: true)) return
-        RobotConnectionManager.setBellyWake(enabled) { result ->
-            when (result) {
-                is ApiResult.Success -> _bellyWakeEnabled.value = enabled
-                is ApiResult.Error -> { /* keep */ }
-            }
-        }
-    }
-
-    private val _nowPlaying = MutableLiveData<String?>(null)
-    val nowPlaying: LiveData<String?> = _nowPlaying
-
-    private val _storyPlaying = MutableLiveData(false)
-    val storyPlaying: LiveData<Boolean> = _storyPlaying
-
-    private var readingStoryId: String? = null
-
-    private val _songCount = MutableLiveData(-1)
-    val songCount: LiveData<Int> = _songCount
-
-    private val _musicMessage = MutableLiveData<String?>()
-    val musicMessage: LiveData<String?> = _musicMessage
 
     fun applyRobotStatus(status: JSONObject) {
-        _powerOn.value = status.optBoolean("power_on", false)
-        _bellyWakeEnabled.value = status.optBoolean("belly_wake_enabled", true)
-        val reading = status.optJSONObject("currently_reading")
-        val title = reading?.optString("title").orEmpty()
-        val id = reading?.optString("id").orEmpty()
-        if (title.isNotBlank() && id.isNotBlank()) {
-            readingStoryId = id
-            _storyPlaying.value = true
-            _nowPlaying.value = title
-            return
-        }
-        readingStoryId = null
-        _storyPlaying.value = false
-        val playing = if (status.isNull("currently_playing")) null
-        else status.optString("currently_playing", null)?.ifBlank { null }
-        _nowPlaying.value = playing
+        if (!connected) return
+        val snapshot = NowPlaying.snapshot(status)
+        readingStoryId = snapshot.storyId
+        _playback.value = snapshot
     }
 
     fun refreshMusic() {
         RobotConnectionManager.fetchMusic { result ->
-                when (result) {
-                    is ApiResult.Success -> {
-                    val songs = result.data.optJSONArray("songs")
-                    _songCount.value = songs?.length() ?: 0
-                    if (_storyPlaying.value == true) {
-                        return@fetchMusic
+            if (result is ApiResult.Success) {
+                val names = NowPlaying.songNames(result.data)
+                _catalogCount.value = names.size
+                if (readingStoryId == null && connected) {
+                    val playing = NowPlaying.snapshot(result.data)
+                    if (playing.songName != null || _playback.value?.storyId == null) {
+                        _playback.value = playing.copy(storyTitle = null, storyId = null)
                     }
-                    val playing = if (result.data.isNull("currently_playing")) null
-                    else result.data.optString("currently_playing", null)?.ifBlank { null }
-                    _nowPlaying.value = playing
                 }
-                is ApiResult.Error -> { /* keep */ }
+            }
+        }
+    }
+
+    fun requestPower(turnOn: Boolean) {
+        if (!gate.tryStart(HomeAction.POWER)) return
+        publishBusy()
+        RobotConnectionManager.setPower(turnOn) { result ->
+            when (result) {
+                is ApiResult.Error -> {
+                    _message.value = result.message.ifBlank { "No se pudo cambiar la actividad de TEO." }
+                    finish(HomeAction.POWER)
+                }
+                is ApiResult.Success -> confirmPower(result.data)
             }
         }
     }
 
     fun playNow() {
+        if (!connected) {
+            _message.value = NowPlaying.NOT_CURRENT
+            return
+        }
+        if (!gate.tryStart(HomeAction.PLAY)) return
+        publishBusy()
         val storyId = readingStoryId
         if (!storyId.isNullOrBlank()) {
-            RobotConnectionManager.playStory(storyId) { playResult ->
-                _musicMessage.value = when (playResult) {
-                    is ApiResult.Success -> null
-                    is ApiResult.Error -> playResult.message.ifBlank { "¿Está conectado el peluche?" }
-                }
+            RobotConnectionManager.playStory(storyId) { result ->
+                confirmPlay(result, expectedStoryId = storyId, expectedSong = null)
             }
             return
         }
         RobotConnectionManager.fetchMusic { result ->
             when (result) {
                 is ApiResult.Error -> {
-                    _musicMessage.value = result.message.ifBlank { "¿Está conectado el peluche?" }
+                    _message.value = result.message.ifBlank { "No se pudo consultar la música." }
+                    finish(HomeAction.PLAY)
                 }
                 is ApiResult.Success -> {
-                    val songs = result.data.optJSONArray("songs")
-                    val names = mutableListOf<String>()
-                    if (songs != null) {
-                        for (i in 0 until songs.length()) {
-                            val name = songs.optJSONObject(i)?.optString("filename").orEmpty()
-                            if (name.isNotBlank()) names.add(name)
-                        }
+                    val rejected = NowPlaying.rejection(result.data)
+                    if (rejected != null) {
+                        _message.value = rejected
+                        finish(HomeAction.PLAY)
+                        return@fetchMusic
                     }
-                    _songCount.value = names.size
+                    val names = NowPlaying.songNames(result.data)
+                    _catalogCount.value = names.size
                     if (names.isEmpty()) {
-                        _musicMessage.value = "Cargá una en Archivos"
+                        _message.value = NowPlaying.EMPTY_CATALOG
+                        finish(HomeAction.PLAY)
                         return@fetchMusic
                     }
                     val last = RobotConnectionManager.lastPlayedSong()
                     val target = last?.takeIf { it in names } ?: names.first()
                     RobotConnectionManager.playMusic(target) { playResult ->
-                        _musicMessage.value = when (playResult) {
-                            is ApiResult.Success -> null
-                            is ApiResult.Error -> playResult.message.ifBlank { "¿Está conectado el peluche?" }
-                        }
-                        refreshMusic()
+                        confirmPlay(playResult, expectedStoryId = null, expectedSong = target)
                     }
                 }
             }
@@ -189,15 +142,121 @@ class DashboardViewModel : ViewModel() {
     }
 
     fun stopNow() {
+        if (!connected) {
+            _message.value = NowPlaying.NOT_CURRENT
+            return
+        }
+        val before = _playback.value ?: PlaybackSnapshot(null, null, null)
+        if (!before.hasPlayback) return
+        if (!gate.tryStart(HomeAction.STOP)) return
+        publishBusy()
         RobotConnectionManager.stopStory { }
         RobotConnectionManager.stopMusic { result ->
-            readingStoryId = null
-            _storyPlaying.value = false
-            _musicMessage.value = when (result) {
-                is ApiResult.Success -> null
-                is ApiResult.Error -> result.message.ifBlank { "¿Está conectado el peluche?" }
+            when (result) {
+                is ApiResult.Error -> {
+                    _message.value = result.message.ifBlank { NowPlaying.NOT_CONFIRMED }
+                    finish(HomeAction.STOP)
+                }
+                is ApiResult.Success -> {
+                    val rejected = NowPlaying.rejection(result.data)
+                    if (rejected != null) {
+                        _message.value = rejected
+                        finish(HomeAction.STOP)
+                        return@stopMusic
+                    }
+                    confirmStop(before)
+                }
             }
-            refreshMusic()
         }
+    }
+
+    fun celebrate() {
+        if (!connected) {
+            _message.value = CelebrationResult.DISCONNECTED
+            return
+        }
+        if (!gate.tryStart(HomeAction.CELEBRATE)) return
+        publishBusy()
+        RobotConnectionManager.celebrate { result ->
+            _message.value = CelebrationResult.from(connected, result)
+            finish(HomeAction.CELEBRATE)
+        }
+    }
+
+    private fun confirmPower(body: JSONObject) {
+        val reading = HomeStatus.reading(body)
+        if (reading.pendingWake || reading.wakeResult == "queued") {
+            _message.value = "TEO se está preparando."
+        }
+        RobotConnectionManager.fetchStatus { result ->
+            when (result) {
+                is ApiResult.Error -> {
+                    if (_message.value.isNullOrBlank()) {
+                        _message.value = result.message.ifBlank { "No se pudo confirmar la actividad de TEO." }
+                    }
+                }
+                is ApiResult.Success -> applyRobotStatus(result.data)
+            }
+            finish(HomeAction.POWER)
+        }
+    }
+
+    private fun confirmPlay(result: ApiResult<JSONObject>, expectedStoryId: String?, expectedSong: String?) {
+        when (result) {
+            is ApiResult.Error -> {
+                _message.value = result.message.ifBlank { NowPlaying.NOT_CONFIRMED }
+                finish(HomeAction.PLAY)
+            }
+            is ApiResult.Success -> {
+                val rejected = NowPlaying.rejection(result.data)
+                if (rejected != null) {
+                    _message.value = rejected
+                    finish(HomeAction.PLAY)
+                    return
+                }
+                RobotConnectionManager.fetchStatus { statusResult ->
+                    when (statusResult) {
+                        is ApiResult.Error -> _message.value = NowPlaying.NOT_CONFIRMED
+                        is ApiResult.Success -> {
+                            val after = NowPlaying.snapshot(statusResult.data)
+                            if (NowPlaying.playConfirmed(expectedStoryId, expectedSong, after)) {
+                                readingStoryId = after.storyId
+                                _playback.value = after
+                            } else {
+                                _message.value = NowPlaying.NOT_CONFIRMED
+                            }
+                        }
+                    }
+                    finish(HomeAction.PLAY)
+                }
+            }
+        }
+    }
+
+    private fun confirmStop(before: PlaybackSnapshot) {
+        RobotConnectionManager.fetchStatus { result ->
+            when (result) {
+                is ApiResult.Error -> _message.value = NowPlaying.NOT_CONFIRMED
+                is ApiResult.Success -> {
+                    val after = NowPlaying.snapshot(result.data)
+                    if (NowPlaying.stopConfirmed(before, after)) {
+                        readingStoryId = null
+                        _playback.value = after
+                    } else {
+                        _message.value = NowPlaying.NOT_CONFIRMED
+                    }
+                }
+            }
+            finish(HomeAction.STOP)
+        }
+    }
+
+    private fun publishBusy() {
+        _busy.value = gate.waiting
+    }
+
+    private fun finish(action: HomeAction) {
+        gate.finish(action)
+        _busy.value = gate.waiting
     }
 }

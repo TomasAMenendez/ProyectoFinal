@@ -24,10 +24,46 @@
         tools:layout="@layout/fragment_routines" />
 
     <fragment
+        android:id="@+id/nav_routine_editor"
+        android:name="com.example.aplicacionparacelular.ui.routines.RoutineEditorFragment"
+        android:label="@string/routines_new_title"
+        tools:layout="@layout/fragment_routine_editor" />
+
+    <fragment
         android:id="@+id/nav_config"
-        android:name="com.example.aplicacionparacelular.ui.config.ConfigFragment"
+        android:name="com.example.aplicacionparacelular.ui.myteo.MyTeoFragment"
         android:label="@string/menu_config"
-        tools:layout="@layout/fragment_config" />
+        tools:layout="@layout/fragment_my_teo" />
+
+    <fragment
+        android:id="@+id/nav_teo_settings"
+        android:name="com.example.aplicacionparacelular.ui.myteo.TeoSettingsFragment"
+        android:label="@string/my_teo_settings"
+        tools:layout="@layout/fragment_teo_settings" />
+
+    <fragment
+        android:id="@+id/nav_connection"
+        android:name="com.example.aplicacionparacelular.ui.myteo.ConnectionFragment"
+        android:label="@string/connection_title"
+        tools:layout="@layout/fragment_connection" />
+
+    <fragment
+        android:id="@+id/nav_diagnostics"
+        android:name="com.example.aplicacionparacelular.ui.myteo.DiagnosticsFragment"
+        android:label="@string/diagnostics_title"
+        tools:layout="@layout/fragment_diagnostics" />
+
+    <fragment
+        android:id="@+id/nav_wifi_change"
+        android:name="com.example.aplicacionparacelular.ui.myteo.WifiChangeFragment"
+        android:label="@string/wifi_change_title"
+        tools:layout="@layout/fragment_wifi_change" />
+
+    <fragment
+        android:id="@+id/nav_profile_edit"
+        android:name="com.example.aplicacionparacelular.ui.myteo.ProfileEditFragment"
+        android:label="@string/profile_edit_title"
+        tools:layout="@layout/fragment_profile_edit" />
 
     <fragment
         android:id="@+id/nav_medical"
@@ -36,10 +72,28 @@
         tools:layout="@layout/fragment_medical" />
 
     <fragment
+        android:id="@+id/nav_appointment_form"
+        android:name="com.example.aplicacionparacelular.ui.medical.AppointmentFormFragment"
+        android:label="@string/agenda_new_title"
+        tools:layout="@layout/fragment_appointment_form" />
+
+    <fragment
         android:id="@+id/nav_stories"
         android:name="com.example.aplicacionparacelular.ui.stories.StoriesFragment"
         android:label="@string/menu_stories"
         tools:layout="@layout/fragment_stories" />
+
+    <fragment
+        android:id="@+id/nav_story_form"
+        android:name="com.example.aplicacionparacelular.ui.stories.StoryFormFragment"
+        android:label="@string/content_add_story"
+        tools:layout="@layout/fragment_story_form" />
+
+    <fragment
+        android:id="@+id/nav_alerts"
+        android:name="com.example.aplicacionparacelular.ui.alerts.AlertsFragment"
+        android:label="@string/home_alerts_title"
+        tools:layout="@layout/fragment_alerts" />
 
     <fragment
         android:id="@+id/nav_child_profile"

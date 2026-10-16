@@ -16,4 +16,14 @@
     <dimen name="card_subtitle_size">13sp</dimen>
     <dimen name="routine_item_height">72dp</dimen>
     <dimen name="slider_padding">24dp</dimen>
+    <dimen name="teo_screen_margin">16dp</dimen>
+    <dimen name="teo_card_padding">16dp</dimen>
+    <dimen name="teo_card_gap">12dp</dimen>
+    <dimen name="teo_card_radius">16dp</dimen>
+    <dimen name="teo_button_min_height">48dp</dimen>
+    <dimen name="teo_button_radius">24dp</dimen>
+    <dimen name="teo_icon_size">24dp</dimen>
+    <dimen name="teo_header_min_height">64dp</dimen>
+    <dimen name="teo_home_control_gap">8dp</dimen>
+    <dimen name="teo_character_height">240dp</dimen>
 </resources>

@@ -154,33 +154,46 @@ class RobotState:
             "brightness": self.brightness,
         }
         try:
-            self._prefs_path.write_text(
+            tmp = self._prefs_path.with_name(f".{self._prefs_path.name}.tmp")
+            tmp.write_text(
                 json.dumps(payload, ensure_ascii=False, indent=2),
                 encoding="utf-8",
             )
+            tmp.replace(self._prefs_path)
         except OSError as exc:
             log_action("API", f"no pude guardar prefs: {exc}")
+            raise
 
     def update_config(self, data: dict) -> None:
         with self._lock:
-            if "volume_limit" in data:
-                self.volume_limit = max(0, min(100, int(data["volume_limit"])))
-            if "brightness" in data:
-                self.brightness = max(0.0, min(1.0, float(data["brightness"])))
-            if "playtime_limit_minutes" in data:
-                self._apply_playtime_limit(data["playtime_limit_minutes"])
-            if "belly_wake_enabled" in data:
-                self.sleep.set_belly_wake_enabled(bool(data["belly_wake_enabled"]))
-            if any(
-                key in data
-                for key in (
-                    "playtime_limit_minutes",
-                    "belly_wake_enabled",
-                    "volume_limit",
-                    "brightness",
-                )
-            ):
-                self._save_prefs()
+            previous = (
+                self.volume_limit, self.brightness,
+                self.playtime_limit_minutes, self.sleep.belly_wake_enabled,
+            )
+            try:
+                if "volume_limit" in data:
+                    self.volume_limit = max(0, min(100, int(data["volume_limit"])))
+                if "brightness" in data:
+                    self.brightness = max(0.0, min(1.0, float(data["brightness"])))
+                if "playtime_limit_minutes" in data:
+                    self._apply_playtime_limit(data["playtime_limit_minutes"])
+                if "belly_wake_enabled" in data:
+                    self.sleep.set_belly_wake_enabled(bool(data["belly_wake_enabled"]))
+                if any(
+                    key in data
+                    for key in (
+                        "playtime_limit_minutes",
+                        "belly_wake_enabled",
+                        "volume_limit",
+                        "brightness",
+                    )
+                ):
+                    self._save_prefs()
+            except (OSError, TypeError, ValueError):
+                self.volume_limit, self.brightness = previous[:2]
+                self._apply_playtime_limit(previous[2])
+                self.sleep.set_belly_wake_enabled(previous[3])
+                raise
         if self.on_config_changed:
             self.on_config_changed({
                 "volume_limit": self.volume_limit,
@@ -680,11 +693,18 @@ class ApiRequestHandler(BaseHTTPRequestHandler):
 
     def _handle_post_config(self) -> None:
         body = self._parse_json_body()
-        if body is None:
+        if body is None or not isinstance(body, dict):
             self._send_error_json(400, "JSON inválido")
             return
 
-        robot_state.update_config(body)
+        try:
+            robot_state.update_config(body)
+        except (TypeError, ValueError):
+            self._send_error_json(400, "Configuración inválida")
+            return
+        except OSError:
+            self._send_error_json(500, "No se pudo guardar la configuración")
+            return
         self._send_json({
             "status": "ok",
             "volume_limit": robot_state.volume_limit,
@@ -1015,7 +1035,9 @@ class ApiRequestHandler(BaseHTTPRequestHandler):
             self._send_error_json(404, "Endpoint no encontrado")
 
     def _handle_delete_music(self, filename: str) -> None:
-        safe_name = Path(filename).name
+        import urllib.parse
+
+        safe_name = Path(urllib.parse.unquote(filename)).name
         file_path = MUSIC_DIR / safe_name
         if not file_path.exists():
             self._send_error_json(404, f"Archivo '{safe_name}' no encontrado")

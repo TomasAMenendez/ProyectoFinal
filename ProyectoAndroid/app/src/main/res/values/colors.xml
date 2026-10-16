@@ -57,4 +57,29 @@
     <color name="teal_200">#FF03DAC5</color>
     <color name="teal_700">#FF018786</color>
     <color name="ic_launcher_background">#FFB8EBF2</color>
+
+    <color name="teo_background">#FFF8F5ED</color>
+    <color name="teo_surface">#FFFFFFFF</color>
+    <color name="teo_primary">#FF255763</color>
+    <color name="teo_primary_pressed">#FF1D4650</color>
+    <color name="teo_text">#FF1D343B</color>
+    <color name="teo_secondary">#FF52636A</color>
+    <color name="teo_cyan">#FFB6E2E8</color>
+    <color name="teo_on_cyan">#FF193F48</color>
+    <color name="teo_gold">#FFE8BE73</color>
+    <color name="teo_on_gold">#FF3A2C16</color>
+    <color name="teo_success">#FFC6E6BD</color>
+    <color name="teo_on_success">#FF245B2C</color>
+    <color name="teo_sleep">#FFDEE3F3</color>
+    <color name="teo_on_sleep">#FF354866</color>
+    <color name="teo_neutral">#FFE3E5E4</color>
+    <color name="teo_on_neutral">#FF4C565A</color>
+    <color name="teo_disabled">#FFE0E3E2</color>
+    <color name="teo_on_disabled">#FF596569</color>
+    <color name="teo_routine_inactive_surface">#FFF2F4F3</color>
+    <color name="teo_routine_inactive_text">#FF4E5C62</color>
+    <color name="teo_routine_inactive_message">#FF667278</color>
+    <color name="teo_outline">#FF788A8E</color>
+    <color name="teo_error">#FFA12E2E</color>
+    <color name="teo_error_bg">#FFFBE9E7</color>
 </resources>

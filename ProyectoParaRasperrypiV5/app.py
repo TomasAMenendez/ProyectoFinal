@@ -329,8 +329,8 @@ class EyeModeApp(tk.Tk):
         self.routine_scheduler = _create_routine_scheduler()
 
         # Volume limit (0-100)
-        self._volume_limit: int = 100
-        self._brightness: float = 1.0
+        self._volume_limit: int = getattr(robot_state, "volume_limit", 100)
+        self._brightness: float = getattr(robot_state, "brightness", 1.0)
         self._night_mode: bool = False
         self._power_on: bool = False
         self._playtime_limit_minutes: int = 0
@@ -761,14 +761,14 @@ class EyeModeApp(tk.Tk):
         robot_state.audio_worker = self.audio_worker
         self._volume_limit = int(robot_state.volume_limit)
         self._brightness = float(robot_state.brightness)
-        self._playtime_limit_minutes = int(robot_state.playtime_limit_minutes)
-        if self.speech_worker:
+        if self.speech_worker is not None:
             self.speech_worker.set_volume_limit(self._volume_limit)
         if self._eye_display is not None:
             try:
                 self._eye_display.set_brightness(self._brightness)
             except Exception:
                 pass
+        self._playtime_limit_minutes = int(getattr(robot_state, "playtime_limit_minutes", 0) or 0)
 
         # Callbacks from Android app → robot
         def _on_celebrate() -> None:
@@ -971,23 +971,14 @@ class EyeModeApp(tk.Tk):
             return
         if self.routine_scheduler is not None and self.speech_worker is not None:
             try:
-                messages = self.routine_scheduler.check_pending()
-                for msg in messages:
-                    print(f"[ROUTINE] {msg}", flush=True)
-                    self.speech_worker.speak(msg)
-                    if self._eye_display is not None:
-                        from hardware import pictogram_for_routine
-                        picto = None
-                        if self.routine_scheduler is not None:
-                            pending_id = self.routine_scheduler.get_pending_routine_id()
-                            for routine in self.routine_scheduler.routines:
-                                if routine.id == pending_id:
-                                    picto = pictogram_for_routine(routine.transition_to)
-                                    break
-                        if picto:
-                            self._eye_display.set_pictogram(picto)
+                from routines import speak_routine_cues
+
+                cues = self.routine_scheduler.check_pending()
+                speak_routine_cues(self.speech_worker, self._eye_display, cues)
+                for cue in cues:
+                    print(f"[ROUTINE] {cue.message}", flush=True)
                     if robot_state is not None:
-                        robot_state.push_notification("rutina", msg)
+                        robot_state.push_notification("rutina", cue.message)
             except Exception:
                 pass
         self.after(30000, self._check_routines)
@@ -1147,7 +1138,7 @@ class EdgeAiDesktopApp(tk.Tk):
 
         # --- Sensory config row (#EPIC-002) ---
         ttk.Label(controls, text="Vol. máx:").grid(row=4, column=0, sticky="w", padx=(0, 8), pady=4)
-        self._volume_var = tk.IntVar(value=100)
+        self._volume_var = tk.IntVar(value=getattr(robot_state, "volume_limit", 100))
         vol_scale = ttk.Scale(controls, from_=0, to=100, variable=self._volume_var, orient="horizontal")
         vol_scale.grid(row=4, column=1, sticky="we", pady=4)
 
@@ -1498,9 +1489,14 @@ class EdgeAiDesktopApp(tk.Tk):
         robot_state.speech_worker = self.speech_worker
         robot_state.audio_worker = self.audio_worker
         self._volume_var.set(int(robot_state.volume_limit))
-        self._playtime_limit_minutes = int(robot_state.playtime_limit_minutes)
-        if self.speech_worker:
+        if self.speech_worker is not None:
             self.speech_worker.set_volume_limit(int(robot_state.volume_limit))
+        if self._eye_display is not None:
+            try:
+                self._eye_display.set_brightness(robot_state.brightness)
+            except Exception:
+                pass
+        self._playtime_limit_minutes = int(getattr(robot_state, "playtime_limit_minutes", 0) or 0)
         _bind_playback_callbacks(self)
 
         def _on_celebrate() -> None:
@@ -1767,12 +1763,14 @@ class EdgeAiDesktopApp(tk.Tk):
             return
         if self.routine_scheduler is not None and self.speech_worker is not None:
             try:
-                messages = self.routine_scheduler.check_pending()
-                for msg in messages:
-                    self._append_log(f"🔔 Rutina: {msg}")
-                    self.speech_worker.speak(msg)
+                from routines import speak_routine_cues
+
+                cues = self.routine_scheduler.check_pending()
+                speak_routine_cues(self.speech_worker, self._eye_display, cues)
+                for cue in cues:
+                    self._append_log(f"🔔 Rutina: {cue.message}")
                     if robot_state is not None:
-                        robot_state.push_notification("rutina", msg)
+                        robot_state.push_notification("rutina", cue.message)
             except Exception:
                 pass
         self.after(30000, self._check_routines)
@@ -1801,8 +1799,8 @@ class HeadlessEyeApp:
         self.telemetry = _create_telemetry()
         self.vocabulary_tracker = _create_vocabulary_tracker()
         self.routine_scheduler = _create_routine_scheduler()
-        self._volume_limit: int = 100
-        self._brightness: float = 1.0
+        self._volume_limit: int = getattr(robot_state, "volume_limit", 100)
+        self._brightness: float = getattr(robot_state, "brightness", 1.0)
         self._night_mode: bool = False
         self._power_on: bool = False
         self._playtime_limit_minutes: int = 0

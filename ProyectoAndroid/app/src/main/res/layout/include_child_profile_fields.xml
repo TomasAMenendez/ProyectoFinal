@@ -1,203 +1,97 @@
 <?xml version="1.0" encoding="utf-8"?>
 <LinearLayout xmlns:android="http://schemas.android.com/apk/res/android"
     xmlns:app="http://schemas.android.com/apk/res-auto"
-    android:layout_width="match_parent"
-    android:layout_height="wrap_content"
-    android:orientation="vertical">
+    android:layout_width="match_parent" android:layout_height="wrap_content" android:orientation="vertical">
 
-    <com.google.android.material.textfield.TextInputLayout
-        android:id="@+id/til_child_name"
-        style="@style/Widget.MaterialComponents.TextInputLayout.OutlinedBox"
-        android:layout_width="match_parent"
-        android:layout_height="wrap_content"
-        android:hint="@string/child_profile_name_hint"
-        app:counterEnabled="true"
-        app:counterMaxLength="40">
-
-        <com.google.android.material.textfield.TextInputEditText
-            android:id="@+id/edit_child_name"
-            android:layout_width="match_parent"
-            android:layout_height="wrap_content"
-            android:inputType="textPersonName|textCapWords"
-            android:maxLength="40"
-            android:minHeight="48dp" />
-    </com.google.android.material.textfield.TextInputLayout>
-
-    <TextView
-        android:layout_width="wrap_content"
-        android:layout_height="wrap_content"
-        android:layout_marginTop="12dp"
-        android:text="@string/child_profile_gender_label"
-        android:textSize="15sp" />
-
-    <com.google.android.material.button.MaterialButtonToggleGroup
-        android:id="@+id/toggle_gender"
-        android:layout_width="match_parent"
-        android:layout_height="wrap_content"
-        android:layout_marginTop="4dp"
-        app:selectionRequired="false"
-        app:singleSelection="true">
-
-        <com.google.android.material.button.MaterialButton
-            android:id="@+id/btn_gender_nene"
-            style="?attr/materialButtonOutlinedStyle"
-            android:layout_width="0dp"
-            android:layout_height="wrap_content"
-            android:layout_weight="1"
-            android:minHeight="48dp"
-            android:text="@string/child_profile_gender_nene" />
-
-        <com.google.android.material.button.MaterialButton
-            android:id="@+id/btn_gender_nena"
-            style="?attr/materialButtonOutlinedStyle"
-            android:layout_width="0dp"
-            android:layout_height="wrap_content"
-            android:layout_weight="1"
-            android:minHeight="48dp"
-            android:text="@string/child_profile_gender_nena" />
-
-        <com.google.android.material.button.MaterialButton
-            android:id="@+id/btn_gender_no_decir"
-            style="?attr/materialButtonOutlinedStyle"
-            android:layout_width="0dp"
-            android:layout_height="wrap_content"
-            android:layout_weight="1"
-            android:maxLines="2"
-            android:minHeight="48dp"
-            android:text="@string/child_profile_gender_no_decir"
-            android:textSize="12sp" />
-    </com.google.android.material.button.MaterialButtonToggleGroup>
-
-    <com.google.android.material.textfield.TextInputLayout
-        android:id="@+id/til_child_interests"
-        style="@style/Widget.MaterialComponents.TextInputLayout.OutlinedBox"
-        android:layout_width="match_parent"
-        android:layout_height="wrap_content"
-        android:layout_marginTop="12dp"
-        android:hint="@string/child_profile_interests_hint"
-        app:counterEnabled="true"
-        app:counterMaxLength="600">
-
-        <com.google.android.material.textfield.TextInputEditText
-            android:id="@+id/edit_child_interests"
-            android:layout_width="match_parent"
-            android:layout_height="wrap_content"
-            android:gravity="top"
-            android:inputType="textMultiLine|textCapSentences"
-            android:maxLength="600"
-            android:minHeight="72dp"
-            android:minLines="3" />
-    </com.google.android.material.textfield.TextInputLayout>
-
-    <TextView
-        android:layout_width="wrap_content"
-        android:layout_height="wrap_content"
-        android:layout_marginTop="12dp"
-        android:text="@string/child_profile_costume_label"
-        android:textSize="15sp" />
-
-    <com.google.android.material.chip.ChipGroup
-        android:id="@+id/chip_group_costume"
-        android:layout_width="match_parent"
-        android:layout_height="wrap_content"
-        android:layout_marginTop="4dp"
-        app:selectionRequired="true"
-        app:singleSelection="true">
-
-        <com.google.android.material.chip.Chip
-            android:id="@+id/chip_costume_oso"
-            style="@style/Widget.MaterialComponents.Chip.Choice"
-            android:layout_width="wrap_content"
-            android:layout_height="wrap_content"
-            android:checked="true"
-            android:text="@string/child_profile_costume_oso" />
-
-        <com.google.android.material.chip.Chip
-            android:id="@+id/chip_costume_perro"
-            style="@style/Widget.MaterialComponents.Chip.Choice"
-            android:layout_width="wrap_content"
-            android:layout_height="wrap_content"
-            android:text="@string/child_profile_costume_perro" />
-
-        <com.google.android.material.chip.Chip
-            android:id="@+id/chip_costume_oveja"
-            style="@style/Widget.MaterialComponents.Chip.Choice"
-            android:layout_width="wrap_content"
-            android:layout_height="wrap_content"
-            android:text="@string/child_profile_costume_oveja" />
-
-        <com.google.android.material.chip.Chip
-            android:id="@+id/chip_costume_dinosaurio"
-            style="@style/Widget.MaterialComponents.Chip.Choice"
-            android:layout_width="wrap_content"
-            android:layout_height="wrap_content"
-            android:text="@string/child_profile_costume_dinosaurio" />
-
-        <com.google.android.material.chip.Chip
-            android:id="@+id/chip_costume_chancho"
-            style="@style/Widget.MaterialComponents.Chip.Choice"
-            android:layout_width="wrap_content"
-            android:layout_height="wrap_content"
-            android:text="@string/child_profile_costume_chancho" />
-
-        <com.google.android.material.chip.Chip
-            android:id="@+id/chip_costume_tiburon"
-            style="@style/Widget.MaterialComponents.Chip.Choice"
-            android:layout_width="wrap_content"
-            android:layout_height="wrap_content"
-            android:text="@string/child_profile_costume_tiburon" />
-
-        <com.google.android.material.chip.Chip
-            android:id="@+id/chip_costume_stitch"
-            style="@style/Widget.MaterialComponents.Chip.Choice"
-            android:layout_width="wrap_content"
-            android:layout_height="wrap_content"
-            android:text="@string/child_profile_costume_stitch" />
-
-        <com.google.android.material.chip.Chip
-            android:id="@+id/chip_costume_spiderman"
-            style="@style/Widget.MaterialComponents.Chip.Choice"
-            android:layout_width="wrap_content"
-            android:layout_height="wrap_content"
-            android:text="@string/child_profile_costume_spiderman" />
-
-        <com.google.android.material.chip.Chip
-            android:id="@+id/chip_costume_chimuelo"
-            style="@style/Widget.MaterialComponents.Chip.Choice"
-            android:layout_width="wrap_content"
-            android:layout_height="wrap_content"
-            android:text="@string/child_profile_costume_chimuelo" />
-    </com.google.android.material.chip.ChipGroup>
-
-    <com.google.android.material.textfield.TextInputLayout
-        android:id="@+id/til_child_extra"
-        style="@style/Widget.MaterialComponents.TextInputLayout.OutlinedBox"
-        android:layout_width="match_parent"
-        android:layout_height="wrap_content"
-        android:layout_marginTop="12dp"
-        android:hint="@string/child_profile_extra_hint"
-        app:counterEnabled="true"
-        app:counterMaxLength="600">
-
-        <com.google.android.material.textfield.TextInputEditText
-            android:id="@+id/edit_child_extra"
-            android:layout_width="match_parent"
-            android:layout_height="wrap_content"
-            android:gravity="top"
-            android:inputType="textMultiLine|textCapSentences"
-            android:maxLength="600"
-            android:minHeight="72dp"
-            android:minLines="3" />
-    </com.google.android.material.textfield.TextInputLayout>
-
-    <com.google.android.material.button.MaterialButton
-        android:id="@+id/btn_save"
-        android:layout_width="match_parent"
-        android:layout_height="wrap_content"
-        android:layout_marginTop="16dp"
-        android:enabled="false"
-        android:minHeight="48dp"
-        android:text="@string/btn_save"
-        app:backgroundTint="@color/tertiary"
-        app:cornerRadius="8dp" />
+    <com.google.android.material.card.MaterialCardView style="@style/Widget.Teo.Home.Card"
+        android:layout_width="match_parent" android:layout_height="wrap_content" android:layout_marginTop="16dp">
+        <LinearLayout android:layout_width="match_parent" android:layout_height="wrap_content"
+            android:orientation="vertical" android:paddingBottom="8dp">
+            <TextView android:layout_width="match_parent" android:layout_height="wrap_content"
+                android:text="@string/profile_section_child" android:textAppearance="@style/TextAppearance.Teo.Home.Section" />
+            <TextView android:layout_width="match_parent" android:layout_height="wrap_content"
+                android:layout_marginTop="16dp" android:labelFor="@id/edit_child_name"
+                android:text="@string/profile_name_label" android:textAppearance="@style/TextAppearance.Teo.Home.Body" />
+            <com.google.android.material.textfield.TextInputLayout android:id="@+id/til_child_name"
+                style="@style/Widget.Teo.Profile.Field" android:layout_width="match_parent"
+                android:layout_height="wrap_content" android:layout_marginTop="6dp"
+                app:counterEnabled="true" app:counterMaxLength="40">
+                <com.google.android.material.textfield.TextInputEditText android:id="@+id/edit_child_name"
+                    style="@style/Widget.Teo.Profile.Input" android:layout_width="match_parent" android:layout_height="wrap_content"
+                    android:hint="@string/profile_name_placeholder"
+                    android:inputType="textPersonName|textCapWords" android:maxLength="40" android:maxLines="1" />
+            </com.google.android.material.textfield.TextInputLayout>
+            <TextView android:layout_width="match_parent" android:layout_height="wrap_content"
+                android:layout_marginTop="12dp" android:labelFor="@id/toggle_gender"
+                android:text="@string/profile_gender_label" android:textAppearance="@style/TextAppearance.Teo.Home.Body" />
+            <com.google.android.material.chip.ChipGroup android:id="@+id/toggle_gender"
+                android:layout_width="match_parent" android:layout_height="wrap_content" android:layout_marginTop="4dp"
+                app:chipSpacingHorizontal="8dp" app:chipSpacingVertical="0dp" app:singleSelection="true" app:selectionRequired="false">
+                <com.google.android.material.chip.Chip android:id="@+id/btn_gender_nene" style="@style/Widget.Teo.Profile.Gender"
+                    android:layout_width="wrap_content" android:layout_height="wrap_content" android:text="@string/child_profile_gender_nene" />
+                <com.google.android.material.chip.Chip android:id="@+id/btn_gender_nena" style="@style/Widget.Teo.Profile.Gender"
+                    android:layout_width="wrap_content" android:layout_height="wrap_content" android:text="@string/child_profile_gender_nena" />
+                <com.google.android.material.chip.Chip android:id="@+id/btn_gender_no_decir" style="@style/Widget.Teo.Profile.Gender"
+                    android:layout_width="wrap_content" android:layout_height="wrap_content" android:text="@string/child_profile_gender_no_decir" />
+            </com.google.android.material.chip.ChipGroup>
+            <TextView android:layout_width="match_parent" android:layout_height="wrap_content"
+                android:layout_marginTop="12dp" android:labelFor="@id/edit_child_interests"
+                android:text="@string/profile_interests_label" android:textAppearance="@style/TextAppearance.Teo.Home.Body" />
+            <com.google.android.material.textfield.TextInputLayout android:id="@+id/til_child_interests"
+                style="@style/Widget.Teo.Profile.Field" android:layout_width="match_parent" android:layout_height="wrap_content"
+                android:layout_marginTop="6dp" app:counterEnabled="true" app:counterMaxLength="600">
+                <com.google.android.material.textfield.TextInputEditText android:id="@+id/edit_child_interests"
+                    style="@style/Widget.Teo.Profile.Input" android:layout_width="match_parent" android:layout_height="wrap_content"
+                    android:hint="@string/profile_interests_placeholder" android:gravity="top"
+                    android:inputType="textMultiLine|textCapSentences" android:maxLength="600" android:minLines="2" />
+            </com.google.android.material.textfield.TextInputLayout>
+            <TextView android:layout_width="match_parent" android:layout_height="wrap_content"
+                android:layout_marginTop="12dp" android:labelFor="@id/edit_child_extra"
+                android:text="@string/profile_extra_label" android:textAppearance="@style/TextAppearance.Teo.Home.Body" />
+            <com.google.android.material.textfield.TextInputLayout android:id="@+id/til_child_extra"
+                style="@style/Widget.Teo.Profile.Field" android:layout_width="match_parent" android:layout_height="wrap_content"
+                android:layout_marginTop="6dp" app:counterEnabled="true" app:counterMaxLength="600">
+                <com.google.android.material.textfield.TextInputEditText android:id="@+id/edit_child_extra"
+                    style="@style/Widget.Teo.Profile.Input" android:layout_width="match_parent" android:layout_height="wrap_content"
+                    android:hint="@string/profile_extra_placeholder" android:gravity="top"
+                    android:inputType="textMultiLine|textCapSentences" android:maxLength="600" android:minLines="2" />
+            </com.google.android.material.textfield.TextInputLayout>
+        </LinearLayout>
+    </com.google.android.material.card.MaterialCardView>
+    <com.google.android.material.card.MaterialCardView style="@style/Widget.Teo.Home.Card"
+        android:layout_width="match_parent" android:layout_height="wrap_content" android:layout_marginTop="12dp">
+        <LinearLayout android:layout_width="match_parent" android:layout_height="wrap_content"
+            android:orientation="vertical" android:paddingBottom="12dp">
+            <TextView android:layout_width="match_parent" android:layout_height="wrap_content"
+                android:text="@string/profile_section_teo" android:textAppearance="@style/TextAppearance.Teo.Home.Section" />
+            <TextView android:layout_width="match_parent" android:layout_height="wrap_content" android:layout_marginTop="8dp"
+                android:text="@string/profile_costume" android:textAppearance="@style/TextAppearance.Teo.Home.Body" />
+            <com.google.android.material.card.MaterialCardView android:id="@+id/btn_costume"
+                android:layout_width="match_parent" android:layout_height="wrap_content" android:layout_marginTop="8dp"
+                android:clickable="true" android:focusable="true" app:cardBackgroundColor="@color/teo_background"
+                app:cardCornerRadius="12dp" app:cardElevation="0dp" app:strokeWidth="1dp" app:strokeColor="@color/teo_outline">
+                <LinearLayout android:layout_width="match_parent" android:layout_height="wrap_content"
+                    android:gravity="center_vertical" android:orientation="horizontal" android:padding="12dp"
+                    android:importantForAccessibility="noHideDescendants">
+                    <ImageView android:id="@+id/img_costume" android:layout_width="72dp" android:layout_height="96dp"
+                        android:contentDescription="@null" android:scaleType="matrix" />
+                    <LinearLayout android:layout_width="0dp" android:layout_height="wrap_content" android:layout_weight="1"
+                        android:layout_marginStart="16dp" android:orientation="vertical">
+                        <TextView android:id="@+id/txt_costume" android:layout_width="match_parent" android:layout_height="wrap_content"
+                            android:textAppearance="@style/TextAppearance.Teo.Home.Section" />
+                        <TextView android:layout_width="match_parent" android:layout_height="wrap_content" android:layout_marginTop="6dp"
+                            android:text="@string/profile_change_costume" android:textAppearance="@style/TextAppearance.Teo.Home.Secondary" />
+                    </LinearLayout>
+                    <ImageView android:layout_width="24dp" android:layout_height="24dp" android:layout_marginStart="8dp"
+                        android:src="@drawable/teo_ic_chevron" app:tint="@color/teo_primary" android:contentDescription="@null" />
+                </LinearLayout>
+            </com.google.android.material.card.MaterialCardView>
+            <TextView android:layout_width="match_parent" android:layout_height="wrap_content" android:layout_marginTop="10dp"
+                android:text="@string/profile_costume_applies" android:textAppearance="@style/TextAppearance.Teo.Home.Caption" />
+        </LinearLayout>
+    </com.google.android.material.card.MaterialCardView>
+    <com.google.android.material.button.MaterialButton android:id="@+id/btn_save" style="@style/Widget.Teo.Home.Button"
+        android:layout_width="match_parent" android:layout_height="wrap_content" android:layout_marginTop="16dp"
+        android:enabled="false" android:text="@string/profile_save_changes"
+        android:textColor="@color/teo_button_text" app:backgroundTint="@color/teo_button_bg" />
 </LinearLayout>

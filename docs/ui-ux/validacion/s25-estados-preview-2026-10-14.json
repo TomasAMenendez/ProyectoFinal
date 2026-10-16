@@ -1,0 +1,58 @@
+[
+  {
+    "State": "dormido",
+    "Activity": "Dormido",
+    "PowerAction": "Despertar TEO",
+    "PowerEnabled": "true",
+    "StopEnabled": "false",
+    "Passed": true
+  },
+  {
+    "State": "preparandose",
+    "Activity": "Preparándose",
+    "PowerAction": "Despertar TEO",
+    "PowerEnabled": "false",
+    "StopEnabled": "false",
+    "Passed": true
+  },
+  {
+    "State": "desconectado",
+    "Activity": "Sin actividad",
+    "PowerAction": "Dormir TEO",
+    "PowerEnabled": "false",
+    "StopEnabled": "false",
+    "Passed": true
+  },
+  {
+    "State": "musica",
+    "Activity": "Despierto",
+    "PowerAction": "Dormir TEO",
+    "PowerEnabled": "true",
+    "StopEnabled": "true",
+    "Passed": true
+  },
+  {
+    "State": "cuento",
+    "Activity": "Despierto",
+    "PowerAction": "Dormir TEO",
+    "PowerEnabled": "true",
+    "StopEnabled": "true",
+    "Passed": true
+  },
+  {
+    "State": "sin-datos",
+    "Activity": "Despierto",
+    "PowerAction": "Dormir TEO",
+    "PowerEnabled": "true",
+    "StopEnabled": "false",
+    "Passed": true
+  },
+  {
+    "State": "despierto",
+    "Activity": "Despierto",
+    "PowerAction": "Dormir TEO",
+    "PowerEnabled": "true",
+    "StopEnabled": "false",
+    "Passed": true
+  }
+]

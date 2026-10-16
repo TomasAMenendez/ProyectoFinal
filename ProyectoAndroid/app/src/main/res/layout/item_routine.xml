@@ -1,0 +1,96 @@
+<?xml version="1.0" encoding="utf-8"?>
+<com.google.android.material.card.MaterialCardView xmlns:android="http://schemas.android.com/apk/res/android"
+    xmlns:app="http://schemas.android.com/apk/res-auto"
+    xmlns:tools="http://schemas.android.com/tools"
+    style="@style/Widget.Teo.Home.Card"
+    android:layout_width="match_parent"
+    android:layout_height="wrap_content"
+    android:layout_marginBottom="8dp"
+    app:contentPaddingBottom="0dp"
+    app:contentPaddingLeft="12dp"
+    app:contentPaddingRight="4dp"
+    app:contentPaddingTop="8dp">
+
+    <LinearLayout
+        android:layout_width="match_parent"
+        android:layout_height="wrap_content"
+        android:orientation="vertical">
+
+        <LinearLayout
+            android:layout_width="match_parent"
+            android:layout_height="wrap_content"
+            android:baselineAligned="false"
+            android:gravity="top"
+            android:orientation="horizontal">
+
+            <TextView
+                android:id="@+id/txt_time"
+                android:layout_width="wrap_content"
+                android:layout_height="wrap_content"
+                android:layout_marginTop="2dp"
+                android:layout_marginEnd="10dp"
+                android:textAppearance="@style/TextAppearance.Teo.Routine.Time"
+                tools:text="08:00" />
+
+            <LinearLayout
+                android:layout_width="0dp"
+                android:layout_height="wrap_content"
+                android:layout_marginTop="4dp"
+                android:layout_marginEnd="4dp"
+                android:layout_weight="1"
+                android:orientation="vertical">
+
+                <TextView
+                    android:id="@+id/txt_name"
+                    android:layout_width="match_parent"
+                    android:layout_height="wrap_content"
+                    android:breakStrategy="simple"
+                    android:hyphenationFrequency="none"
+                    android:textAppearance="@style/TextAppearance.Teo.Routine.Name"
+                    tools:text="Cepillarse los dientes" />
+
+                <TextView
+                    android:id="@+id/txt_message"
+                    android:layout_width="match_parent"
+                    android:layout_height="wrap_content"
+                    android:layout_marginTop="2dp"
+                    android:breakStrategy="simple"
+                    android:hyphenationFrequency="none"
+                    android:textAppearance="@style/TextAppearance.Teo.Routine.Message"
+                    tools:text="¡Es hora de cepillarse los dientes!" />
+            </LinearLayout>
+
+            <com.google.android.material.switchmaterial.SwitchMaterial
+                android:id="@+id/switch_enabled"
+                android:layout_width="wrap_content"
+                android:layout_height="wrap_content"
+                android:minWidth="48dp"
+                android:minHeight="48dp"
+                app:thumbTint="@color/teo_switch_thumb"
+                app:trackTint="@color/teo_switch_track" />
+        </LinearLayout>
+
+        <LinearLayout
+            android:layout_width="match_parent"
+            android:layout_height="wrap_content"
+            android:gravity="end|center_vertical"
+            android:orientation="horizontal">
+
+            <com.google.android.material.button.MaterialButton
+                android:id="@+id/btn_edit"
+                style="@style/Widget.Teo.Home.Meta"
+                android:layout_width="wrap_content"
+                android:layout_height="48dp"
+                android:text="@string/routines_edit"
+                app:icon="@drawable/teo_ic_edit" />
+
+            <com.google.android.material.button.MaterialButton
+                android:id="@+id/btn_delete"
+                style="@style/Widget.Teo.Home.Meta"
+                android:layout_width="wrap_content"
+                android:layout_height="48dp"
+                android:text="@string/routines_delete"
+                app:icon="@drawable/teo_ic_delete" />
+        </LinearLayout>
+    </LinearLayout>
+</com.google.android.material.card.MaterialCardView>

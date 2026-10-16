@@ -21,6 +21,12 @@ android {
     }
 
     buildTypes {
+        create("preview") {
+            initWith(getByName("debug"))
+            applicationIdSuffix = ".preview"
+            versionNameSuffix = "-preview"
+            matchingFallbacks += listOf("debug")
+        }
         release {
             optimization {
                 enable = false
@@ -51,4 +57,10 @@ dependencies {
     testImplementation(libs.org.json)
     androidTestImplementation(libs.androidx.espresso.core)
     androidTestImplementation(libs.androidx.junit)
+}
+
+androidComponents {
+    beforeVariants(selector().withBuildType("preview")) { variant ->
+        variant.hostTests[com.android.build.api.variant.HostTestBuilder.UNIT_TEST_TYPE]?.enable = true
+    }
 }

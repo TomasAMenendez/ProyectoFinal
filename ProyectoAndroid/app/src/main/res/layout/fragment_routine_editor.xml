@@ -1,0 +1,237 @@
+<?xml version="1.0" encoding="utf-8"?>
+<ScrollView xmlns:android="http://schemas.android.com/apk/res/android"
+    xmlns:app="http://schemas.android.com/apk/res-auto"
+    android:id="@+id/editor_scroll"
+    android:layout_width="match_parent"
+    android:layout_height="match_parent"
+    android:background="@color/teo_background"
+    android:clipToPadding="false"
+    android:fillViewport="true">
+
+    <LinearLayout
+        android:layout_width="match_parent"
+        android:layout_height="wrap_content"
+        android:orientation="vertical"
+        android:padding="@dimen/teo_screen_margin">
+
+        <LinearLayout
+            android:layout_width="match_parent"
+            android:layout_height="wrap_content"
+            android:gravity="center_vertical"
+            android:minHeight="@dimen/teo_header_min_height"
+            android:orientation="horizontal">
+
+            <ImageButton
+                android:id="@+id/btn_back"
+                android:layout_width="48dp"
+                android:layout_height="48dp"
+                android:background="?attr/selectableItemBackgroundBorderless"
+                android:contentDescription="@string/routines_back"
+                android:src="@drawable/teo_ic_back"
+                app:tint="@color/teo_primary" />
+
+            <TextView
+                android:id="@+id/txt_title"
+                android:layout_width="wrap_content"
+                android:layout_height="wrap_content"
+                android:layout_marginStart="4dp"
+                android:text="@string/routines_new_title"
+                android:textAppearance="@style/TextAppearance.Teo.Home.Title"
+                android:textColor="@color/teo_primary" />
+        </LinearLayout>
+
+        <TextView
+            android:id="@+id/txt_intro"
+            android:layout_width="match_parent"
+            android:layout_height="wrap_content"
+            android:layout_marginTop="8dp"
+            android:text="@string/routines_intro"
+            android:textAppearance="@style/TextAppearance.Teo.Home.Body" />
+
+        <com.google.android.material.card.MaterialCardView
+            style="@style/Widget.Teo.Home.Card"
+            android:layout_width="match_parent"
+            android:layout_height="wrap_content"
+            android:layout_marginTop="16dp">
+
+            <LinearLayout
+                android:layout_width="match_parent"
+                android:layout_height="wrap_content"
+                android:orientation="vertical">
+
+                <TextView
+                    android:layout_width="match_parent"
+                    android:layout_height="wrap_content"
+                    android:text="@string/routines_name_label"
+                    android:textAppearance="@style/TextAppearance.Teo.Home.Body" />
+
+                <com.google.android.material.textfield.TextInputLayout
+                    android:id="@+id/input_name"
+                    style="@style/Widget.Teo.Field"
+                    android:layout_width="match_parent"
+                    android:layout_height="wrap_content"
+                    android:layout_marginTop="6dp">
+
+                    <com.google.android.material.textfield.TextInputEditText
+                        android:id="@+id/edit_name"
+                        android:layout_width="match_parent"
+                        android:layout_height="wrap_content"
+                        android:inputType="textCapSentences"
+                        android:minHeight="56dp"
+                        android:textAppearance="@style/TextAppearance.Teo.Home.Body"
+                        android:textColor="@color/teo_text" />
+                </com.google.android.material.textfield.TextInputLayout>
+
+                <TextView
+                    android:layout_width="match_parent"
+                    android:layout_height="wrap_content"
+                    android:layout_marginTop="12dp"
+                    android:text="@string/routines_time_label"
+                    android:textAppearance="@style/TextAppearance.Teo.Home.Body" />
+
+                <com.google.android.material.textfield.TextInputLayout
+                    android:id="@+id/input_time"
+                    style="@style/Widget.Teo.Field"
+                    android:layout_width="match_parent"
+                    android:layout_height="wrap_content"
+                    android:layout_marginTop="6dp"
+                    app:endIconDrawable="@drawable/teo_ic_clock"
+                    app:endIconMode="custom"
+                    app:endIconTint="@color/teo_primary">
+
+                    <com.google.android.material.textfield.TextInputEditText
+                        android:id="@+id/edit_time"
+                        android:layout_width="match_parent"
+                        android:layout_height="wrap_content"
+                        android:clickable="true"
+                        android:cursorVisible="false"
+                        android:focusable="false"
+                        android:inputType="none"
+                        android:minHeight="56dp"
+                        android:textAppearance="@style/TextAppearance.Teo.Home.Body"
+                        android:textColor="@color/teo_text" />
+                </com.google.android.material.textfield.TextInputLayout>
+
+                <TextView
+                    android:layout_width="match_parent"
+                    android:layout_height="wrap_content"
+                    android:layout_marginTop="12dp"
+                    android:text="@string/routines_message_label"
+                    android:textAppearance="@style/TextAppearance.Teo.Home.Body" />
+
+                <com.google.android.material.textfield.TextInputLayout
+                    android:id="@+id/input_message"
+                    style="@style/Widget.Teo.Field"
+                    android:layout_width="match_parent"
+                    android:layout_height="wrap_content"
+                    android:layout_marginTop="6dp">
+
+                    <com.google.android.material.textfield.TextInputEditText
+                        android:id="@+id/edit_message"
+                        android:layout_width="match_parent"
+                        android:layout_height="wrap_content"
+                        android:gravity="top"
+                        android:inputType="textCapSentences|textMultiLine"
+                        android:minLines="2"
+                        android:textAppearance="@style/TextAppearance.Teo.Home.Body"
+                        android:textColor="@color/teo_text" />
+                </com.google.android.material.textfield.TextInputLayout>
+
+                <TextView
+                    android:id="@+id/txt_help"
+                    android:layout_width="match_parent"
+                    android:layout_height="wrap_content"
+                    android:layout_marginTop="6dp"
+                    android:text="@string/routines_message_help"
+                    android:textAppearance="@style/TextAppearance.Teo.Home.Secondary" />
+
+                <TextView
+                    android:layout_width="match_parent"
+                    android:layout_height="wrap_content"
+                    android:layout_marginTop="12dp"
+                    android:text="@string/routines_pictogram_label"
+                    android:textAppearance="@style/TextAppearance.Teo.Home.Body" />
+
+                <LinearLayout
+                    android:id="@+id/btn_pictogram"
+                    android:layout_width="match_parent"
+                    android:layout_height="wrap_content"
+                    android:layout_marginTop="6dp"
+                    android:background="@drawable/teo_dialog_surface"
+                    android:clickable="true"
+                    android:focusable="true"
+                    android:foreground="?attr/selectableItemBackground"
+                    android:gravity="center_vertical"
+                    android:minHeight="56dp"
+                    android:orientation="horizontal"
+                    android:paddingStart="12dp"
+                    android:paddingTop="8dp"
+                    android:paddingEnd="12dp"
+                    android:paddingBottom="8dp">
+
+                    <ImageView
+                        android:id="@+id/img_pictogram"
+                        android:layout_width="48dp"
+                        android:layout_height="48dp"
+                        android:contentDescription="@string/routines_pictogram_label"
+                        android:scaleType="fitCenter"
+                        android:visibility="gone" />
+
+                    <TextView
+                        android:id="@+id/txt_pictogram"
+                        android:layout_width="0dp"
+                        android:layout_height="wrap_content"
+                        android:layout_marginStart="12dp"
+                        android:layout_weight="1"
+                        android:text="@string/routines_pictogram_none"
+                        android:textAppearance="@style/TextAppearance.Teo.Home.Body" />
+
+                    <ImageView
+                        android:layout_width="18dp"
+                        android:layout_height="18dp"
+                        android:contentDescription="@null"
+                        android:src="@drawable/teo_ic_chevron"
+                        app:tint="@color/teo_primary" />
+                </LinearLayout>
+            </LinearLayout>
+        </com.google.android.material.card.MaterialCardView>
+
+        <TextView
+            android:id="@+id/txt_create_note"
+            android:layout_width="match_parent"
+            android:layout_height="wrap_content"
+            android:layout_marginTop="16dp"
+            android:text="@string/routines_create_note"
+            android:textAppearance="@style/TextAppearance.Teo.Home.Secondary" />
+
+        <TextView
+            android:id="@+id/txt_form_error"
+            android:layout_width="match_parent"
+            android:layout_height="wrap_content"
+            android:layout_marginTop="8dp"
+            android:textAppearance="@style/TextAppearance.Teo.Home.Secondary"
+            android:textColor="@color/teo_error"
+            android:visibility="gone" />
+
+        <com.google.android.material.button.MaterialButton
+            android:id="@+id/btn_save"
+            style="@style/Widget.Teo.Home.Button"
+            android:layout_width="match_parent"
+            android:layout_height="wrap_content"
+            android:layout_marginTop="16dp"
+            android:insetTop="0dp"
+            android:insetBottom="0dp"
+            android:text="@string/routines_save" />
+
+        <com.google.android.material.button.MaterialButton
+            android:id="@+id/btn_cancel"
+            style="@style/Widget.Teo.Home.Quiet"
+            android:layout_width="wrap_content"
+            android:layout_height="wrap_content"
+            android:layout_gravity="center_horizontal"
+            android:layout_marginTop="4dp"
+            android:insetTop="0dp"
+            android:insetBottom="0dp"
+            android:text="@string/routines_cancel" />
+    </LinearLayout>
+</ScrollView>

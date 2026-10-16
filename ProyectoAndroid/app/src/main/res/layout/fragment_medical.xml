@@ -2,103 +2,237 @@
 <ScrollView xmlns:android="http://schemas.android.com/apk/res/android"
     xmlns:app="http://schemas.android.com/apk/res-auto"
     xmlns:tools="http://schemas.android.com/tools"
+    android:id="@+id/agenda_scroll"
     android:layout_width="match_parent"
     android:layout_height="match_parent"
+    android:background="@color/teo_background"
     android:clipToPadding="false"
-    android:paddingBottom="16dp"
+    android:fillViewport="true"
     tools:context=".ui.medical.MedicalFragment">
 
     <LinearLayout
         android:layout_width="match_parent"
         android:layout_height="wrap_content"
         android:orientation="vertical"
-        android:padding="16dp">
+        android:paddingStart="@dimen/teo_screen_margin"
+        android:paddingEnd="@dimen/teo_screen_margin"
+        android:paddingBottom="12dp">
 
-        <!-- Appointments Section -->
+        <androidx.constraintlayout.widget.ConstraintLayout
+            android:layout_width="match_parent"
+            android:layout_height="wrap_content"
+            android:minHeight="56dp">
+
+            <LinearLayout
+                android:id="@+id/header_brand"
+                android:layout_width="0dp"
+                android:layout_height="wrap_content"
+                android:gravity="center_vertical"
+                android:orientation="horizontal"
+                app:layout_constraintBottom_toBottomOf="parent"
+                app:layout_constraintEnd_toStartOf="@id/header_actions"
+                app:layout_constraintHorizontal_bias="0"
+                app:layout_constraintStart_toStartOf="parent"
+                app:layout_constraintTop_toTopOf="parent">
+
+                <ImageView
+                    android:layout_width="40dp"
+                    android:layout_height="40dp"
+                    android:contentDescription="@string/home_logo"
+                    android:src="@drawable/teo_logo" />
+
+                <TextView
+                    android:layout_width="wrap_content"
+                    android:layout_height="wrap_content"
+                    android:layout_marginStart="8dp"
+                    android:text="@string/menu_medical"
+                    android:textAppearance="@style/TextAppearance.Teo.Home.Title" />
+            </LinearLayout>
+
+            <LinearLayout
+                android:id="@+id/header_actions"
+                android:layout_width="wrap_content"
+                android:layout_height="wrap_content"
+                android:gravity="center_vertical"
+                android:orientation="horizontal"
+                app:layout_constraintBottom_toBottomOf="parent"
+                app:layout_constraintEnd_toEndOf="parent"
+                app:layout_constraintTop_toTopOf="parent">
+
+                <LinearLayout
+                    android:id="@+id/btn_alerts_bell"
+                    android:layout_width="wrap_content"
+                    android:layout_height="wrap_content"
+                    android:background="?attr/selectableItemBackgroundBorderless"
+                    android:clickable="true"
+                    android:focusable="true"
+                    android:gravity="center"
+                    android:minWidth="48dp"
+                    android:minHeight="48dp"
+                    android:orientation="vertical">
+
+                    <ImageView
+                        android:layout_width="24dp"
+                        android:layout_height="24dp"
+                        android:contentDescription="@null"
+                        android:src="@drawable/teo_ic_bell"
+                        app:tint="@color/teo_primary" />
+
+                    <TextView
+                        android:layout_width="wrap_content"
+                        android:layout_height="wrap_content"
+                        android:text="@string/home_alerts_title"
+                        android:textAppearance="@style/TextAppearance.Teo.Home.Caption"
+                        android:textColor="@color/teo_primary" />
+                </LinearLayout>
+
+                <LinearLayout
+                    android:id="@+id/btn_my_teo"
+                    android:layout_width="wrap_content"
+                    android:layout_height="wrap_content"
+                    android:layout_marginStart="4dp"
+                    android:background="?attr/selectableItemBackgroundBorderless"
+                    android:clickable="true"
+                    android:focusable="true"
+                    android:gravity="center"
+                    android:minWidth="48dp"
+                    android:minHeight="48dp"
+                    android:orientation="vertical">
+
+                    <ImageView
+                        android:layout_width="24dp"
+                        android:layout_height="24dp"
+                        android:contentDescription="@null"
+                        android:src="@drawable/teo_ic_gear"
+                        app:tint="@color/teo_primary" />
+
+                    <TextView
+                        android:layout_width="wrap_content"
+                        android:layout_height="wrap_content"
+                        android:text="@string/home_my_teo"
+                        android:textAppearance="@style/TextAppearance.Teo.Home.Caption"
+                        android:textColor="@color/teo_primary" />
+                </LinearLayout>
+            </LinearLayout>
+        </androidx.constraintlayout.widget.ConstraintLayout>
+
         <LinearLayout
             android:layout_width="match_parent"
             android:layout_height="wrap_content"
-            android:orientation="horizontal"
-            android:gravity="center_vertical"
-            android:layout_marginBottom="8dp">
+            android:layout_marginTop="4dp"
+            android:orientation="horizontal">
 
-            <TextView
+            <LinearLayout
+                android:id="@+id/tab_appointments"
                 android:layout_width="0dp"
                 android:layout_height="wrap_content"
                 android:layout_weight="1"
-                android:text="@string/medical_appointments_title"
-                android:textAppearance="@style/TextAppearance.App.SectionTitle" />
-
-            <com.google.android.material.button.MaterialButton
-                android:id="@+id/btn_add_appointment"
-                style="@style/Widget.MaterialComponents.Button.TextButton"
-                android:layout_width="wrap_content"
-                android:layout_height="wrap_content"
+                android:background="?attr/selectableItemBackground"
+                android:clickable="true"
+                android:focusable="true"
+                android:gravity="center"
                 android:minHeight="48dp"
-                android:text="@string/medical_add_appointment" />
-        </LinearLayout>
-
-        <LinearLayout
-            android:id="@+id/appointments_container"
-            android:layout_width="match_parent"
-            android:layout_height="wrap_content"
-            android:orientation="vertical"
-            android:layout_marginBottom="24dp" />
-
-        <!-- Vaccines Section -->
-        <TextView
-            android:layout_width="wrap_content"
-            android:layout_height="wrap_content"
-            android:text="@string/medical_vaccines_title"
-            android:textAppearance="@style/TextAppearance.App.SectionTitle"
-            android:layout_marginBottom="4dp" />
-
-        <TextView
-            android:layout_width="match_parent"
-            android:layout_height="wrap_content"
-            android:text="@string/medical_vaccines_hint"
-            android:textAppearance="@style/TextAppearance.App.CardSubtitle"
-            android:layout_marginBottom="8dp" />
-
-        <com.google.android.material.card.MaterialCardView
-            style="@style/Widget.App.CardView"
-            android:layout_width="match_parent"
-            android:layout_height="wrap_content">
-
-            <LinearLayout
-                android:id="@+id/vaccines_container"
-                android:layout_width="match_parent"
-                android:layout_height="wrap_content"
-                android:orientation="vertical" />
-
-        </com.google.android.material.card.MaterialCardView>
-
-        <!-- Reminders Section -->
-        <com.google.android.material.card.MaterialCardView
-            style="@style/Widget.App.CardView.Colored"
-            android:layout_width="match_parent"
-            android:layout_height="wrap_content"
-            android:layout_marginTop="16dp"
-            app:cardBackgroundColor="@color/card_bg_mint">
-
-            <LinearLayout
-                android:layout_width="match_parent"
-                android:layout_height="wrap_content"
                 android:orientation="vertical">
 
                 <TextView
+                    android:id="@+id/txt_tab_appointments"
                     android:layout_width="wrap_content"
                     android:layout_height="wrap_content"
-                    android:text="@string/medical_reminder_title"
-                    android:textAppearance="@style/TextAppearance.App.CardTitle" />
+                    android:drawablePadding="6dp"
+                    android:gravity="center"
+                    android:text="@string/agenda_tab_appointments"
+                    android:textAppearance="@style/TextAppearance.Teo.Home.Section"
+                    android:textColor="@color/teo_primary"
+                    app:drawableStartCompat="@drawable/teo_ic_calendar"
+                    app:drawableTint="@color/teo_primary" />
+
+                <View
+                    android:id="@+id/mark_appointments"
+                    android:layout_width="72dp"
+                    android:layout_height="3dp"
+                    android:layout_marginTop="6dp"
+                    android:background="@color/teo_primary" />
+            </LinearLayout>
+
+            <LinearLayout
+                android:id="@+id/tab_vaccines"
+                android:layout_width="0dp"
+                android:layout_height="wrap_content"
+                android:layout_weight="1"
+                android:background="?attr/selectableItemBackground"
+                android:clickable="true"
+                android:focusable="true"
+                android:gravity="center"
+                android:minHeight="48dp"
+                android:orientation="vertical">
 
                 <TextView
+                    android:id="@+id/txt_tab_vaccines"
                     android:layout_width="wrap_content"
                     android:layout_height="wrap_content"
-                    android:text="@string/medical_reminder_subtitle"
-                    android:textAppearance="@style/TextAppearance.App.CardSubtitle" />
-            </LinearLayout>
-        </com.google.android.material.card.MaterialCardView>
+                    android:drawablePadding="6dp"
+                    android:gravity="center"
+                    android:text="@string/agenda_tab_vaccines"
+                    android:textAppearance="@style/TextAppearance.Teo.Home.Section"
+                    android:textColor="@color/teo_secondary"
+                    app:drawableStartCompat="@drawable/teo_ic_syringe"
+                    app:drawableTint="@color/teo_secondary" />
 
+                <View
+                    android:id="@+id/mark_vaccines"
+                    android:layout_width="72dp"
+                    android:layout_height="3dp"
+                    android:layout_marginTop="6dp"
+                    android:background="@android:color/transparent" />
+            </LinearLayout>
+        </LinearLayout>
+
+        <TextView
+            android:id="@+id/txt_subtitle"
+            android:layout_width="match_parent"
+            android:layout_height="wrap_content"
+            android:layout_marginTop="12dp"
+            android:gravity="center"
+            android:text="@string/agenda_appointments_subtitle"
+            android:textAppearance="@style/TextAppearance.Teo.Home.Body" />
+
+        <com.google.android.material.button.MaterialButton
+            android:id="@+id/btn_add"
+            style="@style/Widget.Teo.Home.Button"
+            android:layout_width="match_parent"
+            android:layout_height="wrap_content"
+            android:layout_marginTop="12dp"
+            android:text="@string/agenda_add_appointment"
+            android:textColor="@color/teo_button_text"
+            app:backgroundTint="@color/teo_button_bg"
+            app:icon="@drawable/teo_ic_add"
+            app:iconGravity="textStart"
+            app:iconTint="@color/teo_button_text" />
+
+        <TextView
+            android:id="@+id/txt_local"
+            android:layout_width="match_parent"
+            android:layout_height="wrap_content"
+            android:layout_marginTop="8dp"
+            android:gravity="center"
+            android:text="@string/agenda_local_appointments"
+            android:textAppearance="@style/TextAppearance.Teo.Home.Caption" />
+
+        <TextView
+            android:id="@+id/txt_empty"
+            android:layout_width="match_parent"
+            android:layout_height="wrap_content"
+            android:layout_marginTop="16dp"
+            android:gravity="center"
+            android:text="@string/agenda_empty_appointments"
+            android:textAppearance="@style/TextAppearance.Teo.Home.Body"
+            android:visibility="gone" />
+
+        <LinearLayout
+            android:id="@+id/list_container"
+            android:layout_width="match_parent"
+            android:layout_height="wrap_content"
+            android:layout_marginTop="12dp"
+            android:orientation="vertical" />
     </LinearLayout>
 </ScrollView>

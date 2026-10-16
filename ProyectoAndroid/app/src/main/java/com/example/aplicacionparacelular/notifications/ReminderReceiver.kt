@@ -16,9 +16,12 @@ class ReminderReceiver : BroadcastReceiver() {
             KIND_RUTINA -> AppNotificationHelper.CHANNEL_RUTINA
             else -> AppNotificationHelper.CHANNEL_PELUCHE
         }
-        AppNotificationHelper.show(context, channel, id, title, message)
-        if (!intent.getStringExtra(EXTRA_ROUTINE_HHMM).isNullOrBlank()) {
-            ReminderScheduler.rescheduleRoutineFromIntent(context, intent)
+        if (kind == KIND_RUTINA) {
+            ReminderScheduler.deliverRoutine(context, intent) {
+                AppNotificationHelper.show(context, channel, id, title, message, notificationTag = intent.dataString)
+            }
+        } else {
+            AppNotificationHelper.show(context, channel, id, title, message)
         }
     }
 
@@ -29,6 +32,8 @@ class ReminderReceiver : BroadcastReceiver() {
         const val EXTRA_MESSAGE = "message"
         const val EXTRA_ID = "id"
         const val EXTRA_ROUTINE_HHMM = "hhmm"
+        const val EXTRA_ROUTINE_ID = "routine_id"
+        const val EXTRA_ROUTINE_TOKEN = "routine_token"
         const val KIND_VACUNA = "vacuna"
         const val KIND_TURNO = "turno"
         const val KIND_RUTINA = "rutina"

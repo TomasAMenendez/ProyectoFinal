@@ -12,7 +12,8 @@ import org.json.JSONObject
 import java.net.DatagramPacket
 import java.net.DatagramSocket
 import java.net.HttpURLConnection
-import java.net.InetAddress
+import java.net.InetSocketAddress
+import java.net.SocketTimeoutException
 import java.net.URL
 import java.util.concurrent.CountDownLatch
 import java.util.concurrent.Executors
@@ -74,15 +75,13 @@ object RobotDiscovery {
     val scanError: LiveData<String?> = _scanError
 
     private val mainHandler = Handler(Looper.getMainLooper())
+    private val scans = DiscoveryScanGate()
 
     @Volatile
     private var scanThread: Thread? = null
 
     /** Contexto de la aplicación, necesario para adquirir el MulticastLock. */
     private var appContext: Context? = null
-
-    /** Lock que impide que el chip WiFi descarte paquetes multicast/broadcast. */
-    private var multicastLock: WifiManager.MulticastLock? = null
 
     /**
      * Detecta si la app está corriendo en un emulador de Android Studio.
@@ -114,47 +113,59 @@ object RobotDiscovery {
      * o cuando se agota el timeout.
      */
     fun startScan(context: Context? = null) {
-        if (_isScanning.value == true) return
+        val scan = scans.begin() ?: return
 
         // Guardar el contexto de la aplicación para el MulticastLock
         if (context != null) {
             appContext = context.applicationContext
         }
 
-        _isScanning.postValue(true)
-        _scanError.postValue(null)
-        _discoveredRobot.postValue(null)
+        postForScan(scan) {
+            _isScanning.value = true
+            _scanError.value = null
+            _discoveredRobot.value = null
+        }
 
         scanThread = Thread({
+            if (!scans.accepts(scan)) return@Thread
             // En el emulador, intentar primero la IP del host directamente
             if (isEmulator()) {
                 Log.d(TAG, "Emulador detectado, intentando 10.0.2.2:$DEFAULT_API_PORT...")
-                if (tryDirectConnection(EMULATOR_HOST_IP, DEFAULT_API_PORT)) {
+                val robot = tryDirectConnection(EMULATOR_HOST_IP, DEFAULT_API_PORT)
+                if (robot != null) {
+                    completeScan(scan, robot = robot)
                     return@Thread
                 }
                 Log.d(TAG, "Conexión directa a 10.0.2.2 falló, intentando beacon UDP...")
             }
+            if (!scans.accepts(scan)) return@Thread
 
             // Adquirir MulticastLock para que el chip WiFi no descarte
             // los paquetes broadcast/multicast (beacons UDP del peluche).
             // Sin esto, en celulares físicos el receive() siempre da timeout.
-            acquireMulticastLock()
+            val multicastLock = acquireMulticastLock()
 
             // Intentar descubrimiento por beacon UDP (funciona en red real)
             var socket: DatagramSocket? = null
             try {
-                socket = DatagramSocket(BEACON_PORT)
+                socket = DatagramSocket(null)
+                if (!scans.attachSocket(scan, socket)) return@Thread
                 socket.broadcast = true
-                socket.soTimeout = LISTEN_TIMEOUT_MS
                 socket.reuseAddress = true
+                socket.bind(InetSocketAddress(BEACON_PORT))
 
                 val buffer = ByteArray(1024)
                 val packet = DatagramPacket(buffer, buffer.size)
+                val deadline = System.nanoTime() + TimeUnit.MILLISECONDS.toNanos(LISTEN_TIMEOUT_MS.toLong())
 
-                while (true) {
+                while (scans.accepts(scan)) {
+                    val remaining = TimeUnit.NANOSECONDS.toMillis(deadline - System.nanoTime())
+                    if (remaining <= 0L) throw SocketTimeoutException()
+                    socket.soTimeout = remaining.coerceAtLeast(1L).toInt()
+                    packet.length = buffer.size
                     socket.receive(packet)
                     val data = String(packet.data, 0, packet.length, Charsets.UTF_8)
-                    val json = JSONObject(data)
+                    val json = runCatching { JSONObject(data) }.getOrNull() ?: continue
                     val deviceId = json.optString("device_id", "")
                     if (deviceId != "micompanero_robot") {
                         continue
@@ -167,6 +178,7 @@ object RobotDiscovery {
                         continue
                     }
                     val port = json.optInt("api_port", DEFAULT_API_PORT)
+                    if (port !in 1..65535) continue
                     val name = json.optString("device_name", "Peluche")
                     val robot = DiscoveredRobot(
                         ip = ip,
@@ -175,42 +187,31 @@ object RobotDiscovery {
                         deviceId = deviceId,
                         pairingToken = json.optString("pairing_token", "")
                     )
-                    mainHandler.post {
-                        _discoveredRobot.value = robot
-                        _isScanning.value = false
-                    }
+                    completeScan(scan, robot = robot)
                     return@Thread
                 }
             } catch (e: java.net.SocketTimeoutException) {
+                if (!scans.accepts(scan)) return@Thread
                 // Beacon UDP no recibido — puede ser AP Isolation en el router.
                 // Intentar fallback: scan HTTP paralelo sobre toda la subred /24.
                 Log.d(TAG, "Beacon UDP sin respuesta, iniciando fallback HTTP scan de subred...")
 
-                mainHandler.post {
+                postForScan(scan) {
                     _scanError.value = "Beacon UDP sin respuesta. Escaneando red por HTTP..."
                 }
 
-                val robot = scanSubnetHttp(DEFAULT_API_PORT)
+                val robot = scanSubnetHttp(DEFAULT_API_PORT, scan)
                 if (robot != null) {
-                    mainHandler.post {
-                        _discoveredRobot.value = robot
-                        _isScanning.value = false
-                    }
+                    completeScan(scan, robot = robot)
                     return@Thread
                 }
 
-                mainHandler.post {
-                    _scanError.value = "No se encontró el peluche en la red. Verificá que estén en el mismo WiFi."
-                    _isScanning.value = false
-                }
+                completeScan(scan, error = "No se encontró el peluche en la red. Verificá que estén en el mismo WiFi.")
             } catch (e: Exception) {
-                mainHandler.post {
-                    _scanError.value = "Error de red: ${e.message}. Ingresá la IP manualmente."
-                    _isScanning.value = false
-                }
+                completeScan(scan, error = "Error de red: ${e.message}. Ingresá la IP manualmente.")
             } finally {
-                try { socket?.close() } catch (_: Exception) {}
-                releaseMulticastLock()
+                socket?.let { scans.releaseSocket(scan, it) }
+                releaseMulticastLock(multicastLock)
             }
         }, "RobotDiscovery")
 
@@ -221,38 +222,33 @@ object RobotDiscovery {
     /**
      * Intenta una conexión HTTP directa a la IP y puerto dados,
      * haciendo un GET /api/status. Si responde correctamente,
-     * publica el robot descubierto y retorna true.
+     * devuelve el robot encontrado, sin publicar resultados de búsquedas canceladas.
      */
-    private fun tryDirectConnection(ip: String, port: Int): Boolean {
+    private fun tryDirectConnection(ip: String, port: Int): DiscoveredRobot? {
         return try {
             val url = URL("http://$ip:$port/api/status")
             val conn = url.openConnection() as HttpURLConnection
             conn.connectTimeout = 3000
             conn.readTimeout = 3000
             conn.requestMethod = "GET"
-
-            val code = conn.responseCode
-            if (code == 200) {
-                val robot = DiscoveredRobot(
-                    ip = ip,
-                    port = port,
-                    deviceName = "MiCompañero Peluche (local)",
-                    deviceId = "micompanero_robot"
-                )
-                mainHandler.post {
-                    _discoveredRobot.value = robot
-                    _isScanning.value = false
+            try {
+                if (conn.responseCode == 200) {
+                    Log.d(TAG, "Conexión directa exitosa a $ip:$port")
+                    DiscoveredRobot(
+                        ip = ip,
+                        port = port,
+                        deviceName = "MiCompañero Peluche (local)",
+                        deviceId = "micompanero_robot"
+                    )
+                } else {
+                    null
                 }
+            } finally {
                 conn.disconnect()
-                Log.d(TAG, "Conexión directa exitosa a $ip:$port")
-                true
-            } else {
-                conn.disconnect()
-                false
             }
         } catch (e: Exception) {
             Log.d(TAG, "Conexión directa a $ip:$port falló: ${e.message}")
-            false
+            null
         }
     }
 
@@ -264,7 +260,8 @@ object RobotDiscovery {
      * @param apiPort Puerto HTTP en el que escucha el robot.
      * @return [DiscoveredRobot] si se encontró, null si no.
      */
-    private fun scanSubnetHttp(apiPort: Int): DiscoveredRobot? {
+    private fun scanSubnetHttp(apiPort: Int, scan: Long): DiscoveredRobot? {
+        if (!scans.accepts(scan)) return null
         // Obtener la IP local del dispositivo para deducir la subred
         val ctx = appContext ?: return null
         val wifiMgr = ctx.getSystemService(Context.WIFI_SERVICE) as? WifiManager ?: return null
@@ -290,57 +287,79 @@ object RobotDiscovery {
         val latch = CountDownLatch(254)
         val executor = Executors.newFixedThreadPool(HTTP_SCAN_THREADS)
 
-        for (i in 1..254) {
-            val ip = "$subnet.$i"
-            executor.submit {
-                try {
-                    // Si ya encontramos el robot, no seguir haciendo peticiones
-                    if (!found.get()) {
-                        val url = URL("http://$ip:$apiPort/api/status")
-                        val conn = url.openConnection() as HttpURLConnection
-                        conn.connectTimeout = HTTP_SCAN_TIMEOUT_MS
-                        conn.readTimeout = HTTP_SCAN_TIMEOUT_MS
-                        conn.requestMethod = "GET"
-                        try {
-                            if (conn.responseCode == 200) {
-                                if (found.compareAndSet(false, true)) {
-                                    result.set(
-                                        DiscoveredRobot(
-                                            ip = ip,
-                                            port = apiPort,
-                                            deviceName = "MiCompañero Peluche",
-                                            deviceId = "micompanero_robot"
+        try {
+            for (i in 1..254) {
+                val ip = "$subnet.$i"
+                executor.submit {
+                    try {
+                        // Si se canceló la búsqueda o ya encontramos el robot, no abrir más conexiones.
+                        if (!found.get() && scans.accepts(scan)) {
+                            val url = URL("http://$ip:$apiPort/api/status")
+                            val conn = url.openConnection() as HttpURLConnection
+                            conn.connectTimeout = HTTP_SCAN_TIMEOUT_MS
+                            conn.readTimeout = HTTP_SCAN_TIMEOUT_MS
+                            conn.requestMethod = "GET"
+                            try {
+                                if (conn.responseCode == 200 && scans.accepts(scan)) {
+                                    if (found.compareAndSet(false, true)) {
+                                        result.set(
+                                            DiscoveredRobot(
+                                                ip = ip,
+                                                port = apiPort,
+                                                deviceName = "MiCompañero Peluche",
+                                                deviceId = "micompanero_robot"
+                                            )
                                         )
-                                    )
-                                    Log.d(TAG, "Robot encontrado por HTTP scan en $ip:$apiPort")
+                                        Log.d(TAG, "Robot encontrado por HTTP scan en $ip:$apiPort")
+                                    }
                                 }
+                            } finally {
+                                conn.disconnect()
                             }
-                        } finally {
-                            conn.disconnect()
                         }
+                    } catch (_: Exception) {
+                        // IP sin respuesta, continuar.
+                    } finally {
+                        latch.countDown()
                     }
-                } catch (_: Exception) {
-                    // IP sin respuesta, continuar
-                } finally {
-                    latch.countDown()
                 }
             }
+            // Esperar hasta que todos terminen o hasta 30 segundos máximo.
+            latch.await(30, TimeUnit.SECONDS)
+            return result.get().takeIf { scans.accepts(scan) }
+        } catch (_: InterruptedException) {
+            Thread.currentThread().interrupt()
+            return null
+        } finally {
+            executor.shutdownNow()
         }
-
-        // Esperar hasta que todos terminen o hasta 30 segundos máximo
-        latch.await(30, TimeUnit.SECONDS)
-        executor.shutdownNow()
-        return result.get()
     }
 
     /**
      * Cancela un escaneo en curso.
      */
     fun stopScan() {
+        val cancelled = scans.cancel()
         scanThread?.interrupt()
         scanThread = null
-        releaseMulticastLock()
-        _isScanning.postValue(false)
+        mainHandler.post {
+            if (scans.isCurrentGeneration(cancelled)) _isScanning.value = false
+        }
+    }
+
+    private fun postForScan(scan: Long, action: () -> Unit) {
+        mainHandler.post {
+            if (scans.accepts(scan)) action()
+        }
+    }
+
+    private fun completeScan(scan: Long, robot: DiscoveredRobot? = null, error: String? = null) {
+        mainHandler.post {
+            if (!scans.finish(scan)) return@post
+            _discoveredRobot.value = robot
+            _scanError.value = error
+            _isScanning.value = false
+        }
     }
 
     // ------------------------------------------------------------------
@@ -355,17 +374,18 @@ object RobotDiscovery {
      * es un broadcast, así que sin este lock el [DatagramSocket.receive] nunca
      * recibe nada y siempre da timeout en celulares físicos.
      */
-    private fun acquireMulticastLock() {
-        try {
-            val ctx = appContext ?: return
-            val wifiMgr = ctx.getSystemService(Context.WIFI_SERVICE) as? WifiManager ?: return
+    private fun acquireMulticastLock(): WifiManager.MulticastLock? {
+        return try {
+            val ctx = appContext ?: return null
+            val wifiMgr = ctx.getSystemService(Context.WIFI_SERVICE) as? WifiManager ?: return null
             val lock = wifiMgr.createMulticastLock("RobotDiscovery")
             lock.setReferenceCounted(true)
             lock.acquire()
-            multicastLock = lock
             Log.d(TAG, "MulticastLock adquirido")
+            lock
         } catch (e: Exception) {
             Log.w(TAG, "No se pudo adquirir MulticastLock: ${e.message}")
+            null
         }
     }
 
@@ -373,7 +393,7 @@ object RobotDiscovery {
      * Libera el [WifiManager.MulticastLock] si estaba adquirido,
      * para no consumir batería innecesariamente.
      */
-    private fun releaseMulticastLock() {
+    private fun releaseMulticastLock(multicastLock: WifiManager.MulticastLock?) {
         try {
             multicastLock?.let {
                 if (it.isHeld) {
@@ -381,7 +401,6 @@ object RobotDiscovery {
                     Log.d(TAG, "MulticastLock liberado")
                 }
             }
-            multicastLock = null
         } catch (e: Exception) {
             Log.w(TAG, "Error al liberar MulticastLock: ${e.message}")
         }

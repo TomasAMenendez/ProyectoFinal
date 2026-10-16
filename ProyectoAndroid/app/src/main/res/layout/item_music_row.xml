@@ -1,0 +1,118 @@
+<?xml version="1.0" encoding="utf-8"?>
+<LinearLayout xmlns:android="http://schemas.android.com/apk/res/android"
+    xmlns:app="http://schemas.android.com/apk/res-auto"
+    xmlns:tools="http://schemas.android.com/tools"
+    android:layout_width="match_parent"
+    android:layout_height="wrap_content"
+    android:gravity="center_vertical"
+    android:minHeight="72dp"
+    android:orientation="horizontal"
+    android:paddingTop="8dp"
+    android:paddingBottom="8dp">
+
+    <ImageView
+        android:layout_width="36dp"
+        android:layout_height="36dp"
+        android:contentDescription="@null"
+        android:src="@drawable/teo_ic_file_music" />
+
+    <LinearLayout
+        android:layout_width="0dp"
+        android:layout_height="wrap_content"
+        android:layout_marginStart="10dp"
+        android:layout_weight="1"
+        android:orientation="vertical">
+
+        <TextView
+            android:id="@+id/txt_song_name"
+            android:layout_width="match_parent"
+            android:layout_height="wrap_content"
+            android:breakStrategy="balanced"
+            android:hyphenationFrequency="none"
+            android:textAppearance="@style/TextAppearance.Teo.Routine.Name"
+            tools:text="musica_para_jugar.mp3" />
+
+        <TextView
+            android:id="@+id/txt_song_meta"
+            android:layout_width="match_parent"
+            android:layout_height="wrap_content"
+            android:layout_marginTop="2dp"
+            android:textAppearance="@style/TextAppearance.Teo.Routine.Message"
+            tools:text="MP3 · 3,2 MB" />
+    </LinearLayout>
+
+    <TextView
+        android:id="@+id/txt_playing"
+        android:layout_width="wrap_content"
+        android:layout_height="wrap_content"
+        android:layout_marginStart="8dp"
+        android:background="@drawable/teo_playing_chip"
+        android:paddingStart="10dp"
+        android:paddingTop="4dp"
+        android:paddingEnd="10dp"
+        android:paddingBottom="4dp"
+        android:text="@string/content_now_playing_chip"
+        android:textAppearance="@style/TextAppearance.Teo.Home.Chip"
+        android:textColor="@color/teo_on_cyan"
+        android:visibility="gone"
+        tools:visibility="visible" />
+
+    <LinearLayout
+        android:id="@+id/btn_play_song"
+        android:layout_width="wrap_content"
+        android:layout_height="wrap_content"
+        android:layout_marginStart="4dp"
+        android:background="?attr/selectableItemBackgroundBorderless"
+        android:clickable="true"
+        android:focusable="true"
+        android:gravity="center"
+        android:minWidth="48dp"
+        android:minHeight="48dp"
+        android:orientation="vertical"
+        android:paddingStart="4dp"
+        android:paddingEnd="4dp">
+
+        <ImageView
+            android:layout_width="18dp"
+            android:layout_height="18dp"
+            android:contentDescription="@null"
+            android:src="@drawable/teo_ic_play"
+            app:tint="@color/teo_primary" />
+
+        <TextView
+            android:layout_width="wrap_content"
+            android:layout_height="wrap_content"
+            android:text="@string/content_play"
+            android:textAppearance="@style/TextAppearance.Teo.Home.Caption"
+            android:textColor="@color/teo_primary" />
+    </LinearLayout>
+
+    <LinearLayout
+        android:id="@+id/btn_delete_song"
+        android:layout_width="wrap_content"
+        android:layout_height="wrap_content"
+        android:background="?attr/selectableItemBackgroundBorderless"
+        android:clickable="true"
+        android:focusable="true"
+        android:gravity="center"
+        android:minWidth="48dp"
+        android:minHeight="48dp"
+        android:orientation="vertical"
+        android:paddingStart="4dp"
+        android:paddingEnd="4dp">
+
+        <ImageView
+            android:layout_width="18dp"
+            android:layout_height="18dp"
+            android:contentDescription="@null"
+            android:src="@drawable/teo_ic_delete"
+            app:tint="@color/teo_secondary" />
+
+        <TextView
+            android:layout_width="wrap_content"
+            android:layout_height="wrap_content"
+            android:text="@string/routines_delete"
+            android:textAppearance="@style/TextAppearance.Teo.Home.Caption"
+            android:textColor="@color/teo_secondary" />
+    </LinearLayout>
+</LinearLayout>
