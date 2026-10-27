@@ -160,9 +160,20 @@ class TestEyeAnimatorSprites(unittest.TestCase):
             animator = EyeAnimator(sprites_dir=folder)
             animator.set_expression("feliz")
             before = animator.render(320, 240)
-            animator.set_pictogram("abrazo")
+            animator.set_pictogram("plato")
             after = animator.render(320, 240)
             self.assertNotEqual(before.tobytes(), after.tobytes())
+
+    def test_abrazo_no_escribe_en_la_pantalla(self) -> None:
+        with tempfile.TemporaryDirectory() as raw:
+            folder = Path(raw)
+            _write_sheet(folder, "feliz", [(255, 0, 0), (0, 255, 0)])
+            animator = EyeAnimator(sprites_dir=folder)
+            animator.set_expression("feliz")
+            before = animator.render(320, 240)
+            animator.set_pictogram("abrazo")
+            after = animator.render(320, 240)
+            self.assertEqual(before.tobytes(), after.tobytes())
 
     def test_has_sprite_false_si_otra_emocion_no_tiene_png(self) -> None:
         with tempfile.TemporaryDirectory() as raw:

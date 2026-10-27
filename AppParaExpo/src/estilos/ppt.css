@@ -1,0 +1,175 @@
+.pantalla-ppt { min-height: 0; }
+.escenario-ppt {
+  flex: 1;
+  min-height: 0;
+  display: grid;
+  grid-template-columns: minmax(0, 1fr) auto;
+  gap: 0.8rem;
+  align-items: stretch;
+}
+.zona-ppt {
+  min-height: 0;
+  display: flex;
+  flex-direction: column;
+  gap: 0.6rem;
+}
+.zona-ppt.con-resultado {
+  justify-content: center;
+  align-items: center;
+}
+.zona-ppt.con-resultado .resultado-ppt,
+.zona-ppt.con-resultado .acciones-ppt {
+  width: min(100%, 42rem);
+}
+.aviso-ppt, .detalle-ppt, .falla-ppt { margin: 0; }
+.aviso-ppt { font-size: clamp(1.2rem, 2.4vw, 1.8rem); font-weight: 800; }
+.detalle-ppt { font-size: 1.05rem; }
+.falla-ppt {
+  background: #fff4cc;
+  border: 3px solid #243047;
+  border-radius: 1rem;
+  padding: 0.7rem 0.9rem;
+}
+.acciones-ppt {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 0.6rem;
+  justify-content: center;
+  align-items: center;
+}
+.camara-ppt {
+  position: relative;
+  flex: 1;
+  min-height: 12rem;
+  overflow: hidden;
+  border: 4px solid #243047;
+  border-radius: 1.4rem;
+  background: #243047;
+}
+.camara-ppt.camara-en-espera {
+  position: absolute;
+  width: 1px;
+  height: 1px;
+  overflow: hidden;
+  opacity: 0;
+  pointer-events: none;
+}
+.camara-ppt video {
+  width: 100%;
+  height: 100%;
+  object-fit: cover;
+  transform: scaleX(-1);
+}
+.guia-mano {
+  position: absolute;
+  left: 50%;
+  top: 48%;
+  width: min(72%, 22rem);
+  max-height: 88%;
+  aspect-ratio: 3 / 4;
+  transform: translate(-50%, -50%);
+  border: 3px dashed rgba(255, 250, 243, 0.9);
+  border-radius: 1.2rem;
+  display: grid;
+  align-items: end;
+  justify-items: center;
+  pointer-events: none;
+  color: #fffaf3;
+  text-shadow: 0 1px 2px #243047;
+  font-size: 0.85rem;
+  text-align: center;
+  padding: 0.4rem;
+}
+.cuenta-ppt {
+  position: absolute;
+  inset: 0;
+  margin: 0;
+  display: grid;
+  place-items: center;
+  font-size: 6rem;
+  font-weight: 800;
+  color: #fffaf3;
+  text-shadow: 0 4px 0 #243047;
+  pointer-events: none;
+}
+.espera-ppt {
+  position: absolute;
+  left: 0.8rem;
+  bottom: 0.8rem;
+  margin: 0;
+  color: #fffaf3;
+}
+.figuras-ppt {
+  display: flex;
+  flex-direction: column;
+  justify-content: center;
+  gap: 0.55rem;
+}
+.figura-ppt {
+  width: clamp(6.4rem, 16vh, 9.2rem);
+  min-height: 0;
+  border: 3px solid #243047;
+  border-radius: 1rem;
+  background: #fffaf3;
+  padding: 0.35rem;
+  display: grid;
+  justify-items: center;
+  gap: 0.2rem;
+}
+.figura-ppt img { width: 100%; height: 4.4rem; object-fit: contain; }
+.figura-ppt span { font-weight: 800; font-size: 0.95rem; }
+.resultado-ppt {
+  display: grid;
+  grid-template-columns: 1fr 1fr;
+  gap: 0.6rem 1rem;
+  border: 4px solid #243047;
+  border-radius: 1.2rem;
+  padding: 0.8rem;
+  text-align: center;
+}
+.resultado-ppt > div {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  gap: 0.25rem;
+}
+.resultado-ppt img { width: min(140px, 100%); height: 6rem; object-fit: contain; }
+.resultado-ppt p { margin: 0; font-weight: 800; }
+.mensaje-resultado { grid-column: 1 / -1; font-size: clamp(1.3rem, 3vw, 2rem); }
+.resultado-gano { background: #b7f0c4; }
+.resultado-empato { background: #ffe38a; }
+.resultado-perdio { background: #ffb4b4; }
+
+@media (orientation: portrait), (max-width: 800px) {
+  .escenario-ppt { grid-template-columns: 1fr; grid-template-rows: minmax(0, 1fr) auto; }
+  .figuras-ppt { flex-direction: row; justify-content: space-between; }
+  .figura-ppt { width: auto; flex: 1; }
+  .figura-ppt img { height: 3.6rem; }
+  .camara-ppt { min-height: 14rem; }
+}
+.escenario-ppt.sin-espejo {
+  grid-template-columns: 1fr;
+  grid-template-rows: auto minmax(0, 1fr);
+}
+.sin-espejo .figuras-ppt {
+  flex-direction: row;
+  align-items: center;
+  justify-content: center;
+  gap: 1rem;
+  min-height: 0;
+}
+.sin-espejo .figura-ppt {
+  flex: 1;
+  width: auto;
+  height: auto;
+  max-width: 20rem;
+  align-self: center;
+  padding: 0.7rem 0.6rem 0.55rem;
+}
+.sin-espejo .figura-ppt img {
+  width: 100%;
+  height: auto;
+  max-height: min(46vh, 18rem);
+  object-fit: contain;
+}
+.sin-espejo .figura-ppt span { font-size: clamp(1.3rem, 2.8vw, 2rem); }

@@ -259,8 +259,22 @@ class PcServerClient:
         message = (choices[0] or {}).get("message") or {}
         return str(message.get("content") or "").strip()
 
-    def synthesize(self, text: str) -> bytes | None:
-        body = json.dumps({"input": text, "language": "es"}).encode("utf-8")
+    def synthesize(
+        self,
+        text: str,
+        voice: str = "topa",
+        local_only: bool = False,
+    ) -> bytes | None:
+        chosen = voice if voice in ("topa", "micaela") else "topa"
+        body = json.dumps(
+            {
+                "input": text,
+                "language": "es",
+                "voice": chosen,
+                "local_only": local_only is True,
+            },
+            ensure_ascii=False,
+        ).encode("utf-8")
         status, raw = self._call(
             "POST",
             "/v1/audio/speech",

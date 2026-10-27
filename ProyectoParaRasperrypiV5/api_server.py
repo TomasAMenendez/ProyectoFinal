@@ -60,6 +60,8 @@ class RobotState:
         self.volume_limit: int = 100       # 0-100
         self.brightness: float = 1.0       # 0.0-1.0
         self.playtime_limit_minutes: int = 0  # 0 = sin límite
+        self.tts_voice: str = "topa"
+        self.tts_local_only: bool = False
         self.pairing_token: str = load_or_create_token()
         self.current_emotion: str | None = None
         self.current_emotion_score: float = 0.0
@@ -112,6 +114,8 @@ class RobotState:
                 "playtime_limit_minutes": self.playtime_limit_minutes,
                 "playtime_remaining_seconds": self.playtime_guard.remaining_seconds(),
                 "playtime_remaining_fraction": self.playtime_guard.remaining_fraction(),
+                "tts_voice": self.tts_voice,
+                "tts_local_only": self.tts_local_only,
                 "current_emotion": self.current_emotion,
                 "current_emotion_score": self.current_emotion_score,
                 "currently_playing": playing,
@@ -141,6 +145,16 @@ class RobotState:
             self.volume_limit = max(0, min(100, int(data["volume_limit"])))
         if "brightness" in data:
             self.brightness = max(0.0, min(1.0, float(data["brightness"])))
+        if "tts_voice" in data:
+            try:
+                self._apply_tts_voice(data["tts_voice"])
+            except (TypeError, ValueError):
+                self.tts_voice = "topa"
+        if "tts_local_only" in data:
+            try:
+                self._apply_tts_local_only(data["tts_local_only"])
+            except (TypeError, ValueError):
+                self.tts_local_only = False
 
     def _apply_playtime_limit(self, minutes: object) -> None:
         self.playtime_limit_minutes = max(0, min(240, int(minutes)))
@@ -152,6 +166,8 @@ class RobotState:
             "playtime_limit_minutes": self.playtime_limit_minutes,
             "volume_limit": self.volume_limit,
             "brightness": self.brightness,
+            "tts_voice": self.tts_voice,
+            "tts_local_only": self.tts_local_only,
         }
         try:
             tmp = self._prefs_path.with_name(f".{self._prefs_path.name}.tmp")
@@ -164,11 +180,23 @@ class RobotState:
             log_action("API", f"no pude guardar prefs: {exc}")
             raise
 
+    def _apply_tts_voice(self, value: object) -> None:
+        if not isinstance(value, str) or value not in ("topa", "micaela"):
+            raise ValueError("tts_voice")
+        self.tts_voice = value
+
+    def _apply_tts_local_only(self, value: object) -> None:
+        if not isinstance(value, bool):
+            raise ValueError("tts_local_only")
+        self.tts_local_only = value
+
     def update_config(self, data: dict) -> None:
         with self._lock:
             previous = (
                 self.volume_limit, self.brightness,
                 self.playtime_limit_minutes, self.sleep.belly_wake_enabled,
+                self.tts_voice,
+                self.tts_local_only,
             )
             try:
                 if "volume_limit" in data:
@@ -179,6 +207,10 @@ class RobotState:
                     self._apply_playtime_limit(data["playtime_limit_minutes"])
                 if "belly_wake_enabled" in data:
                     self.sleep.set_belly_wake_enabled(bool(data["belly_wake_enabled"]))
+                if "tts_voice" in data:
+                    self._apply_tts_voice(data["tts_voice"])
+                if "tts_local_only" in data:
+                    self._apply_tts_local_only(data["tts_local_only"])
                 if any(
                     key in data
                     for key in (
@@ -186,6 +218,8 @@ class RobotState:
                         "belly_wake_enabled",
                         "volume_limit",
                         "brightness",
+                        "tts_voice",
+                        "tts_local_only",
                     )
                 ):
                     self._save_prefs()
@@ -193,6 +227,8 @@ class RobotState:
                 self.volume_limit, self.brightness = previous[:2]
                 self._apply_playtime_limit(previous[2])
                 self.sleep.set_belly_wake_enabled(previous[3])
+                self.tts_voice = previous[4]
+                self.tts_local_only = previous[5]
                 raise
         if self.on_config_changed:
             self.on_config_changed({
@@ -200,6 +236,8 @@ class RobotState:
                 "brightness": self.brightness,
                 "playtime_limit_minutes": self.playtime_limit_minutes,
                 "belly_wake_enabled": self.sleep.belly_wake_enabled,
+                "tts_voice": self.tts_voice,
+                "tts_local_only": self.tts_local_only,
             })
 
     def set_night_mode(self, enabled: bool) -> None:
@@ -711,6 +749,8 @@ class ApiRequestHandler(BaseHTTPRequestHandler):
             "brightness": robot_state.brightness,
             "playtime_limit_minutes": robot_state.playtime_limit_minutes,
             "belly_wake_enabled": robot_state.sleep.belly_wake_enabled,
+            "tts_voice": robot_state.tts_voice,
+            "tts_local_only": robot_state.tts_local_only,
         })
 
     def _handle_post_celebrate(self) -> None:

@@ -55,6 +55,25 @@ object HomeScreenRenderer {
         HomeChips.apply(binding.txtSignal, colors.first, colors.second, 0)
     }
 
+    fun playtime(binding: FragmentDashboardBinding, view: PlaytimeView, absent: String) {
+        val block = binding.playtimeBlock
+        if (view.kind == PlaytimeKind.HIDDEN) {
+            block.visibility = View.GONE
+            return
+        }
+        block.visibility = View.VISIBLE
+        val label = if (view.kind == PlaytimeKind.VISIBLE) view.label ?: absent else absent
+        binding.txtPlaytime.text = label
+        val showBar = view.kind == PlaytimeKind.VISIBLE && view.fraction != null
+        binding.playtimeBar.visibility = if (showBar) View.VISIBLE else View.GONE
+        if (showBar) {
+            val progress = ((view.fraction ?: 0f) * 1000f).toInt().coerceIn(0, 1000)
+            binding.playtimeBar.max = 1000
+            binding.playtimeBar.setProgressCompat(progress, false)
+        }
+        block.contentDescription = binding.root.context.getString(R.string.home_playtime_description, label)
+    }
+
     fun playback(binding: FragmentDashboardBinding, view: PlaybackView, waiting: Boolean) {
         binding.txtNowPlaying.text = view.title
         binding.btnMusicPlay.text = view.actionLabel

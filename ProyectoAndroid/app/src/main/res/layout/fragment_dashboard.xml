@@ -339,6 +339,51 @@
                             android:text="@string/home_see_activity" />
                     </LinearLayout>
                 </LinearLayout>
+
+                <LinearLayout
+                    android:id="@+id/playtime_block"
+                    android:layout_width="match_parent"
+                    android:layout_height="wrap_content"
+                    android:layout_marginTop="12dp"
+                    android:focusable="true"
+                    android:orientation="vertical"
+                    android:visibility="gone">
+
+                    <LinearLayout
+                        android:layout_width="match_parent"
+                        android:layout_height="wrap_content"
+                        android:gravity="center_vertical"
+                        android:orientation="horizontal">
+
+                        <TextView
+                            android:layout_width="0dp"
+                            android:layout_height="wrap_content"
+                            android:layout_weight="1"
+                            android:importantForAccessibility="no"
+                            android:text="@string/home_playtime"
+                            android:textAppearance="@style/TextAppearance.Teo.Home.Body" />
+
+                        <TextView
+                            android:id="@+id/txt_playtime"
+                            android:layout_width="wrap_content"
+                            android:layout_height="wrap_content"
+                            android:importantForAccessibility="no"
+                            android:text="@string/home_absent"
+                            android:textAppearance="@style/TextAppearance.Teo.Home.Section" />
+                    </LinearLayout>
+
+                    <com.google.android.material.progressindicator.LinearProgressIndicator
+                        android:id="@+id/playtime_bar"
+                        android:layout_width="match_parent"
+                        android:layout_height="wrap_content"
+                        android:layout_marginTop="6dp"
+                        android:importantForAccessibility="no"
+                        android:max="1000"
+                        app:indicatorColor="@color/teo_primary"
+                        app:trackColor="@color/teo_outline"
+                        app:trackCornerRadius="3dp"
+                        app:trackThickness="8dp" />
+                </LinearLayout>
             </LinearLayout>
         </com.google.android.material.card.MaterialCardView>
 

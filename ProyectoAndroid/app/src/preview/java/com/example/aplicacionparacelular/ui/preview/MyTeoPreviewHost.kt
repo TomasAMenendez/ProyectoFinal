@@ -17,6 +17,7 @@ import com.example.aplicacionparacelular.databinding.ItemWifiNetworkBinding
 import com.example.aplicacionparacelular.myteo.ConnectionPhase
 import com.example.aplicacionparacelular.myteo.LoadState
 import com.example.aplicacionparacelular.myteo.ManualAddress
+import com.example.aplicacionparacelular.myteo.TeoSettingsRules
 import com.example.aplicacionparacelular.myteo.WifiChoice
 import com.example.aplicacionparacelular.onboarding.ChildProfile
 import com.example.aplicacionparacelular.ui.SystemBarInsets
@@ -62,6 +63,9 @@ class MyTeoPreviewHost(
     private var volume = 40
     private var brightness = 70
     private var night = false
+    private var playtimeMinutes = 60
+    private var voice = "topa"
+    private var localVoice = false
     private var phase = ConnectionPhase.CONNECTED
     private var confirmedProfile = ChildProfile()
     val costume: String get() = confirmedProfile.costume
@@ -111,6 +115,42 @@ class MyTeoPreviewHost(
             night = checked
             settings.txtStatus.setText(
                 if (checked) R.string.preview_my_teo_night_on else R.string.preview_my_teo_night_off,
+            )
+        }
+        settings.editPlaytime.addTextChangedListener(object : android.text.TextWatcher {
+            override fun beforeTextChanged(s: CharSequence?, start: Int, count: Int, after: Int) = Unit
+            override fun onTextChanged(s: CharSequence?, start: Int, before: Int, count: Int) = Unit
+            override fun afterTextChanged(s: android.text.Editable?) {
+                if (rendering) return
+                renderPlaytimeApply()
+            }
+        })
+        settings.btnApplyPlaytime.setOnClickListener {
+            if (settingsLoad != LoadState.READY) return@setOnClickListener
+            val minutes = TeoSettingsRules.parseMinutes(settings.editPlaytime.text?.toString().orEmpty())
+                ?: return@setOnClickListener
+            if (minutes == playtimeMinutes) return@setOnClickListener
+            playtimeMinutes = minutes
+            settings.txtStatus.setText(R.string.preview_my_teo_playtime_applied)
+            renderSettings()
+        }
+        settings.groupVoice.setOnCheckedChangeListener { _, checkedId ->
+            if (rendering || settingsLoad != LoadState.READY) return@setOnCheckedChangeListener
+            val chosen = when (checkedId) {
+                R.id.radio_voice_topa -> "topa"
+                R.id.radio_voice_micaela -> "micaela"
+                else -> return@setOnCheckedChangeListener
+            }
+            if (chosen == voice) return@setOnCheckedChangeListener
+            voice = chosen
+            settings.txtStatus.setText(R.string.preview_my_teo_voice)
+        }
+        settings.switchVoiceLocal.setOnCheckedChangeListener { _, checked ->
+            if (rendering || settingsLoad != LoadState.READY) return@setOnCheckedChangeListener
+            if (checked == localVoice) return@setOnCheckedChangeListener
+            localVoice = checked
+            settings.txtStatus.setText(
+                if (checked) R.string.preview_my_teo_local_voice_on else R.string.preview_my_teo_local_voice_off,
             )
         }
         connection.btnBack.setOnClickListener { back() }
@@ -275,6 +315,12 @@ class MyTeoPreviewHost(
             settings.txtVolume.text = activity.getString(R.string.settings_percent, volume)
             settings.txtBrightness.text = activity.getString(R.string.settings_percent, brightness)
             if (settings.switchNight.isChecked != night) settings.switchNight.isChecked = night
+            val voiceId = if (voice == "micaela") R.id.radio_voice_micaela else R.id.radio_voice_topa
+            if (settings.groupVoice.checkedRadioButtonId != voiceId) settings.groupVoice.check(voiceId)
+            settings.switchVoiceLocal.isEnabled = true
+            if (settings.switchVoiceLocal.isChecked != localVoice) {
+                settings.switchVoiceLocal.isChecked = localVoice
+            }
             rendering = false
             val status = settings.txtStatus.text?.toString().orEmpty()
             val loading = activity.getString(R.string.settings_loading)
@@ -282,13 +328,45 @@ class MyTeoPreviewHost(
             if (status.isBlank() || status == loading || status == failed) {
                 settings.txtStatus.setText(R.string.my_teo_settings_hint)
             }
+            renderPlaytimeFields(enabled = true)
+            settings.radioVoiceTopa.isEnabled = true
+            settings.radioVoiceMicaela.isEnabled = true
         } else {
             settings.txtVolume.setText(R.string.settings_unknown)
             settings.txtBrightness.setText(R.string.settings_unknown)
             settings.txtStatus.setText(
                 if (settingsLoad == LoadState.LOADING) R.string.settings_loading else R.string.settings_failed,
             )
+            renderPlaytimeFields(enabled = false)
+            settings.radioVoiceTopa.isEnabled = false
+            settings.radioVoiceMicaela.isEnabled = false
+            settings.switchVoiceLocal.isEnabled = false
         }
+    }
+
+    private fun renderPlaytimeFields(enabled: Boolean) {
+        settings.txtPlaytimeConfirmed.text = when {
+            !enabled -> activity.getString(R.string.settings_unknown)
+            playtimeMinutes == 0 -> activity.getString(R.string.settings_playtime_unlimited)
+            else -> activity.getString(R.string.settings_playtime_minutes, playtimeMinutes)
+        }
+        settings.tilPlaytime.isEnabled = enabled
+        settings.editPlaytime.isEnabled = enabled
+        if (enabled && !settings.editPlaytime.hasFocus()) {
+            val shown = playtimeMinutes.toString()
+            if (settings.editPlaytime.text?.toString() != shown) {
+                rendering = true
+                settings.editPlaytime.setText(shown)
+                rendering = false
+            }
+        }
+        renderPlaytimeApply()
+    }
+
+    private fun renderPlaytimeApply() {
+        val parsed = TeoSettingsRules.parseMinutes(settings.editPlaytime.text?.toString().orEmpty())
+        settings.btnApplyPlaytime.isEnabled =
+            settingsLoad == LoadState.READY && parsed != null && parsed != playtimeMinutes
     }
 
     private fun renderConnection() {

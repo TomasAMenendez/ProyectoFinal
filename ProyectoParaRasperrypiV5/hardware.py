@@ -26,9 +26,11 @@ _PICTOGRAM_BY_TRANSITION = {
     "juego": "pelota",
 }
 
-# SG90 a 50 Hz: 7.5 % ≈ 90° (reposo). Izquierda/derecha espejados para levantar.
-SERVO_REST_DUTY = 7.5
-SERVO_LEFT_UP_DUTY = 5.0
+# SG90 a 50 Hz, pulso 1–2 ms: 5 % ≈ 0°, 7.5 % ≈ 90°, 10 % ≈ 180°.
+# El reposo es 0°. Duty 0 apaga el pulso y el servo no se mueve.
+# Los dos brazos suben con el mismo pulso (10 % ≈ 180°).
+SERVO_REST_DUTY = 5.0
+SERVO_LEFT_UP_DUTY = 10.0
 SERVO_RIGHT_UP_DUTY = 10.0
 
 
@@ -326,7 +328,7 @@ class PhysicalCompanion:
             return ActuatorResult(ok=True, simulated=True, message=str(exc))
 
     def arms_down(self) -> None:
-        """Vuelve los brazos al reposo."""
+        """Vuelve los brazos a 0° (pulso de 1 ms) y después corta la señal."""
         if not self.pins.servos_ready:
             return
         try:
@@ -379,10 +381,16 @@ class PhysicalCompanion:
         return left, right
 
     def _raise_servos(self) -> None:
+        import time
+
         gpio = get_gpio()
         left, right = self._servo_pins()
         gpio.pwm_start(left, SERVO_LEFT_UP_DUTY)
         gpio.pwm_start(right, SERVO_RIGHT_UP_DUTY)
+        # El SG90 tiembla si el pulso por software sigue activo al llegar.
+        time.sleep(0.45)
+        gpio.pwm_stop(left)
+        gpio.pwm_stop(right)
 
     def _lower_servos(self) -> None:
         import time

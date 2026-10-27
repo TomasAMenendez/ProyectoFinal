@@ -63,6 +63,86 @@ class TeoSettingsRulesTest {
         assertNull(session.beginNight(true))
     }
 
+    @Test fun playtimeBodySendsOnlyTheLimit() {
+        val body = TeoSettingsRules.playtimeBody(45)
+        assertEquals(45, body?.getInt("playtime_limit_minutes"))
+        assertEquals(setOf("playtime_limit_minutes"), body?.keys()?.asSequence()?.toSet())
+    }
+
+    @Test fun invalidPlaytimeDoesNotBuildABody() {
+        assertNull(TeoSettingsRules.playtimeBody(-1))
+        assertNull(TeoSettingsRules.playtimeBody(241))
+        assertNull(TeoSettingsRules.parseMinutes(""))
+        assertNull(TeoSettingsRules.parseMinutes("3.5"))
+        assertNull(TeoSettingsRules.parseMinutes("241"))
+    }
+
+    @Test fun playtimeConfirmRequiresTheSameEcho() {
+        val session = SettingsSession()
+        session.onStatus(status(40, 0.5, false))
+        session.editPlaytime("15")
+        val body = session.beginPlaytimeApply()
+        assertEquals(15, body?.getInt("playtime_limit_minutes"))
+        assertFalse(session.confirmPlaytime(JSONObject().put("playtime_limit_minutes", 30)))
+        assertEquals(30, session.playtimeConfirmed)
+        assertEquals("15", session.playtimeText)
+        assertTrue(session.canApplyPlaytime())
+
+        assertTrue(session.beginPlaytimeApply() != null)
+        assertTrue(session.confirmPlaytime(JSONObject().put("playtime_limit_minutes", 15)))
+        assertEquals(15, session.playtimeConfirmed)
+        assertFalse(session.canApplyPlaytime())
+    }
+
+    @Test fun voiceBodySendsOnlyTheChoice() {
+        val body = TeoSettingsRules.voiceBody("micaela")
+        assertEquals("micaela", body?.getString("tts_voice"))
+        assertEquals(setOf("tts_voice"), body?.keys()?.asSequence()?.toSet())
+        assertNull(TeoSettingsRules.voiceBody("elena"))
+    }
+
+    @Test fun missingVoiceOnStatusShowsTopa() {
+        val session = SettingsSession()
+        session.onStatus(status(40, 0.5, false))
+        assertEquals("topa", session.displayedVoice)
+        assertNull(session.beginVoice("topa"))
+    }
+
+    @Test fun voiceFailureRestoresConfirmed() {
+        val session = SettingsSession()
+        session.onStatus(status(40, 0.5, false).put("tts_voice", "topa"))
+        val body = session.beginVoice("micaela")
+        assertEquals("micaela", body?.getString("tts_voice"))
+        assertEquals("micaela", session.displayedVoice)
+        assertFalse(session.confirmVoice(JSONObject().put("volume_limit", 40)))
+        assertEquals("topa", session.displayedVoice)
+        assertTrue(session.beginVoice("micaela") != null)
+        assertTrue(session.confirmVoice(JSONObject().put("tts_voice", "micaela")))
+        assertEquals("micaela", session.voiceConfirmed)
+        assertNull(session.beginVoice("micaela"))
+    }
+
+    @Test fun missingLocalVoiceShowsOff() {
+        val session = SettingsSession()
+        session.onStatus(status(40, 0.5, false))
+        assertEquals(false, session.displayedLocalVoice)
+        assertNull(session.beginLocalVoice(false))
+    }
+
+    @Test fun localVoiceSendsOnlyTheSwitch() {
+        val session = SettingsSession()
+        session.onStatus(status(40, 0.5, false))
+        val body = session.beginLocalVoice(true)
+        assertEquals(true, body?.getBoolean("tts_local_only"))
+        assertEquals(setOf("tts_local_only"), body?.keys()?.asSequence()?.toSet())
+        assertEquals(true, session.displayedLocalVoice)
+        assertFalse(session.confirmLocalVoice(JSONObject().put("tts_voice", "topa")))
+        assertEquals(false, session.displayedLocalVoice)
+        assertTrue(session.beginLocalVoice(true) != null)
+        assertTrue(session.confirmLocalVoice(JSONObject().put("tts_local_only", true)))
+        assertEquals(true, session.localVoiceConfirmed)
+    }
+
     private fun status(volume: Int, brightness: Double, night: Boolean) = JSONObject()
         .put("volume_limit", volume)
         .put("brightness", brightness)

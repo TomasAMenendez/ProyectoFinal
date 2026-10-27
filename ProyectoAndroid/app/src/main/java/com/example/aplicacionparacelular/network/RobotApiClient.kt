@@ -170,6 +170,25 @@ object RobotApiClient {
         return doPost("/api/config", body)
     }
 
+    /** Solo el interruptor de voz local. */
+    fun postLocalVoice(enabled: Boolean): ApiResult<JSONObject> {
+        return doPost("/api/config", com.example.aplicacionparacelular.myteo.TeoSettingsRules.localVoiceBody(enabled))
+    }
+
+    /** Solo la voz. */
+    fun postVoice(voice: String): ApiResult<JSONObject> {
+        val body = com.example.aplicacionparacelular.myteo.TeoSettingsRules.voiceBody(voice)
+            ?: return ApiResult.Error("Voz inválida")
+        return doPost("/api/config", body)
+    }
+
+    /** Solo el total de juego. */
+    fun postPlaytime(minutes: Int): ApiResult<JSONObject> {
+        val body = com.example.aplicacionparacelular.myteo.TeoSettingsRules.playtimeBody(minutes)
+            ?: return ApiResult.Error("Tiempo inválido")
+        return doPost("/api/config", body)
+    }
+
     fun getRobotPort(context: Context): Int {
         val prefs = context.getSharedPreferences(PREFS_NAME, Context.MODE_PRIVATE)
         return com.example.aplicacionparacelular.myteo.ManualAddress.effectivePort(

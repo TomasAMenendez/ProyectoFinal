@@ -1,0 +1,82 @@
+{
+  "apertura": "Hola!, soy Teo, cuál es tu nombre?",
+  "vamosAJugar": "Vamos a jugar!",
+  "bienvenidas": {
+    "sombras": "Vamos a jugar a las sombras. Uní cada figura con su nombre.",
+    "adivina": "Vamos a adivinar el objeto. Escuchá las pistas.",
+    "contar": "Vamos a contar. Mirá la imagen y elegí el número.",
+    "ppt": "Vamos a jugar a piedra, papel o tijera.",
+    "espejito": "Vamos a jugar al espejito. Imitá la carita."
+  },
+  "espejito": {
+    "calibracion": "Mirá a la cámara, tranquilo, sin hacer ninguna cara.",
+    "sinCara": "No te veo todavía. Acercate un poquito a la cámara.",
+    "probar": "¡Probá imitar la carita!",
+    "cierre": "¡Muy bien! Imitaste la carita.",
+    "instrucciones": {
+      "feliz": "¡Poné tu mejor sonrisa!",
+      "triste": "¡Hagamos una carita triste!",
+      "enojado": "¡Mostrame tu mejor cara de enojado!",
+      "sorprendido": "¡Poné cara de sorpresa!"
+    },
+    "felicitaciones": {
+      "feliz": "¡Qué linda sonrisa!",
+      "triste": "¡Qué carita triste! ¡Lo lograste!",
+      "enojado": "¡Qué cara de gruñón! ¡Muy bien!",
+      "sorprendido": "¡Uau! ¡Qué sorpresa!"
+    }
+  },
+  "pptResultados": {
+    "gano": "¡GANASTE! ¡Muy bien!",
+    "empato": "¡EMPATE! ¡Los dos elegimos lo mismo!",
+    "perdio": "¡GANÉ! ¡Probá otra vez!"
+  },
+  "avisoPista": "No era esa, te doy una pista",
+  "aciertos": [
+    "Muy bien! Era esa",
+    "Genial, diste con la respuesta",
+    "Eso es, lo lograste"
+  ],
+  "errores": [
+    "Mmm, creo que no era esa",
+    "Uy, esa no era",
+    "Casi, probemos con otra"
+  ],
+  "descartadas": [
+    "Esa no era correcta, probá con otra",
+    "Esa ya la vimos, elegí otra",
+    "Esa no sirve, probá una distinta"
+  ],
+  "rejuegos": [
+    "Qué bueno, juguemos de nuevo",
+    "Dale, vamos otra vez",
+    "Me encanta, juguemos de nuevo"
+  ],
+  "menus": [
+    "Dale, probemos otro juego",
+    "Buenísimo, elijamos otro",
+    "Vamos al menú a probar otro"
+  ],
+  "victorias": [
+    "¡Muy bien! ¡Ganaste!",
+    "Qué alegría, ganaste",
+    "Lo lograste, muy bien"
+  ],
+  "derrotas": [
+    "¡Se terminó el juego! ¡Intentalo otra vez!",
+    "Esta vez no salió, intentá de nuevo",
+    "Se acabaron los intentos, juguemos otra vez"
+  ],
+  "numeros": {
+    "1": "uno",
+    "2": "dos",
+    "3": "tres",
+    "4": "cuatro",
+    "5": "cinco",
+    "6": "seis",
+    "7": "siete",
+    "8": "ocho",
+    "9": "nueve",
+    "10": "diez"
+  }
+}

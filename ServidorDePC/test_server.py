@@ -47,8 +47,15 @@ class FakeTts:
         self.wav = wav if wav is not None else _tiny_wav()
         self.last_text: str | None = None
 
-    def synthesize(self, text: str) -> bytes:
+    def synthesize(
+        self,
+        text: str,
+        voice: str | None = None,
+        local_only: bool = False,
+    ) -> bytes:
         self.last_text = text
+        self.last_voice = voice
+        self.last_local_only = local_only
         return self.wav
 
 
@@ -252,6 +259,22 @@ class TestSpeech(unittest.TestCase):
         self.assertTrue(body.startswith(b"RIFF"))
         self.assertEqual(tts.last_text, "¡Hola! Qué lindo que estés acá.")
 
+    def test_speech_pasa_la_voz(self) -> None:
+        tts = FakeTts()
+        payload = json.dumps({"input": "Hola", "voice": "micaela"}).encode()
+        status, _body, media = handle_speech(tts, TOKEN, "Bearer secret-token", payload)
+        self.assertEqual(status, 200)
+        self.assertEqual(media, "audio/wav")
+        self.assertEqual(tts.last_voice, "micaela")
+        self.assertFalse(tts.last_local_only)
+
+    def test_speech_pasa_solo_local(self) -> None:
+        tts = FakeTts()
+        payload = json.dumps({"input": "Hola", "voice": "topa", "local_only": True}).encode()
+        status, _body, _media = handle_speech(tts, TOKEN, "Bearer secret-token", payload)
+        self.assertEqual(status, 200)
+        self.assertTrue(tts.last_local_only)
+
     def test_speech_vacio_400(self) -> None:
         status, body, media = handle_speech(
             FakeTts(), TOKEN, "Bearer secret-token", json.dumps({"input": "  "}).encode()
@@ -312,7 +335,7 @@ class TestCoreRequirements(unittest.TestCase):
             if raw.strip() and not raw.strip().startswith("#")
         )
         self.assertIn("piper-tts", install)
-        self.assertIn("edge-tts", install)
+        self.assertIn("edge-tts>=7.3.1", install)
         self.assertIn("soundfile", install)
         self.assertNotIn("chatterbox", install)
         self.assertNotIn("wetext", install)
@@ -543,13 +566,25 @@ class TestElenaSynthesize(unittest.TestCase):
 
 class TestPiperEngine(unittest.TestCase):
     def test_constantes_dialogo(self) -> None:
-        from tts_piper import PiperEngine
+        from tts_piper import MICAELA, PiperEngine
 
-        self.assertEqual(PiperEngine.MODEL_NAME, "es_AR-daniela-high")
-        self.assertEqual(PiperEngine.MODEL_HF_PATH, "es/es_AR/daniela/high")
-        self.assertEqual(PiperEngine.LENGTH_SCALE, 1.20)
-        self.assertEqual(PiperEngine.NOISE_SCALE, 0.667)
-        self.assertEqual(PiperEngine.NOISE_W_SCALE, 0.98)
+        self.assertEqual(PiperEngine.MODEL_NAME, "Topa-e1500")
+        self.assertEqual(PiperEngine.MODEL_FILE.name, "Topa-e1500.onnx")
+        self.assertEqual(PiperEngine.CONFIG_FILE.name, "Topa-e1500.onnx.json")
+        self.assertEqual(PiperEngine.MODEL_FILE.parent.name, "VocesParaPiper")
+        self.assertTrue(PiperEngine.MODEL_FILE.is_file())
+        self.assertTrue(PiperEngine.CONFIG_FILE.is_file())
+        self.assertEqual(PiperEngine.LENGTH_SCALE, 1.45)
+        self.assertEqual(PiperEngine.NOISE_SCALE, 1.0)
+        self.assertEqual(PiperEngine.NOISE_W_SCALE, 0.5)
+        self.assertEqual(MICAELA.name, "Micaela")
+        self.assertEqual(MICAELA.model_file.name, "Micaela.onnx")
+        self.assertEqual(MICAELA.config_file.name, "Micaela.json")
+        self.assertTrue(MICAELA.model_file.is_file())
+        self.assertTrue(MICAELA.config_file.is_file())
+        self.assertEqual(MICAELA.length_scale, 1.0)
+        self.assertEqual(MICAELA.noise_scale, 0.667)
+        self.assertEqual(MICAELA.noise_w_scale, 0.8)
 
     def test_load_con_voz_inyectada_marca_ready(self) -> None:
         from tts_piper import PiperEngine
@@ -581,14 +616,37 @@ class TestPiperEngine(unittest.TestCase):
         wav = engine.synthesize("hola che")
         self.assertTrue(wav.startswith(b"RIFF"))
         self.assertEqual(voice.last_text, "hola che")
-        self.assertAlmostEqual(voice.last_config.length_scale, 1.20)
-        self.assertAlmostEqual(voice.last_config.noise_scale, 0.667)
-        self.assertAlmostEqual(voice.last_config.noise_w_scale, 0.98)
+        self.assertAlmostEqual(voice.last_config.length_scale, 1.45)
+        self.assertAlmostEqual(voice.last_config.noise_scale, 1.0)
+        self.assertAlmostEqual(voice.last_config.noise_w_scale, 0.5)
         with wave.open(io.BytesIO(wav), "rb") as wf:
             self.assertEqual(wf.getnchannels(), 1)
             self.assertEqual(wf.getsampwidth(), 2)
             self.assertEqual(wf.getframerate(), 22050)
             self.assertEqual(wf.getnframes(), 4)
+
+    def test_micaela_y_desconocida_eligen_perfil_sin_recargar(self) -> None:
+        from tts_piper import PiperEngine
+
+        voice = _FakePiperVoice()
+        engine = PiperEngine(voice=voice)
+        engine.load()
+        engine.synthesize("hola", voice="micaela")
+        self.assertAlmostEqual(voice.last_config.length_scale, 1.0)
+        self.assertAlmostEqual(voice.last_config.noise_scale, 0.667)
+        self.assertAlmostEqual(voice.last_config.noise_w_scale, 0.8)
+        engine.synthesize("hola", voice="otra")
+        self.assertAlmostEqual(voice.last_config.length_scale, 1.45)
+        self.assertAlmostEqual(voice.last_config.noise_scale, 1.0)
+        self.assertAlmostEqual(voice.last_config.noise_w_scale, 0.5)
+
+    def test_voz_no_cargada_no_sustituye(self) -> None:
+        from tts_piper import PiperEngine
+
+        engine = PiperEngine(voices={"topa": _FakePiperVoice()})
+        engine.load()
+        self.assertEqual(engine.synthesize("hola", voice="micaela"), b"")
+        self.assertTrue(engine.synthesize("hola", voice="topa").startswith(b"RIFF"))
 
     def test_texto_vacio_es_silencio(self) -> None:
         from tts_piper import PiperEngine
@@ -624,12 +682,14 @@ class _FakePiperReady:
         self._load_ready = load_ready
         self.ready = False
         self.calls: list[str] = []
+        self.voices: list[str | None] = []
 
     def load(self) -> None:
         self.ready = self._load_ready
 
-    def synthesize(self, text: str) -> bytes:
+    def synthesize(self, text: str, voice: str | None = None) -> bytes:
         self.calls.append(text)
+        self.voices.append(voice)
         return self._wav
 
 
@@ -651,16 +711,99 @@ class TestTtsRouting(unittest.TestCase):
         self.assertEqual(elena_calls, [])
         self.assertEqual(piper.calls, ["hola"])
 
-    def test_prefer_true_elena_ok(self) -> None:
+    def test_prefer_true_no_llama_elena(self) -> None:
         from tts_engine import TtsEngine
+
+        elena_calls: list[str] = []
+
+        def elena(text: str) -> bytes:
+            elena_calls.append(text)
+            return b"ELENAWAV"
 
         piper = _FakePiperReady()
         engine = TtsEngine(
-            piper=piper, elena_fn=lambda _t: b"ELENAWAV", prefer_fn=lambda: True
+            piper=piper, elena_fn=elena, prefer_fn=lambda: True
         )
         engine.load()
-        self.assertEqual(engine.synthesize("hola"), b"ELENAWAV")
+        self.assertEqual(engine.synthesize("hola", voice="micaela"), b"PIPERWAV")
+        self.assertEqual(elena_calls, [])
+        self.assertEqual(piper.calls, ["hola"])
+        self.assertEqual(piper.voices, ["micaela"])
+
+    def test_cartesia_ok_no_llama_piper(self) -> None:
+        from tts_engine import TtsEngine
+
+        piper = _FakePiperReady()
+        seen: list[str | None] = []
+
+        def cartesia(text: str, voice: str | None = None) -> bytes:
+            seen.append(voice)
+            return b"RIFF" + b"CART"
+
+        engine = TtsEngine(piper=piper, cartesia_fn=cartesia)
+        engine.load()
+        self.assertTrue(engine.synthesize("hola", voice="micaela").startswith(b"RIFF"))
+        self.assertEqual(seen, ["micaela"])
         self.assertEqual(piper.calls, [])
+
+    def test_cartesia_falla_y_usa_la_voz_pedida(self) -> None:
+        from tts_engine import TtsEngine
+
+        piper = _FakePiperReady()
+
+        def boom(_text: str, _voice: str | None = None) -> bytes:
+            raise RuntimeError("sin red")
+
+        engine = TtsEngine(piper=piper, cartesia_fn=boom)
+        engine.load()
+        self.assertEqual(engine.synthesize("hola", voice="micaela"), b"PIPERWAV")
+        self.assertEqual(piper.voices, ["micaela"])
+
+    def test_cartesia_elige_la_micaela_sin_genero(self) -> None:
+        from tts_cartesia import VOICE_IDS, synthesize_wav
+
+        seen: dict[str, object] = {}
+
+        class _Resp:
+            status = 200
+
+            def read(self) -> bytes:
+                return b"RIFF" + b"\x00" * 40
+
+            def __enter__(self):
+                return self
+
+            def __exit__(self, *_args: object) -> None:
+                return None
+
+        def opener(request, timeout=0):
+            seen["timeout"] = timeout
+            seen["body"] = json.loads(request.data.decode())
+            return _Resp()
+
+        wav = synthesize_wav("hola", "micaela", opener=opener, api_key="test-key")
+        self.assertTrue(wav.startswith(b"RIFF"))
+        self.assertLessEqual(float(seen["timeout"]), 4.0)
+        body = seen["body"]
+        assert isinstance(body, dict)
+        self.assertEqual(body["voice"]["id"], VOICE_IDS["micaela"])
+        self.assertNotEqual(VOICE_IDS["micaela"], "c3692dc1-cf56-4d99-b0d8-5558e8172d84")
+
+    def test_solo_local_no_llama_cartesia(self) -> None:
+        from tts_engine import TtsEngine
+
+        piper = _FakePiperReady()
+        called = {"n": 0}
+
+        def cartesia(_text: str, _voice: str | None = None) -> bytes:
+            called["n"] += 1
+            return b"RIFFCART"
+
+        engine = TtsEngine(piper=piper, cartesia_fn=cartesia)
+        engine.load()
+        self.assertEqual(engine.synthesize("hola", voice="topa", local_only=True), b"PIPERWAV")
+        self.assertEqual(called["n"], 0)
+        self.assertEqual(piper.voices, ["topa"])
 
     def test_prefer_true_elena_vacio_cae_piper(self) -> None:
         from tts_engine import TtsEngine

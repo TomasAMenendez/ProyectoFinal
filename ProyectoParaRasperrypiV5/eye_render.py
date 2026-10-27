@@ -17,7 +17,6 @@ _HIGHLIGHT = (255, 255, 255)
 _BROW = (176, 190, 197)
 
 _PICTOGRAM_LABELS = {
-    "abrazo": "ABRAZO",
     "manos": "MANOS",
     "plato": "COMIDA",
     "luna": "DORMIR",
@@ -329,7 +328,7 @@ class EyeAnimator:
         return image
 
     def _draw_pictogram(self, draw: ImageDraw.ImageDraw, w: int, h: int) -> None:
-        if not self.pictogram:
+        if not self.pictogram or self.pictogram == "abrazo":
             return
         label = _PICTOGRAM_LABELS.get(self.pictogram, self.pictogram.upper())
         color = _scale_rgb(_HIGHLIGHT, self.brightness)

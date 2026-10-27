@@ -1,0 +1,14 @@
+.vidas { display: flex; gap: 0.25rem; }
+
+.corazon { width: 2.4rem; height: 2.4rem; display: block; }
+.corazon svg { width: 100%; height: 100%; }
+.corazon-lleno path { fill: #ff4d6d; }
+.corazon-vacio path { fill: transparent; stroke: #ff4d6d; stroke-width: 4; }
+.corazon-rompiendo { animation: romper-corazon 0.65s ease forwards; }
+.corazon-rompiendo path { fill: #ff4d6d; }
+
+@keyframes romper-corazon {
+  0% { transform: scale(1); }
+  35% { transform: scale(1.25) rotate(-10deg); }
+  100% { transform: scale(0.72) rotate(14deg); opacity: 0.35; filter: grayscale(1); }
+}

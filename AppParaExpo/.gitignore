@@ -1,0 +1,12 @@
+node_modules/
+dist/
+build/
+offline/
+.env
+.env.*
+!.env.example
+*.log
+.DS_Store
+Thumbs.db
+src/recursos/voces/*.mp3
+src/recursos/voces/*.wav

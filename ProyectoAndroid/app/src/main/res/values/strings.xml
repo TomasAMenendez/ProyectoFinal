@@ -397,6 +397,8 @@
     <string name="home_now">Ahora con TEO</string>
     <string name="home_interactions_word">interacciones</string>
     <string name="home_absent">Sin datos</string>
+    <string name="home_playtime">Tiempo de juego</string>
+    <string name="home_playtime_description">Tiempo de juego restante: %1$s</string>
     <string name="home_play_music">Reproducir música</string>
     <string name="home_reread">Volver a leer cuento</string>
     <string name="home_stop">Detener</string>
@@ -438,6 +440,25 @@
     <string name="settings_night_on">TEO confirmó el modo noche.</string>
     <string name="settings_night_off">TEO confirmó que el modo noche quedó apagado.</string>
     <string name="settings_night_error">TEO no confirmó el modo noche.</string>
+    <string name="settings_playtime">Tiempo de juego</string>
+    <string name="settings_playtime_unlimited">Sin límite</string>
+    <string name="settings_playtime_minutes">%1$d min</string>
+    <string name="settings_playtime_hint">Minutos</string>
+    <string name="settings_playtime_suffix">min</string>
+    <string name="settings_playtime_help">De 0 a 240 minutos. 0 es sin límite.</string>
+    <string name="settings_playtime_apply">Aplicar tiempo</string>
+    <string name="settings_playtime_applied">TEO confirmó el tiempo de juego.</string>
+    <string name="settings_playtime_error">TEO no confirmó el tiempo. Conservé lo que habías escrito.</string>
+    <string name="settings_voice">Voz</string>
+    <string name="settings_voice_topa">Voz masculina</string>
+    <string name="settings_voice_micaela">Voz femenina</string>
+    <string name="settings_voice_applied">La voz quedó guardada.</string>
+    <string name="settings_voice_error">No se confirmó la voz. Conservé la anterior.</string>
+    <string name="settings_voice_local">Solo voz local</string>
+    <string name="settings_voice_local_help">Encendido usa la voz del servidor. Apagado intenta internet y, si no hay conexión, usa la local.</string>
+    <string name="settings_voice_local_on">La voz local quedó activada.</string>
+    <string name="settings_voice_local_off">Si hay internet, la voz saldrá por internet.</string>
+    <string name="settings_voice_local_error">No se confirmó el cambio. Conservé el anterior.</string>
 
     <string name="connection_title">Conexión</string>
     <string name="connection_intro">Administrá la conexión con TEO</string>

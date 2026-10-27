@@ -4678,13 +4678,40 @@ class SpeechWorker:
         if callable(can) and not can():
             return None
         try:
-            raw = client.synthesize(text)
+            raw = client.synthesize(
+                text,
+                voice=self._pc_tts_voice(),
+                local_only=self._pc_tts_local_only(),
+            )
         except Exception as exc:
             self._log(f"TTS_PC error: {exc}")
             return None
         if not raw:
             return None
         return self._wav_bytes_to_pcm(raw)
+
+    def _pc_tts_voice(self) -> str:
+        state = getattr(self, "_robot_state", None)
+        if state is None:
+            try:
+                from api_server import robot_state as state
+            except Exception:
+                state = None
+        voice = getattr(state, "tts_voice", None) if state is not None else None
+        if voice in ("topa", "micaela"):
+            return str(voice)
+        return "topa"
+
+    def _pc_tts_local_only(self) -> bool:
+        state = getattr(self, "_robot_state", None)
+        if state is None:
+            try:
+                from api_server import robot_state as state
+            except Exception:
+                state = None
+        if state is None:
+            return False
+        return getattr(state, "tts_local_only", False) is True
 
     def _try_load_piper(self) -> None:
         """Try to initialise piper-tts neural TTS for natural-sounding speech."""

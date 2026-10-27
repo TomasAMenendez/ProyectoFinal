@@ -339,6 +339,8 @@ class TestSynthesizeTts(unittest.TestCase):
             payload = json.loads(kwargs["body"])
             self.assertEqual(payload["input"], "¡Hola!")
             self.assertEqual(payload["language"], "es")
+            self.assertEqual(payload["voice"], "topa")
+            self.assertFalse(payload["local_only"])
             self.assertGreaterEqual(kwargs["timeout_s"], 10.0)
             return 200, wav
 
@@ -347,6 +349,18 @@ class TestSynthesizeTts(unittest.TestCase):
         self.assertEqual(out, wav)
         self.assertEqual(client.fail_count_tts, 0)
         self.assertEqual(client.fail_count, 0)
+
+    def test_synthesize_envia_micaela_y_desconocida_cae_en_topa(self) -> None:
+        seen: list[str] = []
+
+        def req(method: str, path: str, **kwargs: object) -> tuple[int, bytes]:
+            seen.append(json.loads(kwargs["body"])["voice"])
+            return 200, _tiny_wav_bytes()
+
+        client = PcServerClient("http://192.168.1.5:8090", "tok", request_fn=req)
+        self.assertIsNotNone(client.synthesize("hola", voice="micaela"))
+        self.assertIsNotNone(client.synthesize("hola", voice="rara"))
+        self.assertEqual(seen, ["micaela", "topa"])
 
     def test_synthesize_timeout_no_toca_circuit_stt(self) -> None:
         def req(method: str, path: str, **kwargs: object) -> tuple[int, bytes]:

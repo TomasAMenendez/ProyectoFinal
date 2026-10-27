@@ -351,6 +351,18 @@ object RobotConnectionManager {
         executeAsync({ RobotApiClient.postSensory(volumeLimit, brightnessPercent) }, onResult)
     }
 
+    fun updateVoice(voice: String, onResult: (ApiResult<JSONObject>) -> Unit) {
+        executeAsync({ RobotApiClient.postVoice(voice) }, onResult)
+    }
+
+    fun updateLocalVoice(enabled: Boolean, onResult: (ApiResult<JSONObject>) -> Unit) {
+        executeAsync({ RobotApiClient.postLocalVoice(enabled) }, onResult)
+    }
+
+    fun updatePlaytime(minutes: Int, onResult: (ApiResult<JSONObject>) -> Unit) {
+        executeAsync({ RobotApiClient.postPlaytime(minutes) }, onResult)
+    }
+
     /**
      * Activa/desactiva el modo noche.
      */

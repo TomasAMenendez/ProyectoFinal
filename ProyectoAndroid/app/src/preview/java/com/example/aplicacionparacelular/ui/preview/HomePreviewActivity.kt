@@ -339,6 +339,7 @@ class HomePreviewActivity : AppCompatActivity() {
         HomeScreenRenderer.interactions(home, scene.interactions ?: absent)
         HomeScreenRenderer.signal(home, scene.signal ?: absent, known = scene.signal != null)
         HomeScreenRenderer.playback(home, scene.playback, waiting = false)
+        HomeScreenRenderer.playtime(home, scene.playtime, absent)
         HomeScreenRenderer.notice(home, scene.notice)
     }
 

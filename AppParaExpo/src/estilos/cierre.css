@@ -1,0 +1,45 @@
+.cierre {
+  position: absolute;
+  inset: 0;
+  z-index: 5;
+  display: grid;
+  place-items: center;
+  padding: 1.2rem;
+  background: rgba(36, 48, 71, 0.28);
+}
+
+.cierre-tarjeta {
+  position: relative;
+  width: min(34rem, 100%);
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  gap: 0.8rem;
+  padding: 1.3rem;
+  border: 4px solid #243047;
+  border-radius: 1.8rem;
+  text-align: center;
+}
+
+.cierre-gano .cierre-tarjeta { background: #b6f3cb; }
+.cierre-perdio .cierre-tarjeta { background: #ffb4b4; }
+.cierre-mensaje { margin: 0; font-size: clamp(1.5rem, 3vw, 2.2rem); font-weight: 800; z-index: 1; }
+.cierre-tarjeta .boton-grande { width: 100%; z-index: 1; }
+
+.confeti { position: absolute; inset: 0; overflow: hidden; pointer-events: none; }
+.confeti span {
+  position: absolute;
+  top: -10%;
+  width: 0.7rem;
+  height: 1rem;
+  border-radius: 0.2rem;
+  background: #ffd15c;
+  animation: caer 1.1s ease-in infinite;
+}
+.confeti span:nth-child(3n) { background: #7ddea8; }
+.confeti span:nth-child(4n) { background: #ff8b72; }
+.confeti span:nth-child(5n) { background: #78b7ff; }
+
+@keyframes caer {
+  to { transform: translateY(18rem) rotate(180deg); opacity: 0.2; }
+}

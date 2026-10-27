@@ -1,0 +1,122 @@
+:root {
+  color: #243047;
+  background: #7ec8ff;
+  font-family: "Trebuchet MS", "Segoe UI", sans-serif;
+  font-synthesis: none;
+  text-rendering: optimizeLegibility;
+}
+
+* { box-sizing: border-box; }
+
+html, body, #root {
+  height: 100%;
+  margin: 0;
+}
+
+body {
+  min-height: 100dvh;
+  overflow: hidden;
+  overscroll-behavior: none;
+  touch-action: manipulation;
+  background:
+    radial-gradient(circle at 12% 18%, #ffe38a 0 8rem, transparent 9rem),
+    radial-gradient(circle at 88% 8%, #ffb4c8 0 7rem, transparent 8rem),
+    linear-gradient(#9ad7ff, #fff6df 70%);
+}
+
+button, input { font: inherit; }
+
+button {
+  cursor: pointer;
+  -webkit-tap-highlight-color: transparent;
+  text-transform: uppercase;
+}
+
+img { user-select: none; -webkit-user-drag: none; }
+
+.pantalla {
+  height: 100dvh;
+  display: flex;
+  flex-direction: column;
+  padding:
+    calc(0.8rem + env(safe-area-inset-top))
+    calc(1rem + env(safe-area-inset-right))
+    calc(0.8rem + env(safe-area-inset-bottom))
+    calc(1rem + env(safe-area-inset-left));
+  gap: 0.7rem;
+  overflow: hidden;
+}
+
+.presentacion { align-items: center; justify-content: center; text-align: center; }
+
+h1 {
+  margin: 0;
+  font-size: clamp(1.6rem, 3vw, 2.5rem);
+  letter-spacing: 0;
+}
+
+.logo-teo { width: min(220px, 42vw); height: auto; }
+.logo-compacto { width: min(92px, 18vw); }
+
+.formulario-nombre {
+  display: flex;
+  flex-direction: column;
+  gap: 0.8rem;
+  width: min(520px, 100%);
+}
+
+.formulario-nombre input {
+  min-height: 4.2rem;
+  border: 4px solid #243047;
+  border-radius: 1.4rem;
+  padding: 0 1.2rem;
+  font-size: 1.6rem;
+  background: #fffaf3;
+}
+
+.boton-grande {
+  min-height: 4rem;
+  min-width: 4rem;
+  border: 4px solid #243047;
+  border-radius: 1.3rem;
+  padding: 0.7rem 1.1rem;
+  font-size: clamp(1.15rem, 2vw, 1.5rem);
+  font-weight: 700;
+  color: #243047;
+  box-shadow: 0 6px 0 #243047;
+}
+
+.boton-grande:active:not(:disabled) { transform: translateY(3px); box-shadow: 0 3px 0 #243047; }
+.boton-grande:disabled { cursor: default; }
+.tono-sol { background: #ffd15c; }
+.tono-hoja { background: #7ddea8; }
+.tono-coral { background: #ff8b72; }
+.tono-cielo { background: #b7ebff; }
+.tono-tinta { background: #fffaf3; }
+
+.opcion-apagada { opacity: 0.38; }
+
+.juego { position: relative; min-height: 0; }
+.barra-juego {
+  display: flex;
+  align-items: center;
+  gap: 0.8rem;
+}
+.barra-juego h1 { flex: 1; text-align: left; font-size: clamp(1.3rem, 2.4vw, 2rem); }
+.barra-juego .boton-grande { min-height: 3.2rem; }
+
+.aviso-pista, .aviso-reserva {
+  min-height: 4.2rem;
+  border-radius: 1rem;
+  padding: 0.45rem 0.9rem;
+}
+.aviso-pista {
+  background: #fff4cc;
+  border: 3px solid #243047;
+}
+.aviso-pista p { margin: 0.2rem 0 0; font-size: 1.05rem; }
+
+@media (orientation: portrait) {
+  .barra-juego { flex-wrap: wrap; }
+  .barra-juego h1 { font-size: 1.25rem; }
+}

@@ -1,0 +1,886 @@
+[
+  {
+    "id": "manzana",
+    "imagen_archivo": "Imagen_Manzana.png",
+    "respuestas": [
+      "manzana"
+    ],
+    "pistas": [
+      "Es la fruta que comió Blancanieves en el cuento.",
+      "Es de color rojo y su nombre empieza con la letra M.",
+      "Es una fruta muy rica y dulce que crece en los árboles."
+    ]
+  },
+  {
+    "id": "corazon",
+    "imagen_archivo": "Imagen_Corazon.png",
+    "respuestas": [
+      "corazón",
+      "corazon",
+      "corazoncito"
+    ],
+    "pistas": [
+      "Lo dibujamos cuando queremos demostrar mucho amor, amistad y cariño.",
+      "Es de color rojo y su nombre empieza con la letra C.",
+      "Lo tenemos adentro del pecho y hace un sonido suave todo el tiempo."
+    ]
+  },
+  {
+    "id": "tomate",
+    "imagen_archivo": "Imagen_Tomate.png",
+    "respuestas": [
+      "tomate"
+    ],
+    "pistas": [
+      "Es redondo y se usa mucho para hacer salsas o ensaladas.",
+      "Es de color rojo y su nombre empieza con la letra T.",
+      "Parece una verdura, pero en realidad es una fruta jugosa."
+    ]
+  },
+  {
+    "id": "frutilla",
+    "imagen_archivo": "Imagen_Frutilla.png",
+    "respuestas": [
+      "frutilla"
+    ],
+    "pistas": [
+      "Es pequeña y tiene semillitas por fuera.",
+      "Es de color rojo y su nombre empieza con la letra F.",
+      "Queda riquísima si la comes con crema."
+    ]
+  },
+  {
+    "id": "cielo",
+    "imagen_archivo": "Imagen_Cielo.png",
+    "respuestas": [
+      "cielo"
+    ],
+    "pistas": [
+      "Está arriba de todo y en él flotan las nubes.",
+      "Es de color azul y su nombre empieza con la letra C.",
+      "De día vemos el sol ahí, y de noche las estrellas."
+    ]
+  },
+  {
+    "id": "mar",
+    "imagen_archivo": "Imagen_Mar.png",
+    "respuestas": [
+      "mar",
+      "océano",
+      "oceano"
+    ],
+    "pistas": [
+      "Es inmenso, tiene agua salada y olas.",
+      "Es de color azul y su nombre empieza con la letra M.",
+      "Ahí viven los peces, los delfines y las ballenas."
+    ]
+  },
+  {
+    "id": "agua",
+    "imagen_archivo": "Imagen_Agua.png",
+    "respuestas": [
+      "agua"
+    ],
+    "pistas": [
+      "Es líquida, la tomamos cuando tenemos sed y la usamos para bañarnos.",
+      "Es de color azul y su nombre empieza con la letra A.",
+      "Cae de las nubes cuando llueve."
+    ]
+  },
+  {
+    "id": "globo",
+    "imagen_archivo": "Imagen_Globo.png",
+    "respuestas": [
+      "globo",
+      "globito"
+    ],
+    "pistas": [
+      "Es redondito, brillante y se infla con mucho aire.",
+      "Puede ser de varios colores y su nombre empieza con la letra G.",
+      "Decora las fiestas de cumpleaños y a veces se escapa volando."
+    ]
+  },
+  {
+    "id": "pasto",
+    "imagen_archivo": "Imagen_Pasto.png",
+    "respuestas": [
+      "pasto",
+      "césped",
+      "cesped"
+    ],
+    "pistas": [
+      "Crece en el suelo de los parques y jardines, y es muy suave para pisar descalzo.",
+      "Es de color verde y su nombre empieza con la letra P.",
+      "A las vacas y los caballos les encanta comerlo."
+    ]
+  },
+  {
+    "id": "arbol",
+    "imagen_archivo": "Imagen_Arbol.png",
+    "respuestas": [
+      "árbol",
+      "arbol",
+      "arbolito"
+    ],
+    "pistas": [
+      "Tiene un tronco de madera y muchísimas hojas.",
+      "Es de color verde y su nombre empieza con la letra A.",
+      "Nos da sombra en verano y a veces también frutas."
+    ]
+  },
+  {
+    "id": "hoja",
+    "imagen_archivo": "Imagen_Hoja.png",
+    "respuestas": [
+      "hoja",
+      "hojita"
+    ],
+    "pistas": [
+      "Crece en las ramas de los árboles.",
+      "Es de color verde y su nombre empieza con la letra H.",
+      "En otoño se caen al piso."
+    ]
+  },
+  {
+    "id": "rana",
+    "imagen_archivo": "Imagen_Rana-Sapo.png",
+    "respuestas": [
+      "rana",
+      "sapo",
+      "ranita",
+      "sapito"
+    ],
+    "pistas": [
+      "Atrapa moscas con su lengua.",
+      "Es de color verde y su nombre empieza con la letra R.",
+      "Vive cerca del agua, salta mucho y hace 'croac croac'."
+    ]
+  },
+  {
+    "id": "tortuga",
+    "imagen_archivo": "Imagen_Tortuga.png",
+    "respuestas": [
+      "tortuga",
+      "tortuguita"
+    ],
+    "pistas": [
+      "Lleva su casa en la espalda (se llama caparazón).",
+      "Es de color verde y su nombre empieza con la letra T.",
+      "Camina muy, pero muy despacito."
+    ]
+  },
+  {
+    "id": "sol",
+    "imagen_archivo": "Imagen_Sol.png",
+    "respuestas": [
+      "sol"
+    ],
+    "pistas": [
+      "Es un círculo gigante en el cielo que nos da mucho calor.",
+      "Es de color amarillo y su nombre empieza con la letra S.",
+      "Aparece de día para iluminar todo."
+    ]
+  },
+  {
+    "id": "banana",
+    "imagen_archivo": "Imagen_Banana.png",
+    "respuestas": [
+      "banana"
+    ],
+    "pistas": [
+      "Es la fruta favorita de los monos.",
+      "Es de color amarillo y su nombre empieza con la letra B.",
+      "Es alargada y muy dulce."
+    ]
+  },
+  {
+    "id": "pollito",
+    "imagen_archivo": "Imagen_Pollito.png",
+    "respuestas": [
+      "pollito"
+    ],
+    "pistas": [
+      "Es un ave bebé muy chiquita que hace 'pío pío'.",
+      "Es de color amarillo y su nombre empieza con la letra P.",
+      "Nace de un huevo y su mamá es la gallina."
+    ]
+  },
+  {
+    "id": "estrella",
+    "imagen_archivo": "Imagen_Estrella.png",
+    "respuestas": [
+      "estrella",
+      "estrellita"
+    ],
+    "pistas": [
+      "Hay muchísimas brillando en el cielo nocturno.",
+      "Es de color amarillo y su nombre empieza con la letra E.",
+      "Suelen dibujarse con cinco puntas."
+    ]
+  },
+  {
+    "id": "naranja",
+    "imagen_archivo": "Imagen_Naranja.png",
+    "respuestas": [
+      "naranja"
+    ],
+    "pistas": [
+      "Es una fruta redonda, muy jugosa y llena de vitamina C.",
+      "Es de color naranja y su nombre empieza con la letra N.",
+      "Con ella preparamos un jugo riquísimo para el desayuno."
+    ]
+  },
+  {
+    "id": "zanahoria",
+    "imagen_archivo": "Imagen_Zanahoria.png",
+    "respuestas": [
+      "zanahoria"
+    ],
+    "pistas": [
+      "A los conejos les fascina comerla.",
+      "Es de color naranja y su nombre empieza con la letra Z.",
+      "Es una verdura alargada y crujiente."
+    ]
+  },
+  {
+    "id": "calabaza",
+    "imagen_archivo": "Imagen_Calabaza.png",
+    "respuestas": [
+      "calabaza",
+      "zapallo"
+    ],
+    "pistas": [
+      "Es una verdura grande y redonda que se usa para hacer sopa o puré.",
+      "Es de color naranja y su nombre empieza con la letra C.",
+      "En Halloween le tallan caras asustadizas."
+    ]
+  },
+  {
+    "id": "flor",
+    "imagen_archivo": "Imagen_Flor.png",
+    "respuestas": [
+      "flor",
+      "florcita"
+    ],
+    "pistas": [
+      "Crece en la tierra del jardín o en macetas y tiene un aroma muy lindo.",
+      "Puede ser de varios colores y su nombre empieza con la letra F.",
+      "Tiene pétalos preciosos que atraen a las mariposas."
+    ]
+  },
+  {
+    "id": "flamenco",
+    "imagen_archivo": "Imagen_Flamenco.png",
+    "respuestas": [
+      "flamenco"
+    ],
+    "pistas": [
+      "Es un ave que tiene las patas muy largas y finitas.",
+      "Es de color rosa y su nombre empieza con la letra F.",
+      "Suele pararse sobre una sola pata en el agua."
+    ]
+  },
+  {
+    "id": "algodon_azucar",
+    "imagen_archivo": "Imagen_AlgodonAzucar.png",
+    "respuestas": [
+      "algodón de azúcar",
+      "copo de azúcar",
+      "pelo de vieja"
+    ],
+    "pistas": [
+      "Es una golosina muy dulce y esponjosa que se vende en los parques de diversiones.",
+      "Es de color rosa y su nombre empieza con la letra A.",
+      "Parece una nube gigante en un palito, pero se deshace en la boca."
+    ]
+  },
+  {
+    "id": "chancho",
+    "imagen_archivo": "Imagen_Chancho.png",
+    "respuestas": [
+      "chancho",
+      "cerdo",
+      "cerdito",
+      "chanchito"
+    ],
+    "pistas": [
+      "Tiene una colita enrulada y una nariz redonda.",
+      "Es de color rosa y su nombre empieza con la letra C.",
+      "Hace 'oink oink'."
+    ]
+  },
+  {
+    "id": "nube",
+    "imagen_archivo": "Imagen_Nube.png",
+    "respuestas": [
+      "nube",
+      "nubecita"
+    ],
+    "pistas": [
+      "Flotan en el cielo y parecen de algodón esponjoso.",
+      "Es de color blanco y su nombre empieza con la letra N.",
+      "Cuando se ponen de color gris, significa que va a llover."
+    ]
+  },
+  {
+    "id": "nieve",
+    "imagen_archivo": "Imagen_CopoNieve.png",
+    "respuestas": [
+      "nieve",
+      "copo de nieve"
+    ],
+    "pistas": [
+      "Cae del cielo en invierno y hace mucho frío.",
+      "Es de color blanco y su nombre empieza con la letra N.",
+      "Con ella podemos armar muñecos."
+    ]
+  },
+  {
+    "id": "leche",
+    "imagen_archivo": "Imagen_Leche.png",
+    "respuestas": [
+      "leche"
+    ],
+    "pistas": [
+      "Es una bebida muy saludable que nos da mucho calcio para los huesos.",
+      "Es de color blanco y su nombre empieza con la letra L.",
+      "Nos la dan las vacas y la tomamos en el desayuno."
+    ]
+  },
+  {
+    "id": "noche",
+    "imagen_archivo": "Imagen_Noche.png",
+    "respuestas": [
+      "noche"
+    ],
+    "pistas": [
+      "Es el momento del día en que nos vamos a dormir.",
+      "Es de color negro y su nombre empieza con la letra N.",
+      "Aparece la luna y las estrellas."
+    ]
+  },
+  {
+    "id": "gato",
+    "imagen_archivo": "Imagen_Gato.png",
+    "respuestas": [
+      "gato",
+      "gatito"
+    ],
+    "pistas": [
+      "Le encanta atrapar ratones.",
+      "Puede ser de color negro, blanco o naranja y su nombre empieza con la letra G.",
+      "Hace 'miau'."
+    ]
+  },
+  {
+    "id": "chocolate",
+    "imagen_archivo": "Imagen_Chocolate.png",
+    "respuestas": [
+      "chocolate",
+      "barra de chocolate",
+      "tableta de chocolate"
+    ],
+    "pistas": [
+      "Es un alimento muy dulce que se come en forma de barra o tableta.",
+      "Es de color marrón y su nombre empieza con la letra C.",
+      "Puede ser negro, blanco o con leche."
+    ]
+  },
+  {
+    "id": "oso",
+    "imagen_archivo": "Imagen_Oso.png",
+    "respuestas": [
+      "oso",
+      "osito"
+    ],
+    "pistas": [
+      "Es grande, peludo y le encanta comer miel.",
+      "Es de color marrón y su nombre empieza con la letra O.",
+      "Duerme un montón durante todo el invierno."
+    ]
+  },
+  {
+    "id": "uva",
+    "imagen_archivo": "Imagen_Uva.png",
+    "respuestas": [
+      "uva",
+      "uvas",
+      "racimo de uvas"
+    ],
+    "pistas": [
+      "Crecen todas juntas formando un racimo.",
+      "Es de color violeta y su nombre empieza con la letra U.",
+      "Se pueden comer frescas o hacer jugo."
+    ]
+  },
+  {
+    "id": "perro",
+    "imagen_archivo": "Imagen_Perro.png",
+    "respuestas": [
+      "perro",
+      "perrito",
+      "cachorro"
+    ],
+    "pistas": [
+      "Tiene cuatro patas y mueve la cola cuando está feliz.",
+      "Puede ser de color negro, blanco o marrón y su nombre empieza con la letra P.",
+      "Hace 'guau guau'."
+    ]
+  },
+  {
+    "id": "pez",
+    "imagen_archivo": "Imagen_Pez.png",
+    "respuestas": [
+      "pez",
+      "pescado",
+      "pecesito",
+      "pescadito"
+    ],
+    "pistas": [
+      "Vive en el agua.",
+      "Su nombre empieza con la letra P.",
+      "Nada moviendo sus aletas."
+    ]
+  },
+  {
+    "id": "pajaro",
+    "imagen_archivo": "Imagen_Pajaro.png",
+    "respuestas": [
+      "pájaro",
+      "pajarito",
+      "ave"
+    ],
+    "pistas": [
+      "Tiene alas, plumas y un pico.",
+      "Su nombre empieza con la letra P.",
+      "Vuela por el cielo y canta por las mañanas."
+    ]
+  },
+  {
+    "id": "mariposa",
+    "imagen_archivo": "Imagen_Mariposa.png",
+    "respuestas": [
+      "mariposa"
+    ],
+    "pistas": [
+      "Antes de volar, era una pequeña oruga.",
+      "Su nombre empieza con la letra M.",
+      "Tiene alas de muchos colores hermosos."
+    ]
+  },
+  {
+    "id": "caballo",
+    "imagen_archivo": "Imagen_Caballo.png",
+    "respuestas": [
+      "caballo",
+      "caballito",
+      "potrillo"
+    ],
+    "pistas": [
+      "Puedes subirte a su lomo para dar un paseo.",
+      "Su nombre empieza con la letra C.",
+      "Relincha y corre muy rápido."
+    ]
+  },
+  {
+    "id": "vaca",
+    "imagen_archivo": "Imagen_Vaca.png",
+    "respuestas": [
+      "vaca",
+      "vaquita"
+    ],
+    "pistas": [
+      "Come pasto y nos da leche para tomar.",
+      "Su nombre empieza con la letra V.",
+      "Hace 'muuu'."
+    ]
+  },
+  {
+    "id": "oveja",
+    "imagen_archivo": "Imagen_Oveja.png",
+    "respuestas": [
+      "oveja",
+      "ovejita"
+    ],
+    "pistas": [
+      "Su cuerpo está cubierto de lana muy suavecita.",
+      "Es de color blanco y su nombre empieza con la letra O.",
+      "Hace 'beee'."
+    ]
+  },
+  {
+    "id": "pato",
+    "imagen_archivo": "Imagen_Pato.png",
+    "respuestas": [
+      "pato",
+      "patito"
+    ],
+    "pistas": [
+      "Le encanta nadar en la laguna.",
+      "Su nombre empieza con la letra P.",
+      "Hace 'cuac cuac'."
+    ]
+  },
+  {
+    "id": "leon",
+    "imagen_archivo": "Imagen_Leon.png",
+    "respuestas": [
+      "león",
+      "leon",
+      "leoncito"
+    ],
+    "pistas": [
+      "Es conocido como el rey de la selva.",
+      "Su nombre empieza con la letra L.",
+      "Tiene una gran melena y ruge muy fuerte."
+    ]
+  },
+  {
+    "id": "elefante",
+    "imagen_archivo": "Imagen_Elefante.png",
+    "respuestas": [
+      "elefante",
+      "elefantito"
+    ],
+    "pistas": [
+      "Es un animal enorme y pesado.",
+      "Es de color gris y su nombre empieza con la letra E.",
+      "Tiene orejas gigantes y una larga trompa."
+    ]
+  },
+  {
+    "id": "jirafa",
+    "imagen_archivo": "Imagen_Jirafa.png",
+    "respuestas": [
+      "jirafa"
+    ],
+    "pistas": [
+      "Su cuello es súper largo para alcanzar las hojas de los árboles.",
+      "Su nombre empieza con la letra J.",
+      "Tiene manchitas en el cuerpo y es muy alta."
+    ]
+  },
+  {
+    "id": "mono",
+    "imagen_archivo": "Imagen_Mono.png",
+    "respuestas": [
+      "mono",
+      "monito"
+    ],
+    "pistas": [
+      "Le encanta colgarse y trepar por los árboles.",
+      "Es de color marrón y su nombre empieza con la letra M.",
+      "Hace sonidos muy graciosos y salta de rama en rama."
+    ]
+  },
+  {
+    "id": "conejo",
+    "imagen_archivo": "Imagen_Conejo.png",
+    "respuestas": [
+      "conejo",
+      "conejito"
+    ],
+    "pistas": [
+      "Tiene orejas largas y da muchos saltos.",
+      "Puede ser de color blanco o negro y su nombre empieza con la letra C.",
+      "Su comida favorita es la zanahoria."
+    ]
+  },
+  {
+    "id": "serpiente",
+    "imagen_archivo": "Imagen_Serpiente-Vibora.png",
+    "respuestas": [
+      "serpiente",
+      "víbora",
+      "vibora"
+    ],
+    "pistas": [
+      "No tiene patas, así que se arrastra por el suelo.",
+      "Su nombre empieza con la letra S.",
+      "Hace un sonido de siseo: 'ssss'."
+    ]
+  },
+  {
+    "id": "delfin",
+    "imagen_archivo": "Imagen_Delfin.png",
+    "respuestas": [
+      "delfín",
+      "delfin"
+    ],
+    "pistas": [
+      "Es muy inteligente y le gusta saltar sobre las olas.",
+      "Es de color gris y su nombre empieza con la letra D.",
+      "Es un animal marino muy amigable."
+    ]
+  },
+  {
+    "id": "helado",
+    "imagen_archivo": "Imagen_Helado.png",
+    "respuestas": [
+      "helado",
+      "cucurucho"
+    ],
+    "pistas": [
+      "Se come mucho en verano porque es muy frío y dulce.",
+      "Su nombre empieza con la letra H.",
+      "Suele venir en un cucurucho."
+    ]
+  },
+  {
+    "id": "hamburguesa",
+    "imagen_archivo": "Imagen_Hamburguesa.png",
+    "respuestas": [
+      "hamburguesa"
+    ],
+    "pistas": [
+      "Es redonda y lleva carne adentro de dos panes.",
+      "Su nombre empieza con la letra H.",
+      "Es muy común comerla con papas fritas."
+    ]
+  },
+  {
+    "id": "torta",
+    "imagen_archivo": "Imagen_Torta.png",
+    "respuestas": [
+      "torta",
+      "pastel"
+    ],
+    "pistas": [
+      "Es dulce, grande y se comparte en las fiestas.",
+      "Su nombre empieza con la letra T.",
+      "Le ponemos velitas para pedir un deseo de cumpleaños."
+    ]
+  },
+  {
+    "id": "caramelo",
+    "imagen_archivo": "Imagen_Caramelo.png",
+    "respuestas": [
+      "caramelo",
+      "caramelito",
+      "dulce",
+      "golosina"
+    ],
+    "pistas": [
+      "Es un dulce chiquito que viene envuelto en un papelito de colores.",
+      "Su nombre empieza con la letra C.",
+      "Puede ser de diferentes colores y sabores."
+    ]
+  },
+  {
+    "id": "auto",
+    "imagen_archivo": "Imagen_Auto.png",
+    "respuestas": [
+      "auto",
+      "coche",
+      "automóvil",
+      "autito"
+    ],
+    "pistas": [
+      "Tiene cuatro ruedas y un volante.",
+      "Su nombre empieza con la letra A.",
+      "Nos sirve para viajar por la calle o la ruta."
+    ]
+  },
+  {
+    "id": "avion",
+    "imagen_archivo": "Imagen_Avion.png",
+    "respuestas": [
+      "avión",
+      "avion",
+      "avioncito"
+    ],
+    "pistas": [
+      "Vuela muy alto por el cielo entre las nubes.",
+      "Su nombre empieza con la letra A.",
+      "Tiene alas enormes y nos lleva a otros países."
+    ]
+  },
+  {
+    "id": "tren",
+    "imagen_archivo": "Imagen_Tren.png",
+    "respuestas": [
+      "tren",
+      "locomotora",
+      "trencito"
+    ],
+    "pistas": [
+      "Viaja por unas vías largas de hierro.",
+      "Su nombre empieza con la letra T.",
+      "Hace 'chu chu' y arrastra muchos vagones."
+    ]
+  },
+  {
+    "id": "barco",
+    "imagen_archivo": "Imagen_Barco.png",
+    "respuestas": [
+      "barco",
+      "velero",
+      "bote",
+      "barquito"
+    ],
+    "pistas": [
+      "Sirve para viajar por el agua.",
+      "Su nombre empieza con la letra B.",
+      "Puede moverse con velas, remos o un motor."
+    ]
+  },
+  {
+    "id": "bicicleta",
+    "imagen_archivo": "Imagen_Bicicleta.png",
+    "respuestas": [
+      "bicicleta",
+      "bici"
+    ],
+    "pistas": [
+      "Tiene dos ruedas y un manubrio.",
+      "Su nombre empieza con la letra B.",
+      "Para avanzar hay que mover los pedales con los pies."
+    ]
+  },
+  {
+    "id": "helicoptero",
+    "imagen_archivo": "Imagen_Helicoptero.png",
+    "respuestas": [
+      "helicóptero",
+      "helicoptero"
+    ],
+    "pistas": [
+      "Vuela por el aire",
+      "Su nombre empieza con la letra H.",
+      "Tiene una gran hélice que gira rapidísimo en el techo."
+    ]
+  },
+  {
+    "id": "cohete",
+    "imagen_archivo": "Imagen_Cohete.png",
+    "respuestas": [
+      "cohete",
+      "nave espacial",
+      "nave"
+    ],
+    "pistas": [
+      "Viaja rapidísimo hacia el cielo.",
+      "Su nombre empieza con la letra C.",
+      "Lo usan los astronautas para viajar al espacio."
+    ]
+  },
+  {
+    "id": "luna",
+    "imagen_archivo": "Imagen_Luna.png",
+    "respuestas": [
+      "luna"
+    ],
+    "pistas": [
+      "Aparece en el cielo cuando se hace de noche.",
+      "Su nombre empieza con la letra L.",
+      "A veces es redonda y a veces tiene forma de medialuna."
+    ]
+  },
+  {
+    "id": "casa",
+    "imagen_archivo": "Imagen_Casa.png",
+    "respuestas": [
+      "casa",
+      "casita"
+    ],
+    "pistas": [
+      "Tiene una puerta, ventanas y un techo en punta.",
+      "Su nombre empieza con la letra C.",
+      "Es el lugar calentito donde vivimos con nuestra familia."
+    ]
+  },
+  {
+    "id": "llave",
+    "imagen_archivo": "Imagen_Llave.png",
+    "respuestas": [
+      "llave"
+    ],
+    "pistas": [
+      "Es un objeto de metal pequeño.",
+      "Su nombre empieza con la letra L.",
+      "Se mete en la cerradura y se gira para abrir una puerta."
+    ]
+  },
+  {
+    "id": "lapiz",
+    "imagen_archivo": "Imagen_Lapiz.png",
+    "respuestas": [
+      "lápiz",
+      "lapiz",
+      "lapicito"
+    ],
+    "pistas": [
+      "Tiene una punta de grafito y a veces una goma atrás.",
+      "Su nombre empieza con la letra L.",
+      "Sirve para escribir letras o dibujar en tu cuaderno."
+    ]
+  },
+  {
+    "id": "taza",
+    "imagen_archivo": "Imagen_Taza.png",
+    "respuestas": [
+      "taza",
+      "tacita",
+      "tazón"
+    ],
+    "pistas": [
+      "Tiene una manijita al costado para poder agarrarla.",
+      "Su nombre empieza con la letra T.",
+      "La usas en el desayuno para tomar la leche o el té."
+    ]
+  },
+  {
+    "id": "silla",
+    "imagen_archivo": "Imagen_Silla.png",
+    "respuestas": [
+      "silla",
+      "sillita"
+    ],
+    "pistas": [
+      "Tiene cuatro patas y una parte alta para apoyar la espalda.",
+      "Su nombre empieza con la letra S.",
+      "Nos sentamos arriba cuando vamos a comer."
+    ]
+  },
+  {
+    "id": "sombrero",
+    "imagen_archivo": "Imagen_Sombrero.png",
+    "respuestas": [
+      "sombrero",
+      "gorro"
+    ],
+    "pistas": [
+      "Es una prenda de vestir que se pone en la cabeza.",
+      "Su nombre empieza con la letra S.",
+      "Se usa para protegerse del sol, y a veces también para disfrazarse."
+    ]
+  },
+  {
+    "id": "castillo",
+    "imagen_archivo": "Imagen_Castillo.png",
+    "respuestas": [
+      "castillo",
+      "palacio"
+    ],
+    "pistas": [
+      "Es una construcción gigante y muy fuerte, hecha con bloques de piedra y torres altas.",
+      "Su nombre empieza con la letra C.",
+      "Es el lugar mágico donde viven los reyes, las reinas y los caballeros con armadura."
+    ]
+  },
+  {
+    "id": "regalo",
+    "imagen_archivo": "Imagen_Regalo.png",
+    "respuestas": [
+      "regalo",
+      "regalito",
+      "obsequio",
+      "sorpresa"
+    ],
+    "pistas": [
+      "Es una caja sorpresa envuelta con un papel muy lindo y atada con un moño hermoso.",
+      "Su nombre empieza con la letra R.",
+      "Nos lo entregan con mucha alegría en los cumpleaños o en Navidad."
+    ]
+  }
+]

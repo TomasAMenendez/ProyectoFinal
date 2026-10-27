@@ -16,12 +16,15 @@ import com.example.aplicacionparacelular.network.RobotConnectionManager
 import com.example.aplicacionparacelular.ui.SystemBarInsets
 import com.google.android.material.snackbar.Snackbar
 
+import org.json.JSONObject
+
 class DashboardFragment : Fragment() {
     private var _binding: FragmentDashboardBinding? = null
     private val binding get() = _binding!!
     private lateinit var viewModel: DashboardViewModel
     private var connected = false
     private var latestStatus: HomeStatusView = HomeStatus.from(false, false, false, false)
+    private var latestRobotStatus: JSONObject? = null
 
     override fun onCreateView(
         inflater: LayoutInflater,
@@ -49,8 +52,10 @@ class DashboardFragment : Fragment() {
             connected = isConnected == true
             renderStatus()
             renderPlayback()
+            renderPlaytime()
         }
         RobotConnectionManager.robotStatus.observe(viewLifecycleOwner) { status ->
+            latestRobotStatus = status
             if (status != null && connected) {
                 latestStatus = HomeStatus.from(
                     connected = true,
@@ -65,6 +70,7 @@ class DashboardFragment : Fragment() {
                 latestStatus = HomeStatus.from(false, false, false, false)
             }
             renderStatus()
+            renderPlaytime()
         }
         RobotConnectionManager.parentAlerts.observe(viewLifecycleOwner) { notices ->
             renderNotice(notices.firstOrNull())
@@ -131,6 +137,15 @@ class DashboardFragment : Fragment() {
     private fun renderStatus() {
         val status = if (connected) latestStatus else HomeStatus.from(false, false, false, false)
         HomeScreenRenderer.status(binding, status, viewModel.busy.value == true)
+    }
+
+    private fun renderPlaytime() {
+        if (_binding == null) return
+        HomeScreenRenderer.playtime(
+            binding,
+            PlaytimeReading.from(connected, latestRobotStatus),
+            getString(R.string.home_absent),
+        )
     }
 
     private fun renderPlayback() {

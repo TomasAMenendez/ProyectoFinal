@@ -91,6 +91,47 @@ class TestRobotStatePower(unittest.TestCase):
             self.assertAlmostEqual(rs2.brightness, 0.35)
             self.assertEqual(rs2.to_dict()["volume_limit"], 40)
 
+    def test_voz_se_persiste_y_volumen_no_la_borra(self) -> None:
+        with tempfile.TemporaryDirectory() as tmp:
+            path = Path(tmp) / "parental_prefs.json"
+            rs = RobotState(prefs_path=path)
+            self.assertEqual(rs.tts_voice, "topa")
+            rs.update_config({"tts_voice": "micaela"})
+            saved = json.loads(path.read_text(encoding="utf-8"))
+            self.assertEqual(saved["tts_voice"], "micaela")
+            rs.update_config({"volume_limit": 30})
+            rs2 = RobotState(prefs_path=path)
+            self.assertEqual(rs2.tts_voice, "micaela")
+            self.assertEqual(rs2.to_dict()["tts_voice"], "micaela")
+            self.assertEqual(rs2.volume_limit, 30)
+
+    def test_voz_invalida_no_pisa_la_anterior(self) -> None:
+        with tempfile.TemporaryDirectory() as tmp:
+            path = Path(tmp) / "parental_prefs.json"
+            rs = RobotState(prefs_path=path)
+            rs.update_config({"tts_voice": "micaela"})
+            with self.assertRaises(ValueError):
+                rs.update_config({"tts_voice": "elena"})
+            self.assertEqual(rs.tts_voice, "micaela")
+            self.assertEqual(json.loads(path.read_text(encoding="utf-8"))["tts_voice"], "micaela")
+
+    def test_solo_local_se_persiste_y_falta_significa_apagado(self) -> None:
+        with tempfile.TemporaryDirectory() as tmp:
+            path = Path(tmp) / "parental_prefs.json"
+            rs = RobotState(prefs_path=path)
+            self.assertFalse(rs.tts_local_only)
+            self.assertFalse(rs.to_dict()["tts_local_only"])
+            rs.update_config({"tts_local_only": True, "tts_voice": "micaela"})
+            saved = json.loads(path.read_text(encoding="utf-8"))
+            self.assertTrue(saved["tts_local_only"])
+            rs.update_config({"volume_limit": 20})
+            rs2 = RobotState(prefs_path=path)
+            self.assertTrue(rs2.tts_local_only)
+            self.assertEqual(rs2.tts_voice, "micaela")
+            with self.assertRaises(ValueError):
+                rs2.update_config({"tts_local_only": "si"})
+            self.assertTrue(rs2.tts_local_only)
+
     def test_volumen_sobrevive_guardar_solo_playtime(self) -> None:
         with tempfile.TemporaryDirectory() as tmp:
             path = Path(tmp) / "parental_prefs.json"

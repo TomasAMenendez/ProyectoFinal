@@ -153,6 +153,144 @@
                     android:layout_marginTop="8dp"
                     android:enabled="false"
                     android:text="@string/settings_apply" />
+
+                <LinearLayout
+                    android:layout_width="match_parent"
+                    android:layout_height="wrap_content"
+                    android:layout_marginTop="16dp"
+                    android:gravity="center_vertical"
+                    android:orientation="horizontal">
+
+                    <TextView
+                        android:layout_width="0dp"
+                        android:layout_height="wrap_content"
+                        android:layout_weight="1"
+                        android:text="@string/settings_playtime"
+                        android:textAppearance="@style/TextAppearance.Teo.Home.Section" />
+
+                    <TextView
+                        android:id="@+id/txt_playtime_confirmed"
+                        android:layout_width="wrap_content"
+                        android:layout_height="wrap_content"
+                        android:text="@string/settings_unknown"
+                        android:textAppearance="@style/TextAppearance.Teo.Home.Section" />
+                </LinearLayout>
+
+                <TextView
+                    android:layout_width="match_parent"
+                    android:layout_height="wrap_content"
+                    android:layout_marginTop="2dp"
+                    android:text="@string/settings_playtime_help"
+                    android:textAppearance="@style/TextAppearance.Teo.Home.Secondary" />
+
+                <com.google.android.material.textfield.TextInputLayout
+                    android:id="@+id/til_playtime"
+                    style="@style/Widget.MaterialComponents.TextInputLayout.OutlinedBox"
+                    android:layout_width="match_parent"
+                    android:layout_height="wrap_content"
+                    android:layout_marginTop="8dp"
+                    android:hint="@string/settings_playtime_hint"
+                    app:boxStrokeColor="@color/teo_primary"
+                    app:hintTextColor="@color/teo_primary"
+                    app:suffixText="@string/settings_playtime_suffix">
+
+                    <com.google.android.material.textfield.TextInputEditText
+                        android:id="@+id/edit_playtime"
+                        android:layout_width="match_parent"
+                        android:layout_height="wrap_content"
+                        android:enabled="false"
+                        android:inputType="number"
+                        android:maxLength="3"
+                        android:minHeight="48dp" />
+                </com.google.android.material.textfield.TextInputLayout>
+
+                <com.google.android.material.button.MaterialButton
+                    android:id="@+id/btn_apply_playtime"
+                    style="@style/Widget.Teo.Home.Button"
+                    android:layout_width="match_parent"
+                    android:layout_height="wrap_content"
+                    android:layout_marginTop="8dp"
+                    android:enabled="false"
+                    android:text="@string/settings_playtime_apply" />
+            </LinearLayout>
+        </com.google.android.material.card.MaterialCardView>
+
+        <com.google.android.material.card.MaterialCardView
+            style="@style/Widget.Teo.Home.Card"
+            android:layout_width="match_parent"
+            android:layout_height="wrap_content"
+            android:layout_marginTop="12dp">
+
+            <LinearLayout
+                android:layout_width="match_parent"
+                android:layout_height="wrap_content"
+                android:orientation="vertical"
+                android:paddingBottom="8dp">
+
+                <TextView
+                    android:layout_width="match_parent"
+                    android:layout_height="wrap_content"
+                    android:text="@string/settings_voice"
+                    android:textAppearance="@style/TextAppearance.Teo.Home.Section" />
+
+                <RadioGroup
+                    android:id="@+id/group_voice"
+                    android:layout_width="match_parent"
+                    android:layout_height="wrap_content"
+                    android:layout_marginTop="4dp">
+
+                    <RadioButton
+                        android:id="@+id/radio_voice_topa"
+                        android:layout_width="match_parent"
+                        android:layout_height="wrap_content"
+                        android:enabled="false"
+                        android:minHeight="48dp"
+                        android:text="@string/settings_voice_topa"
+                        android:textAppearance="@style/TextAppearance.Teo.Home.Body"
+                        android:textColor="@color/teo_text"
+                        app:buttonTint="@color/teo_primary" />
+
+                    <RadioButton
+                        android:id="@+id/radio_voice_micaela"
+                        android:layout_width="match_parent"
+                        android:layout_height="wrap_content"
+                        android:enabled="false"
+                        android:minHeight="48dp"
+                        android:text="@string/settings_voice_micaela"
+                        android:textAppearance="@style/TextAppearance.Teo.Home.Body"
+                        android:textColor="@color/teo_text"
+                        app:buttonTint="@color/teo_primary" />
+                </RadioGroup>
+
+                <LinearLayout
+                    android:layout_width="match_parent"
+                    android:layout_height="wrap_content"
+                    android:layout_marginTop="8dp"
+                    android:gravity="center_vertical"
+                    android:orientation="horizontal">
+
+                    <TextView
+                        android:layout_width="0dp"
+                        android:layout_height="wrap_content"
+                        android:layout_weight="1"
+                        android:text="@string/settings_voice_local"
+                        android:textAppearance="@style/TextAppearance.Teo.Home.Body"
+                        android:textColor="@color/teo_text" />
+
+                    <com.google.android.material.switchmaterial.SwitchMaterial
+                        android:id="@+id/switch_voice_local"
+                        android:layout_width="wrap_content"
+                        android:layout_height="wrap_content"
+                        android:enabled="false"
+                        android:minWidth="48dp"
+                        android:minHeight="48dp" />
+                </LinearLayout>
+
+                <TextView
+                    android:layout_width="match_parent"
+                    android:layout_height="wrap_content"
+                    android:text="@string/settings_voice_local_help"
+                    android:textAppearance="@style/TextAppearance.Teo.Home.Secondary" />
             </LinearLayout>
         </com.google.android.material.card.MaterialCardView>
 

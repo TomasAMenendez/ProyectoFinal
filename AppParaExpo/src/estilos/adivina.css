@@ -1,0 +1,36 @@
+.pistas-adivina {
+  display: flex;
+  flex-direction: column;
+  gap: 0.35rem;
+  background: #fffaf3;
+  border: 4px solid #243047;
+  border-radius: 1.3rem;
+  padding: 0.8rem 1rem;
+  max-height: 34dvh;
+  overflow: auto;
+}
+
+.pistas-adivina p { margin: 0; font-size: clamp(1.05rem, 2vw, 1.35rem); }
+
+.opciones-adivina {
+  flex: 1;
+  min-height: 0;
+  display: grid;
+  grid-template-columns: repeat(5, minmax(0, 1fr));
+  gap: 0.7rem;
+  align-content: center;
+}
+
+.revelacion {
+  width: 8rem;
+  height: 8rem;
+  object-fit: contain;
+  background: white;
+  border-radius: 1rem;
+  border: 3px solid #243047;
+}
+
+@media (orientation: portrait) {
+  .opciones-adivina { grid-template-columns: 1fr 1fr; }
+  .opciones-adivina .boton-grande:last-child { grid-column: 1 / -1; }
+}

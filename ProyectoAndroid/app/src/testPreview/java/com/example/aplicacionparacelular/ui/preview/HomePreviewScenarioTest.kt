@@ -21,6 +21,8 @@ class HomePreviewScenarioTest {
         assertTrue(status.actionEnabled)
         assertEquals("12", HomePreviewScenario.INTERACTIONS)
         assertEquals("Tranquilo", HomePreviewScenario.SIGNAL)
+        assertEquals("30:00", HomePreviewScenario.playtime.label)
+        assertEquals(0.5f, HomePreviewScenario.playtime.fraction)
         assertEquals(NowPlaying.IDLE, HomePreviewScenario.playback.title)
         assertEquals("Reproducir música", HomePreviewScenario.playback.actionLabel)
         assertTrue(HomePreviewScenario.playback.playEnabled)

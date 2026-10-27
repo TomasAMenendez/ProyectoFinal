@@ -1,4 +1,4 @@
 # Piper (offline) + Elena Neural (edge-tts). Instalar DESPUÉS de requirements.txt.
 piper-tts
-edge-tts
+edge-tts>=7.3.1
 soundfile>=0.12.1

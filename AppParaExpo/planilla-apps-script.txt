@@ -1,0 +1,92 @@
+const SPREADSHEET_ID = '19LpP1U-qxINjrLft8MJmg2LfZ9jf87pKZaixdif-LWI';
+const SHEET_NAME = 'Hoja 1';
+
+const HEADERS = [
+  'Nombre',
+  'Juego',
+  'Resultado',
+  'Fecha y hora'
+];
+
+function doPost(event) {
+  try {
+    if (!event || !event.postData || !event.postData.contents) {
+      return jsonResponse({
+        ok: false,
+        error: 'No se recibió información.'
+      });
+    }
+
+    const data = JSON.parse(event.postData.contents);
+    const sheet = getSheet_();
+
+    ensureHeaders_(sheet);
+
+    const lock = LockService.getScriptLock();
+    lock.waitLock(10000);
+
+    try {
+      sheet.appendRow([
+        clean_(data.Nombre),
+        clean_(data.Juego),
+        clean_(data.Resultado),
+        new Date()
+      ]);
+    } finally {
+      lock.releaseLock();
+    }
+
+    return jsonResponse({ ok: true });
+  } catch (error) {
+    console.error(error);
+
+    return jsonResponse({
+      ok: false,
+      error: String(error)
+    });
+  }
+}
+
+function doGet() {
+  return jsonResponse({
+    ok: true,
+    service: 'TEO Google Sheets'
+  });
+}
+
+function getSheet_() {
+  const spreadsheet = SpreadsheetApp.openById(SPREADSHEET_ID);
+
+  return spreadsheet.getSheetByName(SHEET_NAME)
+    || spreadsheet.insertSheet(SHEET_NAME);
+}
+
+function ensureHeaders_(sheet) {
+  const current = sheet
+    .getRange(1, 1, 1, HEADERS.length)
+    .getValues()[0];
+
+  const headersAreDifferent = HEADERS.some(
+    (header, index) => current[index] !== header
+  );
+
+  if (headersAreDifferent) {
+    sheet
+      .getRange(1, 1, 1, HEADERS.length)
+      .setValues([HEADERS]);
+  }
+}
+
+function clean_(value) {
+  if (value === undefined || value === null) {
+    return '';
+  }
+
+  return String(value).trim();
+}
+
+function jsonResponse(payload) {
+  return ContentService
+    .createTextOutput(JSON.stringify(payload))
+    .setMimeType(ContentService.MimeType.JSON);
+}

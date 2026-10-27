@@ -7,6 +7,8 @@ import com.example.aplicacionparacelular.ui.dashboard.HomeStatusView
 import com.example.aplicacionparacelular.ui.dashboard.NowPlaying
 import com.example.aplicacionparacelular.ui.dashboard.PlaybackSnapshot
 import com.example.aplicacionparacelular.ui.dashboard.PlaybackView
+import com.example.aplicacionparacelular.ui.dashboard.PlaytimeKind
+import com.example.aplicacionparacelular.ui.dashboard.PlaytimeView
 
 enum class HomePreviewState(val labelRes: Int) {
     AWAKE(R.string.preview_state_awake),
@@ -24,6 +26,7 @@ data class HomePreviewSnapshot(
     val interactions: String?,
     val signal: String?,
     val notice: ParentNotice?,
+    val playtime: PlaytimeView,
 )
 
 object HomePreviewStates {
@@ -46,6 +49,11 @@ object HomePreviewStates {
             interactions = HomePreviewScenario.INTERACTIONS.takeIf { hasData },
             signal = HomePreviewScenario.SIGNAL.takeIf { hasData },
             notice = HomePreviewScenario.notice.takeIf { hasData },
+            playtime = if (hasData) {
+                HomePreviewScenario.playtime
+            } else {
+                PlaytimeView(PlaytimeKind.ABSENT)
+            },
         )
     }
 }

@@ -1,0 +1,76 @@
+.entrada-espejito {
+  flex: 1;
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  justify-content: center;
+  gap: 1rem;
+  text-align: center;
+}
+.entrada-espejito p { margin: 0; font-size: clamp(1.3rem, 2.6vw, 2rem); font-weight: 800; }
+.escenario-espejito {
+  flex: 1;
+  min-height: 0;
+  display: grid;
+  grid-template-columns: minmax(0, 0.9fr) minmax(0, 1.1fr);
+  gap: 0.8rem;
+}
+.referencia-espejito {
+  min-height: 0;
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  justify-content: center;
+  gap: 0.4rem;
+  text-align: center;
+}
+.referencia-espejito img {
+  width: min(100%, 22rem);
+  max-height: min(46vh, 20rem);
+  object-fit: contain;
+}
+.nombre-emocion { margin: 0; font-size: clamp(1.6rem, 3vw, 2.4rem); font-weight: 800; }
+.instruccion-espejito, .logro-espejito { margin: 0; font-size: clamp(1.2rem, 2.2vw, 1.7rem); font-weight: 800; }
+.logro-espejito { color: #1c7c45; }
+.camara-espejito {
+  min-height: 0;
+  overflow: hidden;
+  border: 4px solid #243047;
+  border-radius: 1.4rem;
+  background: #243047;
+}
+.camara-espejito video {
+  width: 100%;
+  height: 100%;
+  object-fit: cover;
+  transform: scaleX(-1);
+}
+.avance-espejito {
+  height: 1.1rem;
+  border: 3px solid #243047;
+  border-radius: 999px;
+  overflow: hidden;
+  background: #fffaf3;
+}
+.avance-espejito span {
+  display: block;
+  height: 100%;
+  background: #7ddea8;
+}
+.acciones-espejito {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 0.6rem;
+  justify-content: center;
+}
+.falla-espejito {
+  background: #fff4cc;
+  border: 3px solid #243047;
+  border-radius: 1rem;
+  padding: 0.8rem 1rem;
+}
+
+@media (orientation: portrait), (max-width: 800px) {
+  .escenario-espejito { grid-template-columns: 1fr; grid-template-rows: auto minmax(14rem, 1fr); }
+  .referencia-espejito img { max-height: 24vh; }
+}

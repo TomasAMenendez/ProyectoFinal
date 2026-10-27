@@ -96,6 +96,64 @@ class TestCableadoRpi5(unittest.TestCase):
 
 
 class TestPhysicalCompanion(unittest.TestCase):
+    def test_al_subir_llega_y_corta_el_pulso(self) -> None:
+        events: list[tuple] = []
+        gpio = MagicMock()
+        gpio.pwm_start.side_effect = lambda pin, duty: events.append(("start", pin, duty))
+        gpio.pwm_stop.side_effect = lambda pin: events.append(("stop", pin))
+
+        def sleep(seconds: float) -> None:
+            events.append(("sleep", seconds))
+
+        companion = PhysicalCompanion(
+            HardwarePins(servo_left_pin=12, servo_right_pin=13)
+        )
+        with (
+            unittest.mock.patch("hardware.get_gpio", return_value=gpio),
+            unittest.mock.patch("time.sleep", sleep),
+        ):
+            companion.arms_up()
+
+        self.assertEqual(
+            events,
+            [
+                ("start", 12, 10.0),
+                ("start", 13, 10.0),
+                ("sleep", 0.45),
+                ("stop", 12),
+                ("stop", 13),
+            ],
+        )
+
+    def test_al_bajar_los_brazos_van_a_cero_grados(self) -> None:
+        events: list[tuple] = []
+        gpio = MagicMock()
+        gpio.pwm_set.side_effect = lambda pin, duty: events.append(("set", pin, duty))
+        gpio.pwm_stop.side_effect = lambda pin: events.append(("stop", pin))
+
+        def sleep(seconds: float) -> None:
+            events.append(("sleep", seconds))
+
+        companion = PhysicalCompanion(
+            HardwarePins(servo_left_pin=12, servo_right_pin=13)
+        )
+        with (
+            unittest.mock.patch("hardware.get_gpio", return_value=gpio),
+            unittest.mock.patch("time.sleep", sleep),
+        ):
+            companion.arms_down()
+
+        self.assertEqual(
+            events,
+            [
+                ("set", 12, 5.0),
+                ("set", 13, 5.0),
+                ("sleep", 0.45),
+                ("stop", 12),
+                ("stop", 13),
+            ],
+        )
+
     def test_abrazo_sin_pines_no_revienta_y_avisa_simulado(self) -> None:
         companion = PhysicalCompanion(HardwarePins())
         result = companion.hug()

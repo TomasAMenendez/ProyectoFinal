@@ -13,7 +13,7 @@ piper-tts
 --extra-index-url https://abetlen.github.io/llama-cpp-python/whl/cpu
 llama-cpp-python
 groq
-edge-tts
+edge-tts>=7.3.1
 python-dotenv
 soundfile
 pypdf

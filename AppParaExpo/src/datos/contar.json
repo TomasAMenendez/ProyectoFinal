@@ -1,0 +1,102 @@
+[
+  {
+    "imagen_archivo": "Contar_1-Lapiz.png",
+    "pregunta": "¿Cuántos lápices hay?",
+    "respuestas": [
+      "1",
+      "1 lápiz",
+      "un lápiz",
+      "uno"
+    ]
+  },
+  {
+    "imagen_archivo": "Contar_2-Bananas.png",
+    "pregunta": "¿Cuántas bananas hay?",
+    "respuestas": [
+      "2",
+      "2 bananas",
+      "dos bananas",
+      "dos"
+    ]
+  },
+  {
+    "imagen_archivo": "Contar_3-Gatos.png",
+    "pregunta": "¿Cuántos gatos hay?",
+    "respuestas": [
+      "3",
+      "3 gatos",
+      "tres gatos",
+      "tres"
+    ]
+  },
+  {
+    "imagen_archivo": "Contar_4-Perros.png",
+    "pregunta": "¿Cuántos perros hay?",
+    "respuestas": [
+      "4",
+      "4 perros",
+      "cuatro perros",
+      "cuatro"
+    ]
+  },
+  {
+    "imagen_archivo": "Contar_5-Manzanas.png",
+    "pregunta": "¿Cuántas manzanas hay?",
+    "respuestas": [
+      "5",
+      "5 manzanas",
+      "cinco manzanas",
+      "cinco"
+    ]
+  },
+  {
+    "imagen_archivo": "Contar_6-Globos.png",
+    "pregunta": "¿Cuántos globos hay?",
+    "respuestas": [
+      "6",
+      "6 globos",
+      "seis globos",
+      "seis"
+    ]
+  },
+  {
+    "imagen_archivo": "Contar_7-Caramelos.png",
+    "pregunta": "¿Cuántos caramelos hay?",
+    "respuestas": [
+      "7",
+      "7 caramelos",
+      "siete caramelos",
+      "siete"
+    ]
+  },
+  {
+    "imagen_archivo": "Contar_8-Flores.png",
+    "pregunta": "¿Cuántas flores hay?",
+    "respuestas": [
+      "8",
+      "8 flores",
+      "ocho flores",
+      "ocho"
+    ]
+  },
+  {
+    "imagen_archivo": "Contar_9-Estrellas.png",
+    "pregunta": "¿Cuántas estrellas hay?",
+    "respuestas": [
+      "9",
+      "9 estrellas",
+      "nueve estrellas",
+      "nueve"
+    ]
+  },
+  {
+    "imagen_archivo": "Contar_10-Corazones.png",
+    "pregunta": "¿Cuántos corazones hay?",
+    "respuestas": [
+      "10",
+      "10 corazones",
+      "diez corazones",
+      "diez"
+    ]
+  }
+]

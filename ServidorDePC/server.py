@@ -11,11 +11,12 @@ from discovery import DiscoveryBeacon, beacon_log, beacon_payload
 from handlers import handle_chat, handle_health, handle_speech, handle_transcribe
 from llm_engine import LlmEngine
 from stt_engine import SttEngine
+from tts_cartesia import synthesize_wav as cartesia_synthesize_wav
 from tts_engine import TtsEngine
 
 stt_engine = SttEngine()
 llm_engine = LlmEngine()
-tts_engine = TtsEngine()
+tts_engine = TtsEngine(cartesia_fn=cartesia_synthesize_wav)
 TOKEN = load_or_create_token()
 
 

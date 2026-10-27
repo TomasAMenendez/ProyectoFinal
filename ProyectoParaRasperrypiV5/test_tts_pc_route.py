@@ -27,14 +27,23 @@ class FakePcClient:
         self.wav = wav if wav is not None else _tiny_wav_bytes()
         self.attempt = attempt
         self.texts: list[str] = []
+        self.voices: list[str] = []
+        self.local_only: list[bool] = []
         self.times: list[float] = []
         self.fail_texts: set[str] = set()
 
     def can_attempt_tts(self) -> bool:
         return self.attempt
 
-    def synthesize(self, text: str) -> bytes | None:
+    def synthesize(
+        self,
+        text: str,
+        voice: str = "topa",
+        local_only: bool = False,
+    ) -> bytes | None:
         self.texts.append(text)
+        self.voices.append(voice)
+        self.local_only.append(local_only is True)
         self.times.append(time.monotonic())
         if text in self.fail_texts:
             return None
@@ -72,8 +81,42 @@ class TestSpeakPcTts(unittest.TestCase):
         ):
             worker._speak_queued_text("Hola.")
         self.assertEqual(client.texts, ["Hola."])
+        self.assertEqual(client.voices, ["topa"])
         self.assertEqual(len(plays), 1)
         self.assertEqual(piper_called["n"], 0)
+
+    def test_pc_lee_la_voz_del_estado_en_cada_frase(self) -> None:
+        client = FakePcClient()
+        worker = SpeechWorker(output_device_index=0, pc_client=client)
+        worker._robot_state = type("State", (), {"tts_voice": "micaela"})()
+        with patch.object(worker, "_play_wav_via_output_stream"):
+            worker._speak_queued_text("Hola.")
+        worker._robot_state.tts_voice = "topa"
+        with patch.object(worker, "_play_wav_via_output_stream"):
+            worker._speak_queued_text("Chau.")
+        self.assertEqual(client.voices, ["micaela", "topa"])
+
+    def test_worker_sin_estado_lee_la_voz_guardada_en_la_api(self) -> None:
+        client = FakePcClient()
+        worker = SpeechWorker(output_device_index=0, pc_client=client)
+        if hasattr(worker, "_robot_state"):
+            delattr(worker, "_robot_state")
+        saved = type("State", (), {"tts_voice": "micaela"})()
+        with patch("api_server.robot_state", saved), patch.object(
+            worker, "_play_wav_via_output_stream"
+        ):
+            worker._speak_queued_text("Hola.")
+        self.assertEqual(client.voices, ["micaela"])
+        self.assertEqual(client.local_only, [False])
+
+    def test_pc_envia_solo_local_cuando_el_estado_lo_pide(self) -> None:
+        client = FakePcClient()
+        worker = SpeechWorker(output_device_index=0, pc_client=client)
+        worker._robot_state = type("State", (), {"tts_voice": "micaela", "tts_local_only": True})()
+        with patch.object(worker, "_play_wav_via_output_stream"):
+            worker._speak_queued_text("Hola.")
+        self.assertEqual(client.voices, ["micaela"])
+        self.assertEqual(client.local_only, [True])
 
     def test_pc_none_usa_piper(self) -> None:
         client = FakePcClient()

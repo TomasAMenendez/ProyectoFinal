@@ -7,3 +7,5 @@ voices/*.wav
 third_party/CosyVoice/
 pretrained_models/
 tts_prefer_elena.txt
+.env
+cartesia_api_key.txt

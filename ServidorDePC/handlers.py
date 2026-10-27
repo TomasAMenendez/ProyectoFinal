@@ -186,10 +186,21 @@ def handle_speech(
         return 400, {"error": "input required"}, "application/json"
     if len(text) > int(TTS_MAX_CHARS):
         return 400, {"error": "input too long"}, "application/json"
+    voice = payload.get("voice")
+    local_only = payload.get("local_only") is True
     who = peer or "?"
-    _emit(log_fn, f'[TTS] texto de {who}: "{_clip(text)}"')
+    _emit(
+        log_fn,
+        f'[TTS] texto de {who}: "{_clip(text)}" voice={voice or "topa"} local_only={local_only}',
+    )
     t0 = time.perf_counter()
-    wav = tts.synthesize(text)
+    try:
+        wav = tts.synthesize(text, voice=voice, local_only=local_only)
+    except TypeError:
+        try:
+            wav = tts.synthesize(text, voice=voice)
+        except TypeError:
+            wav = tts.synthesize(text)
     ms = (time.perf_counter() - t0) * 1000.0
     if not isinstance(wav, (bytes, bytearray)) or not wav:
         return 500, {"error": "tts failed"}, "application/json"

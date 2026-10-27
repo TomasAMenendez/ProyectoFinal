@@ -529,8 +529,9 @@ class EyeDisplay:
         name = self._pictogram
         if not name:
             return
+        if name == "abrazo":
+            return
         labels = {
-            "abrazo": "ABRAZO",
             "manos": "MANOS",
             "plato": "COMIDA",
             "luna": "DORMIR",

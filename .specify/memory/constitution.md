@@ -1,6 +1,6 @@
 <!--
 Sync Impact Report
-- Enmienda 2026-10-15: 1.0.0 → 1.1.0. El usuario amplía la identidad del personaje con las nueve parejas PNG y su selección desde Perfil. Se actualizan el principio IV y la regla de recursos de Inicio; se conserva el logo oficial y el estado real.
+- Enmienda 2026-10-16: 1.1.0 → 1.2.0. El tiempo de uso deja de estar aplazado y sigue el diseño del 16 de octubre de 2026. Pulsador y acceso a la agenda sin TEO siguen aplazados.
 - Version change: plantilla sin ratificar → 1.0.0
 - Modified principles:
   - placeholder 1 → I. Conservar el funcionamiento existente
@@ -76,11 +76,11 @@ Rationale: el boceto no define la altura útil del teléfono. Comprimir tarjetas
 
 ### VII. Separar las decisiones de producto pendientes
 
-Tiempo de uso, pulsador y acceso a la agenda sin TEO siguen aplazados. El piloto MUST NOT resolverlos ni cambiar su comportamiento.
+El tiempo de uso sigue `docs/superpowers/specs/2026-10-16-tiempo-juego-inicio-design.md`: Inicio muestra el restante y Mi TEO fija el total de 0 a 240 minutos. Pulsador y acceso a la agenda sin TEO siguen aplazados. El piloto MUST NOT resolver esas dos decisiones ni cambiar su comportamiento.
 
 El modo noche del peluche MUST permanecer independiente del tema visual de la app. Durante este piloto, Inicio MUST permanecer claro aunque el teléfono esté en modo oscuro, y ese cambio MUST NOT retematizar de forma global las pantallas beta.
 
-Rationale: mezclar estas decisiones con el piloto presentaría como cerrado un comportamiento que el equipo todavía no definió.
+Rationale: el tiempo de uso ya tiene el comportamiento del 16 de octubre de 2026. Pulsador y acceso a la agenda sin TEO siguen sin definirse; mezclarlos con el piloto los presentaría como cerrados.
 
 ### VIII. Desarrollar por bloques verificables
 
@@ -139,4 +139,4 @@ El versionado MUST seguir estas reglas:
 
 Cada especificación, plan y revisión MUST comprobar el cumplimiento de estos principios. Una excepción MUST justificarse de forma explícita en el plan. Complejidad nueva, dependencias y pantallas fuera del bloque MUST justificarse antes de incorporarse.
 
-**Version**: 1.1.0 | **Ratified**: 2026-10-14 | **Last Amended**: 2026-10-15
+**Version**: 1.2.0 | **Ratified**: 2026-10-14 | **Last Amended**: 2026-10-16

@@ -1,0 +1,7 @@
+<resources>
+    <style name="Theme.AppParaExpo" parent="Theme.MaterialComponents.DayNight.NoActionBar">
+        <item name="android:statusBarColor">@color/cielo</item>
+        <item name="android:navigationBarColor">@color/cielo</item>
+        <item name="android:windowBackground">@color/cielo</item>
+    </style>
+</resources>

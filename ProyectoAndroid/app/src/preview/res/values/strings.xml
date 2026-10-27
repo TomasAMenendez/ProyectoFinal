@@ -34,8 +34,12 @@
     <string name="preview_my_teo_searching">Buscando</string>
     <string name="preview_my_teo_link_failed">Fallo de búsqueda</string>
     <string name="preview_my_teo_applied">Ejemplo aplicado. No se envió a TEO.</string>
+    <string name="preview_my_teo_playtime_applied">Ejemplo: tiempo guardado. No se envió a TEO.</string>
     <string name="preview_my_teo_night_on">Ejemplo: modo noche activado. No se envió a TEO.</string>
     <string name="preview_my_teo_night_off">Ejemplo: modo noche apagado. No se envió a TEO.</string>
+    <string name="preview_my_teo_voice">Ejemplo: voz elegida. No se envió a TEO.</string>
+    <string name="preview_my_teo_local_voice_on">Ejemplo: voz local activada. No se envió al peluche.</string>
+    <string name="preview_my_teo_local_voice_off">Ejemplo: intenta internet. No se envió al peluche.</string>
     <string name="preview_my_teo_not_live">No hay comunicación vigente en este ejemplo.</string>
     <string name="preview_my_teo_saved_address">Dirección guardada de ejemplo: 192.0.2.20</string>
     <string name="preview_my_teo_profile">Perfil guardado en el ejemplo: Jardin de ejemplo</string>
