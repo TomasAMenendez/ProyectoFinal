@@ -95,6 +95,7 @@ class RobotState:
         self.routine_scheduler: Any = None
         self.speech_worker: Any = None
         self.audio_worker: Any = None
+        self.eye_display: Any = None
 
     def to_dict(self) -> dict[str, Any]:
         playing = None
@@ -678,6 +679,8 @@ class ApiRequestHandler(BaseHTTPRequestHandler):
 
         if path == "/api/routines":
             self._handle_post_routines()
+        elif path == "/api/routines/play":
+            self._handle_post_routine_play()
         elif path == "/api/config":
             self._handle_post_config()
         elif path == "/api/celebrate":
@@ -728,6 +731,34 @@ class ApiRequestHandler(BaseHTTPRequestHandler):
             scheduler.reload_config()
 
         self._send_json({"status": "ok", "message": "Rutinas actualizadas"})
+
+    def _handle_post_routine_play(self) -> None:
+        body = self._parse_json_body()
+        if body is None or not isinstance(body, dict):
+            self._send_error_json(400, "JSON inválido")
+            return
+        routine_id = str(body.get("id") or "").strip()
+        if not routine_id:
+            self._send_error_json(400, "Falta el id de la rutina")
+            return
+        scheduler = robot_state.routine_scheduler
+        speech = robot_state.speech_worker
+        if scheduler is None or speech is None:
+            self._send_error_json(503, "TEO no está listo para hablar")
+            return
+        cue = scheduler.cue_now(routine_id)
+        if cue is None:
+            self._send_error_json(404, "No está esa rutina")
+            return
+        from routines import speak_routine_cues
+
+        speak_routine_cues(
+            speech,
+            robot_state.eye_display,
+            [cue],
+            allow_when_asleep=True,
+        )
+        self._send_json({"status": "ok", "message": cue.message})
 
     def _handle_post_config(self) -> None:
         body = self._parse_json_body()

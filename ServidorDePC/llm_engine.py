@@ -14,12 +14,26 @@ from config import (
 )
 
 
+def _expose_cuda_runtime() -> None:
+    """llama.dll necesita cublas y cudart de CUDA 12. PyTorch ya los trae."""
+    import os
+    import sys
+
+    lib = Path(sys.prefix) / "Lib" / "site-packages" / "torch" / "lib"
+    if not lib.is_dir():
+        return
+    os.environ["PATH"] = str(lib) + os.pathsep + os.environ.get("PATH", "")
+    if hasattr(os, "add_dll_directory"):
+        os.add_dll_directory(str(lib))
+
+
 class LlmEngine:
     def __init__(self) -> None:
         self._llm: Any = None
         self.ready = False
 
     def load(self) -> None:
+        _expose_cuda_runtime()
         from llama_cpp import Llama
 
         model_path = _ensure_model()

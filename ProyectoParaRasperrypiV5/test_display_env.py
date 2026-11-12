@@ -116,6 +116,23 @@ class TestPickDefaultDevices(unittest.TestCase):
         self.assertEqual(preferred_option_index(labels, PREFERRED_SPEAKER_NEEDLES), 1)
         self.assertEqual(preferred_option_index(labels, PREFERRED_MIC_NEEDLES), 0)
 
+    def test_sin_los_de_siempre_elige_hyperx(self) -> None:
+        cam, mic, out = pick_default_devices(
+            [(0, "Cámara 0")],
+            [
+                (-1, "Sin micrófono"),
+                (0, "0: vc4hdmi0: MAI PCM (hw:0,0)"),
+                (1, "1: HyperX Cloud Flight Wireless: USB Audio (hw:2,0)"),
+            ],
+            [
+                (0, "0: vc4hdmi0: HDMI"),
+                (1, "1: HyperX Cloud Flight Wireless: USB Audio (hw:2,0)"),
+            ],
+        )
+        self.assertEqual(cam, 0)
+        self.assertEqual(mic, 1)
+        self.assertEqual(out, 1)
+
     def test_camara_10_no_es_camara_0(self) -> None:
         labels = ["Cámara 10", "Cámara 0"]
         self.assertEqual(preferred_option_index(labels, PREFERRED_CAMERA_NEEDLES), 1)

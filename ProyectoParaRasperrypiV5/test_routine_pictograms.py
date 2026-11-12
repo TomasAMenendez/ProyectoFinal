@@ -67,7 +67,7 @@ class SchedulerTests(unittest.TestCase):
                 "pictogram_id": "",
                 "transition_from": "juego",
                 "transition_to": "calma",
-                "pre_reminder_minutes": 10,
+                "pre_reminder_minutes": 5,
                 "enabled": True,
             }),
         ]
@@ -78,9 +78,10 @@ class SchedulerTests(unittest.TestCase):
         self.assertEqual(by_id["comer"].message, "A comer")
         self.assertEqual(by_id["jardin"].pictogram_id, "jardin")
         self.assertEqual(by_id["sueno"].kind, "pre")
+        self.assertEqual(by_id["sueno"].message, "A dormir")
         self.assertIsNone(by_id["sueno"].pictogram_id)
 
-    def test_el_preaviso_no_lleva_la_imagen_del_principal(self) -> None:
+    def test_el_preaviso_lleva_el_mensaje_y_el_pictograma(self) -> None:
         now = datetime(2026, 10, 14, 8, 56, 0)
         routine = Routine({
             "id": "bano",
@@ -97,7 +98,61 @@ class SchedulerTests(unittest.TestCase):
         cues = scheduler.check_pending(now)
         self.assertEqual(len(cues), 1)
         self.assertEqual(cues[0].kind, "pre")
-        self.assertIsNone(cues[0].pictogram_id)
+        self.assertEqual(cues[0].pictogram_id, "banio")
+        self.assertTrue(cues[0].message)
+
+    def test_cada_aviso_queda_pendiente_solo_tres_minutos(self) -> None:
+        def pending(hour: int, minute: int) -> list[str]:
+            scheduler = RoutineScheduler(Path(tempfile.gettempdir()) / "rutinas-inexistentes-5.json")
+            scheduler.routines = [Routine({
+                "id": "tarea",
+                "name": "Tarea",
+                "time": "08:30",
+                "reminder_message": "Hay que hacer la tarea",
+                "pictogram_id": "jardin",
+                "pre_reminder_minutes": 10,
+                "enabled": True,
+            })]
+            cues = scheduler.check_pending(datetime(2026, 11, 6, hour, minute))
+            return [cue.kind for cue in cues]
+
+        self.assertEqual(pending(8, 20), ["pre"])
+        self.assertEqual(pending(8, 23), ["pre"])
+        self.assertEqual(pending(8, 24), [])
+        self.assertEqual(pending(8, 30), ["main"])
+        self.assertEqual(pending(8, 33), ["main"])
+        self.assertEqual(pending(8, 34), [])
+
+    def test_sin_anticipacion_no_hay_preaviso(self) -> None:
+        now = datetime(2026, 10, 14, 8, 56, 0)
+        scheduler = RoutineScheduler(Path(tempfile.gettempdir()) / "rutinas-inexistentes-3.json")
+        scheduler.routines = [Routine({
+            "id": "bano",
+            "name": "Baño",
+            "time": "09:00",
+            "reminder_message": "Al baño",
+            "pictogram_id": "banio",
+            "pre_reminder_minutes": 0,
+            "enabled": True,
+        })]
+        self.assertEqual(scheduler.check_pending(now), [])
+
+    def test_el_play_arma_el_aviso_ahora(self) -> None:
+        scheduler = RoutineScheduler(Path(tempfile.gettempdir()) / "rutinas-inexistentes-4.json")
+        scheduler.routines = [Routine({
+            "id": "bano",
+            "name": "Baño",
+            "time": "09:00",
+            "reminder_message": "Al baño",
+            "pictogram_id": "banio",
+            "enabled": True,
+        })]
+        cue = scheduler.cue_now("bano")
+        assert cue is not None
+        self.assertEqual(cue.kind, "now")
+        self.assertEqual(cue.message, "Al baño")
+        self.assertEqual(cue.pictogram_id, "banio")
+        self.assertIsNone(scheduler.cue_now("otra"))
 
 
 class _Speech:
@@ -105,7 +160,8 @@ class _Speech:
         self.calls: list[dict] = []
         self.accept = accept
 
-    def speak(self, text, on_playback_start=None, on_playback_cancel=None):
+    def speak(self, text, on_playback_start=None, on_playback_cancel=None, allow_when_asleep=False):
+        del allow_when_asleep
         self.calls.append({
             "text": text,
             "start": on_playback_start,

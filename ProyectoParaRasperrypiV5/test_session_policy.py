@@ -212,6 +212,10 @@ class TestMicHalfDuplex(unittest.TestCase):
             "play_veo_veo",
         )
         self.assertEqual(
+            is_clear_keyword_intent("Ah, sí, sí. Quiero jugar a adivinar."),
+            "play_veo_veo",
+        )
+        self.assertEqual(
             is_clear_keyword_intent("Quiero jugar a adivinar la silueta."),
             "play_sombras",
         )

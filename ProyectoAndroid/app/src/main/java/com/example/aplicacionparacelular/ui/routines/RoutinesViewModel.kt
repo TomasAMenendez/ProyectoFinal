@@ -69,6 +69,9 @@ class RoutinesViewModel(
     private val updateRoutines: (JSONObject, (ApiResult<JSONObject>) -> Unit) -> Unit = { body, callback ->
         RobotConnectionManager.updateRoutines(body, callback)
     },
+    private val playRoutine: (String, (ApiResult<JSONObject>) -> Unit) -> Unit = { id, callback ->
+        RobotConnectionManager.playRoutine(id, callback)
+    },
 ) : ViewModel() {
 
     private val _routines = MutableLiveData<List<RoutineItem>>(emptyList())
@@ -135,6 +138,19 @@ class RoutinesViewModel(
     fun removeRoutine(id: String) {
         val previous = _routines.value.orEmpty()
         persist(previous.filterNot { it.id == id }) { _, _ -> }
+    }
+
+    fun play(id: String) {
+        if (_canEdit.value != true) {
+            _syncStatus.value = "Primero hay que leer las rutinas de TEO. Reintentá la carga"
+            return
+        }
+        playRoutine(id) { result ->
+            _syncStatus.value = when (result) {
+                is ApiResult.Success -> "TEO está avisando la rutina"
+                is ApiResult.Error -> result.message.ifBlank { "No se pudo avisar la rutina" }
+            }
+        }
     }
 
     fun toggleRoutine(id: String) {

@@ -32,6 +32,12 @@ class RoutineDraftTest {
         assertTrue(outcome.item.enabled)
         assertEquals("17:00", outcome.item.time)
         assertEquals(5, outcome.item.preReminderMinutes)
+        val custom = RoutineDraft.forCreate(
+            RoutineFields("Merendar", "17:00", "", leadMinutes = 15),
+            "merendar_2",
+        ) as RoutineOutcome.Ready
+        assertEquals(15, custom.item.preReminderMinutes)
+        assertEquals(15, custom.item.toJson().getInt("pre_reminder_minutes"))
         assertNull(outcome.item.pictogramId)
         assertFalse(outcome.item.toJson().has("pictogram_id"))
     }

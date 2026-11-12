@@ -45,6 +45,18 @@ class TestHealth(unittest.TestCase):
         self.assertTrue(client.can_attempt())
         self.assertEqual(calls, [("GET", "/health")])
 
+    def test_probe_restored_cierra_el_circuit(self) -> None:
+        def req(method: str, path: str, **kwargs: object) -> tuple[int, bytes]:
+            del method, path, kwargs
+            return 200, b'{"status":"ok"}'
+
+        client = PcServerClient("http://192.168.1.5:8090", "tok", request_fn=req)
+        client.open_until = time.monotonic() + 60
+        self.assertTrue(client.circuit_open)
+        self.assertFalse(client.health())
+        self.assertTrue(client.probe_restored())
+        self.assertFalse(client.circuit_open)
+
     def test_health_timeout_cuenta_fallo(self) -> None:
         def req(method: str, path: str, **kwargs: object) -> tuple[int, bytes]:
             raise TimeoutError("timed out")

@@ -1,4 +1,4 @@
-"""El LLM no debe invitar a un cuento si el nene no lo pidió."""
+"""El prompt y la limpieza del LLM."""
 from __future__ import annotations
 
 import os
@@ -10,38 +10,9 @@ from fallback_llm import (
     _SYSTEM_PROMPT,
     FallbackLLM,
     drop_prompt_leak,
-    drop_unsolicited_story_offer,
     scrub_veo_veo_speech,
     selected_llm_spec,
 )
-
-
-class TestDropUnsolicitedStory(unittest.TestCase):
-    def test_sandwich_no_historia(self) -> None:
-        user = "Tengo un poco más alegría. Más lento. Quiero comer un zanguche."
-        reply = (
-            "Un zanguche, eso suena delicioso. "
-            "Dale, pedime una historia corta sobre un zanguche."
-        )
-        out = drop_unsolicited_story_offer(user, reply)
-        self.assertIn("zanguche", out.lower())
-        self.assertNotIn("historia", out.lower())
-        self.assertNotIn("cuento", out.lower())
-        self.assertNotIn("pedime", out.lower())
-
-    def test_si_pidio_cuento_no_se_toca(self) -> None:
-        user = "contame un cuento"
-        reply = "¡Buenísimo! Decime que te cuente uno."
-        self.assertEqual(drop_unsolicited_story_offer(user, reply), reply)
-
-    def test_solo_oferta_queda_frase_neutra(self) -> None:
-        out = drop_unsolicited_story_offer(
-            "hola",
-            "¿Querés que te cuente una historia?",
-        )
-        self.assertNotIn("historia", out.lower())
-        self.assertNotIn("cuento", out.lower())
-        self.assertTrue(len(out) > 0)
 
 
 class TestSystemPromptNoStoryTemplate(unittest.TestCase):
@@ -159,10 +130,10 @@ class TestGemmaPrompt(unittest.TestCase):
         for tag in (
             "[PLAY_GAME:sombras]",
             "[LIST_STORIES]",
-            "[PLAY_STORY:título de la lista]",
+            "[PLAY_STORY:título exacto de la lista]",
             "[PLAY_GAME:piedra]",
             "[LIST_MUSIC]",
-            "[PLAY_MUSIC:nombre que dijo]",
+            "[PLAY_MUSIC:nombre exacto de la canción del catálogo]",
             "[PLAY_MUSIC]",
             "[STOP_MUSIC]",
             "[INTENTS_OFF]",
@@ -170,9 +141,8 @@ class TestGemmaPrompt(unittest.TestCase):
             "[EXPRESSION:feliz]",
             "[CELEBRATE:ató los cordones]",
             "[HUG]",
-            "[CALM_MODE]",
             "[GO_TO_SLEEP]",
-            "[NOTIFY_PARENT:Lleva un celular escondido en la mochila]",
+            "[NOTIFY_PARENT:Se lastimó al caerse]",
         ):
             self.assertIn(tag, _GEMMA_SYSTEM_PROMPT)
 
@@ -181,28 +151,24 @@ class TestGemmaPrompt(unittest.TestCase):
         self.assertIn("no ofrezcas cuento", folded)
         self.assertIn("no inventes", folded)
         self.assertIn("no sabés", folded)
-        self.assertIn("palabra suelta", folded)
-        self.assertIn("piedra papel o tijera", folded)
+        self.assertIn("palabra aislada", folded)
+        self.assertIn("piedra, papel o tijera", folded)
         self.assertIn("quiere jugar", folded)
         self.assertNotIn("veo veo", folded)
         self.assertNotIn("me llamo teo", folded)
         self.assertNotIn("tags:", folded)
-        self.assertIn("situación es parecida", folded)
-        self.assertIn("otras palabras", folded)
-        self.assertIn("el nene no los escucha", folded)
+        self.assertIn("situación es equivalente", folded)
+        self.assertIn("palabras sean diferentes", folded)
+        self.assertIn("el nene no escucha los corchetes", folded)
         self.assertIn("no le pidas permiso", folded)
-        self.assertIn("aunque diga que no", folded)
         self.assertIn("celular escondido", folded)
-        self.assertIn("un saludo no abre un juego", folded)
-        self.assertIn("proponerlos en prosa", folded)
-        self.assertIn("sin [play_game", folded)
+        self.assertIn("un saludo, una conversación sobre juegos", folded)
+        self.assertIn("proponer juegos", folded)
         self.assertIn("[hug]", folded)
         self.assertIn("abrazo", folded)
         self.assertNotIn("ese me gusta", folded)
-        self.assertNotIn("ejemplo:", folded)
         self.assertNotIn("no esta bueno", folded)
-        self.assertIn("[calm_mode] solo no alcanza", folded)
-        self.assertIn("igual van en tu respuesta", folded)
+        self.assertNotIn("[calm_mode]", folded)
         self.assertIn("[go_to_sleep] apaga", folded)
         self.assertNotIn("buenas noches.\n[go_to_sleep]", folded)
         self.assertNotIn("descansá un poco.\n[calm_mode]", folded)
@@ -217,7 +183,8 @@ class TestGemmaPrompt(unittest.TestCase):
             system_prompt=_GEMMA_SYSTEM_PROMPT,
         )
         system = messages[0]["content"]
-        self.assertTrue(system.startswith("Sos TEO, un peluche."))
+        self.assertTrue(system.startswith("# 1. IDENTIDAD"))
+        self.assertIn("Sos TEO, un peluche", system)
         self.assertIn("Se llama Luna.", system)
         self.assertIn("[PLAY_GAME:sombras]", system)
         self.assertEqual(messages[-1], {"role": "user", "content": "hola"})

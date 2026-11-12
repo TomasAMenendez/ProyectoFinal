@@ -1,6 +1,7 @@
 """Handlers de ServidorDePC con engines fake (sin GPU)."""
 from __future__ import annotations
 
+import base64
 import io
 import json
 import sys
@@ -12,7 +13,7 @@ ROOT = Path(__file__).resolve().parent
 if str(ROOT) not in sys.path:
     sys.path.insert(0, str(ROOT))
 
-from handlers import handle_chat, handle_health, handle_speech, handle_transcribe
+from handlers import handle_chat, handle_health, handle_speech, handle_transcribe, handle_voice_turn
 
 
 class FakeStt:
@@ -846,6 +847,54 @@ class TestTtsRouting(unittest.TestCase):
         engine.load()
         self.assertFalse(engine.ready)
         self.assertEqual(engine.synthesize("hola"), b"")
+
+
+class TestVoiceTurn(unittest.TestCase):
+    def test_stt_pasa_al_llm_y_el_tts_no_dice_el_corchete(self) -> None:
+        stt = FakeStt(text="me siento mal")
+        llm = FakeLlm(
+            reply=(
+                "¡Uy, qué mal! ¿Querés que te cuente un cuento? "
+                "O quizás escuchamos alguna canción. [HUG]"
+            )
+        )
+        tts = FakeTts()
+        body = {
+            "wav_b64": base64.b64encode(_tiny_wav()).decode("ascii"),
+            "messages": [{"role": "system", "content": "sos TEO"}],
+            "voice": "micaela",
+        }
+        status, payload = handle_voice_turn(
+            stt, llm, tts, TOKEN, "Bearer secret-token", json.dumps(body).encode("utf-8")
+        )
+        self.assertEqual(status, 200)
+        self.assertEqual(payload["text"], "me siento mal")
+        self.assertEqual(llm.last_messages[-1]["content"], "me siento mal")
+        self.assertIn("[HUG]", payload["llm_text"])
+        self.assertIn("cuento", payload["llm_text"].lower())
+        self.assertIn("cuento", tts.last_text.lower())
+        self.assertNotIn("[HUG]", tts.last_text)
+        self.assertNotIn("HUG", tts.last_text)
+        self.assertTrue(payload["wav_b64"])
+
+    def test_solo_corchete_no_llama_al_tts(self) -> None:
+        tts = FakeTts()
+        llm = FakeLlm(reply="[LIST_STORIES]")
+        body = {
+            "messages": [
+                {"role": "system", "content": "sos TEO"},
+                {"role": "user", "content": "qué cuentos hay"},
+            ],
+            "voice": "micaela",
+        }
+        status, payload = handle_voice_turn(
+            FakeStt(), llm, tts, TOKEN, "Bearer secret-token", json.dumps(body).encode("utf-8")
+        )
+        self.assertEqual(status, 200)
+        self.assertIn("LIST_STORIES", payload["llm_text"])
+        self.assertEqual(payload["spoken"], "")
+        self.assertIsNone(payload["wav_b64"])
+        self.assertIsNone(tts.last_text)
 
 
 if __name__ == "__main__":

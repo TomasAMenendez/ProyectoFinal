@@ -36,7 +36,7 @@ class Routine:
             "success_message",
             "¡Muy bien! ¡Lo lograste!",
         )
-        self.pre_reminder_minutes: int = data.get("pre_reminder_minutes", 5)
+        self.pre_reminder_minutes: int = _lead_minutes(data.get("pre_reminder_minutes", 5))
         self.enabled: bool = data.get("enabled", True)
         raw_pictogram = data.get("pictogram_id")
         if isinstance(raw_pictogram, str) and raw_pictogram.strip():
@@ -108,7 +108,7 @@ class RoutineScheduler:
         """Verifica si hay rutinas pendientes de recordar.
 
         Cada aviso conserva el id de la rutina, el tipo de evento y el mensaje.
-        El pictograma viaja solo con el recordatorio principal.
+        El preaviso y el aviso de la hora llevan el mismo mensaje y el mismo pictograma.
         """
         now = now or datetime.now()
         cues: list[RoutineCue] = []
@@ -125,36 +125,31 @@ class RoutineScheduler:
                 microsecond=0,
             )
 
-            pre_time = routine_time - timedelta(minutes=routine.pre_reminder_minutes)
-            if not routine._pre_reminded_today and pre_time <= now < routine_time:
-                routine._pre_reminded_today = True
-                if routine.transition_from and routine.transition_to:
+            if routine.pre_reminder_minutes > 0:
+                pre_time = routine_time - timedelta(minutes=routine.pre_reminder_minutes)
+                if not routine._pre_reminded_today and _within_pending(pre_time, now):
+                    routine._pre_reminded_today = True
                     cues.append(
                         RoutineCue(
                             routine_id=routine.id,
                             kind="pre",
-                            message=(
-                                f"En un ratito vamos a pasar de {routine.transition_from} "
-                                f"a {routine.transition_to}. "
-                                f"¡Vamos terminando de a poquito!"
-                            ),
-                            pictogram_id=None,
-                        )
-                    )
-                    log_action("ROUTINE", f"pre-recordatorio: {routine.name}")
-
-            if not routine._reminded_today and now >= routine_time:
-                if (now - routine_time).total_seconds() < 1800:
-                    routine._reminded_today = True
-                    cues.append(
-                        RoutineCue(
-                            routine_id=routine.id,
-                            kind="main",
                             message=routine.reminder_message,
                             pictogram_id=routine.pictogram_id,
                         )
                     )
-                    log_action("ROUTINE", f"recordatorio: {routine.name} ({routine.time})")
+                    log_action("ROUTINE", f"pre-recordatorio: {routine.name}")
+
+            if not routine._reminded_today and _within_pending(routine_time, now):
+                routine._reminded_today = True
+                cues.append(
+                    RoutineCue(
+                        routine_id=routine.id,
+                        kind="main",
+                        message=routine.reminder_message,
+                        pictogram_id=routine.pictogram_id,
+                    )
+                )
+                log_action("ROUTINE", f"recordatorio: {routine.name} ({routine.time})")
 
         return cues
 
@@ -183,6 +178,18 @@ class RoutineScheduler:
 
                     return inflect_for_child(routine.success_message)
 
+        return None
+
+    def cue_now(self, routine_id: str) -> RoutineCue | None:
+        """Arma el aviso para dispararlo ya, sin mirar el horario."""
+        for routine in self.routines:
+            if routine.id == routine_id and routine.enabled:
+                return RoutineCue(
+                    routine_id=routine.id,
+                    kind="now",
+                    message=routine.reminder_message,
+                    pictogram_id=routine.pictogram_id,
+                )
         return None
 
     def get_pending_routine_id(self) -> str | None:
@@ -217,12 +224,33 @@ class RoutineCue:
     pictogram_id: str | None = None
 
 
-def speak_routine_cues(speech: Any, eyes: Any, cues: list[RoutineCue]) -> None:
+_PENDING = timedelta(minutes=3)
+
+
+def _within_pending(start: datetime, now: datetime) -> bool:
+    return start <= now <= start + _PENDING
+
+
+def _lead_minutes(value: Any) -> int:
+    try:
+        minutes = int(value)
+    except (TypeError, ValueError):
+        minutes = 5
+    return max(0, min(minutes, 24 * 60))
+
+
+def speak_routine_cues(
+    speech: Any,
+    eyes: Any,
+    cues: list[RoutineCue],
+    *,
+    allow_when_asleep: bool = False,
+) -> None:
     """Encola cada aviso. La imagen se pide solo cuando empieza su propio audio."""
     for cue in cues:
         on_start = None
         on_cancel = None
-        if cue.kind == "main" and eyes is not None:
+        if eyes is not None and (cue.kind != "pre" or cue.pictogram_id):
             state: dict[str, int | None] = {"generation": None}
 
             def on_start(
@@ -249,6 +277,7 @@ def speak_routine_cues(speech: Any, eyes: Any, cues: list[RoutineCue]) -> None:
 
         speech.speak(
             cue.message,
+            allow_when_asleep=allow_when_asleep,
             on_playback_start=on_start,
             on_playback_cancel=on_cancel,
         )

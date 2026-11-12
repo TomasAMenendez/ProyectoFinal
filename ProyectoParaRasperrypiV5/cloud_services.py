@@ -237,9 +237,9 @@ class CloudLLM:
             )
 
             reply = response.choices[0].message.content.strip() if response.choices else ""
-            from fallback_llm import drop_unsolicited_story_offer, scrub_veo_veo_speech
+            from fallback_llm import scrub_veo_veo_speech
 
-            reply = scrub_veo_veo_speech(drop_unsolicited_story_offer(user_text, reply))
+            reply = scrub_veo_veo_speech(reply)
 
             if _dlog:
                 _dlog.log_output(

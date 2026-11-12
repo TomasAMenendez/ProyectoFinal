@@ -241,6 +241,11 @@ object RobotApiClient {
     fun postRoutines(routinesJson: JSONObject): ApiResult<JSONObject> =
         doPost("/api/routines", routinesJson)
 
+    fun playRoutine(id: String): ApiResult<JSONObject> {
+        val body = JSONObject().apply { put("id", id) }
+        return doPost("/api/routines/play", body)
+    }
+
     /** Reproduce una canción en el robot. */
     fun playMusic(filename: String? = null): ApiResult<JSONObject> {
         val body = JSONObject().apply {

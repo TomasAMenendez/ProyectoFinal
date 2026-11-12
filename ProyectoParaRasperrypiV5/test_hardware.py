@@ -117,15 +117,19 @@ class TestPhysicalCompanion(unittest.TestCase):
         self.assertEqual(
             events,
             [
-                ("start", 12, 10.0),
-                ("start", 13, 10.0),
+                ("start", 12, 2.5),
+                ("start", 13, 7.5),
                 ("sleep", 0.45),
                 ("stop", 12),
                 ("stop", 13),
             ],
         )
+        left_delta = events[0][2] - 5.0
+        right_delta = events[1][2] - 5.0
+        self.assertEqual(left_delta, -right_delta)
+        self.assertLess(left_delta, 0)
 
-    def test_al_bajar_los_brazos_van_a_cero_grados(self) -> None:
+    def test_al_bajar_los_brazos_siguen_hacia_abajo(self) -> None:
         events: list[tuple] = []
         gpio = MagicMock()
         gpio.pwm_set.side_effect = lambda pin, duty: events.append(("set", pin, duty))
@@ -153,6 +157,20 @@ class TestPhysicalCompanion(unittest.TestCase):
                 ("stop", 13),
             ],
         )
+
+    def test_al_bajar_el_microfono_sigue_mudo_hasta_que_termina(self) -> None:
+        order: list[tuple] = []
+        companion = PhysicalCompanion(
+            HardwarePins(servo_left_pin=12, servo_right_pin=13)
+        )
+        companion.on_arms_down = lambda moving: order.append(("mic", moving))
+
+        def lower() -> None:
+            order.append(("servos",))
+
+        companion._lower_servos = lower  # type: ignore[method-assign]
+        companion.arms_down()
+        self.assertEqual(order, [("mic", True), ("servos",), ("mic", False)])
 
     def test_abrazo_sin_pines_no_revienta_y_avisa_simulado(self) -> None:
         companion = PhysicalCompanion(HardwarePins())

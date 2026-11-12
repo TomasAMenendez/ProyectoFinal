@@ -265,15 +265,6 @@ ok("Conserva el tag NOTIFY_PARENT antes de parsear",
 # 4.5 — Cadena vacía
 ok("Cadena vacía retorna vacío", llm._clean_response("") == "")
 
-from fallback_llm import drop_unsolicited_story_offer
-story_stripped = drop_unsolicited_story_offer(
-    "Quiero comer un zanguche.",
-    "Un zanguche, eso suena delicioso. Dale, pedime una historia corta sobre un zanguche.",
-)
-ok("Fallback no invita a cuento si el nene no lo pidió",
-   "historia" not in story_stripped.lower() and "zanguche" in story_stripped.lower(),
-   f"stripped={story_stripped!r}")
-
 # 4.6 — Texto con solo roleplay queda vacío → usa fallback
 cleaned3 = llm._clean_response("*sonríe*")
 ok("Solo roleplay no retorna vacío (usa fallback del texto original)",

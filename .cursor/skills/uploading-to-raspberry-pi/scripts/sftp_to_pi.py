@@ -121,7 +121,7 @@ def main() -> int:
 
     remote_dir = env(
         "PI_REMOTE_DIR",
-        "/home/teo/Desktop/ProyectoFinal/ProyectoParaRasperrypiV5",
+        "/home/teo/Desktop/ProyectoParaRasperrypiV5",
     )
     client, sftp = connect()
     uploaded = False

@@ -273,14 +273,20 @@ class TestEngineStart(unittest.TestCase):
         self.assertTrue(
             child_asked_for_play_game("juguemos a contar", "contar")
         )
+        self.assertTrue(
+            child_asked_for_play_game(
+                "Ah, sí, sí. Quiero jugar a adivinar.", "adivina"
+            )
+        )
         engine = GameEngine()
         payload: dict = {"intent_name": "llm_fallback", "response": "charla"}
-        self.assertFalse(
+        self.assertTrue(
             apply_play_game_tag(
                 engine, "contar", payload, user_text="Hola Teo, ¿qué hiciste hoy?"
             )
         )
-        self.assertFalse(engine.is_active)
+        self.assertTrue(engine.is_active)
+        self.assertEqual(engine.game_type, "contar")
 
     def test_ppt_trae_lcd_al_elegir(self) -> None:
         session = PiedraPapelTijeraSession()

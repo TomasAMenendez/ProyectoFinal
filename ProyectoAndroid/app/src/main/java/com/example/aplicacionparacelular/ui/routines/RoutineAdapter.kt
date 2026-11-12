@@ -12,6 +12,7 @@ class RoutineAdapter(
     private val onToggle: (RoutineItem) -> Unit,
     private val onEdit: (RoutineItem) -> Unit,
     private val onDelete: (RoutineItem) -> Unit,
+    private val onPlay: (RoutineItem) -> Unit,
 ) : RecyclerView.Adapter<RoutineAdapter.ViewHolder>() {
 
     private var items: List<RoutineItem> = emptyList()
@@ -34,7 +35,7 @@ class RoutineAdapter(
     }
 
     override fun onBindViewHolder(holder: ViewHolder, position: Int) {
-        holder.bind(items[position], actionsEnabled, onToggle, onEdit, onDelete)
+        holder.bind(items[position], actionsEnabled, onToggle, onEdit, onDelete, onPlay)
     }
 
     override fun getItemCount(): Int = items.size
@@ -46,6 +47,7 @@ class RoutineAdapter(
             onToggle: (RoutineItem) -> Unit,
             onEdit: (RoutineItem) -> Unit,
             onDelete: (RoutineItem) -> Unit,
+            onPlay: (RoutineItem) -> Unit,
         ) {
             val context = binding.root.context
             binding.txtTime.text = item.time
@@ -60,6 +62,7 @@ class RoutineAdapter(
             binding.switchEnabled.isEnabled = actionsEnabled
             binding.btnEdit.isEnabled = actionsEnabled
             binding.btnDelete.isEnabled = actionsEnabled
+            binding.btnPlay.isEnabled = actionsEnabled && item.enabled
             binding.switchEnabled.contentDescription = item.name
             ViewCompat.setStateDescription(
                 binding.switchEnabled,
@@ -70,6 +73,7 @@ class RoutineAdapter(
             binding.switchEnabled.setOnCheckedChangeListener { _, _ -> onToggle(item) }
             binding.btnEdit.setOnClickListener { onEdit(item) }
             binding.btnDelete.setOnClickListener { onDelete(item) }
+            binding.btnPlay.setOnClickListener { onPlay(item) }
         }
     }
 }

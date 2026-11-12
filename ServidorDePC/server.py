@@ -8,7 +8,7 @@ from fastapi.responses import JSONResponse
 
 from config import HOST, PORT, load_or_create_token
 from discovery import DiscoveryBeacon, beacon_log, beacon_payload
-from handlers import handle_chat, handle_health, handle_speech, handle_transcribe
+from handlers import handle_chat, handle_health, handle_speech, handle_transcribe, handle_voice_turn
 from llm_engine import LlmEngine
 from stt_engine import SttEngine
 from tts_cartesia import synthesize_wav as cartesia_synthesize_wav
@@ -93,6 +93,21 @@ def create_app() -> Any:
         if media == "audio/wav" and isinstance(payload, (bytes, bytearray)):
             return Response(content=bytes(payload), media_type="audio/wav", status_code=status)
         return JSONResponse(payload, status_code=status)
+
+    @app.post("/v1/turn")
+    async def voice_turn(request: Request) -> Response:
+        raw = await request.body()
+        status, body = handle_voice_turn(
+            stt_engine,
+            llm_engine,
+            tts_engine,
+            TOKEN,
+            _auth_header(request),
+            raw,
+            log_fn=_console,
+            peer=_peer(request),
+        )
+        return JSONResponse(body, status_code=status)
 
     return app
 

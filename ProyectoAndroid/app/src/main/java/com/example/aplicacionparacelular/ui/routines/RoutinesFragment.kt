@@ -42,6 +42,7 @@ class RoutinesFragment : Fragment() {
                     viewModel.removeRoutine(item.id)
                 }
             },
+            onPlay = { item -> viewModel.play(item.id) },
         )
         binding.recyclerRoutines.layoutManager = LinearLayoutManager(requireContext())
         binding.recyclerRoutines.adapter = adapter

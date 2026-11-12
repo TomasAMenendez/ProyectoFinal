@@ -1,6 +1,7 @@
 """Cliente HTTP IPv4 hacia ServidorDePC (STT + LLM) con circuit breaker."""
 from __future__ import annotations
 
+import base64
 import http.client
 import io
 import json
@@ -180,6 +181,16 @@ class PcServerClient:
         self._on_success()
         return True
 
+    def probe_restored(self) -> bool:
+        """GET /health aunque el circuit esté abierto. Un 200 lo vuelve a cerrar."""
+        try:
+            ok = self.raw_health() == 200
+        except (TimeoutError, socket.timeout, ConnectionError, OSError, http.client.HTTPException, TypeError, ValueError):
+            return False
+        if ok:
+            self._on_success()
+        return ok
+
     def raw_health(self) -> int:
         """GET /health sin tocar el circuit. Lanza si el socket falla."""
         if not self.base_url:
@@ -298,6 +309,49 @@ class PcServerClient:
             return None
         self._on_success_tts()
         return raw
+
+    def voice_turn(
+        self,
+        wav: bytes | None,
+        messages: list[dict[str, str]],
+        voice: str = "topa",
+        local_only: bool = False,
+    ) -> dict[str, Any] | None:
+        """Un solo pedido: STT opcional, Gemma y TTS. None si el servidor no tiene /v1/turn."""
+        chosen = voice if voice in ("topa", "micaela") else "topa"
+        body_obj: dict[str, Any] = {
+            "messages": messages,
+            "voice": chosen,
+            "local_only": local_only is True,
+            "language": "es",
+        }
+        if wav:
+            body_obj["wav_b64"] = base64.b64encode(wav).decode("ascii")
+        status, raw = self._call(
+            "POST",
+            "/v1/turn",
+            body=json.dumps(body_obj, ensure_ascii=False).encode("utf-8"),
+            content_type="application/json",
+            timeout_s=self.stt_timeout_s + self.llm_timeout_s + TTS_TIMEOUT_S,
+        )
+        if status is None:
+            return None
+        if status == 404:
+            return None
+        if status == 401:
+            self._open_circuit()
+            return None
+        if status != 200:
+            self._infra_fail()
+            return None
+        self._on_success()
+        try:
+            payload = json.loads(raw.decode("utf-8"))
+        except json.JSONDecodeError:
+            return None
+        if not isinstance(payload, dict):
+            return None
+        return payload
 
     def _open_circuit(self) -> None:
         self.fail_count = self.fail_threshold

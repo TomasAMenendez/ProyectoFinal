@@ -4,6 +4,7 @@ from __future__ import annotations
 import queue
 import sys
 import threading
+import time
 import unittest
 from types import SimpleNamespace
 from unittest.mock import MagicMock
@@ -196,6 +197,70 @@ class TestLlmRoute(unittest.TestCase):
         self.assertEqual(stt.text, "stt local")
         reply = worker._remote_or_local_llm("zanahoria", None, [], pc_ready=True)
         self.assertEqual(reply, "ocho B")
+
+    def test_health_que_vuelve_descarta_el_3b(self) -> None:
+        class SlowLocal:
+            is_available = True
+
+            def generate(self, text, emotion=None, history=None, abort=None):
+                del text, emotion, history
+                for _ in range(40):
+                    if abort is not None and abort.is_set():
+                        return ""
+                    time.sleep(0.05)
+                return "3b:tarde"
+
+        class Later(FakePc):
+            def __init__(self) -> None:
+                super().__init__(health_ok=False, llm="desde la pc")
+                self._n = 0
+
+            def probe_restored(self) -> bool:
+                self._n += 1
+                return self._n >= 2
+
+        pc = Later()
+        worker = _worker(pc, local=SlowLocal())
+        out = worker._remote_or_local_llm("hola", None, [], pc_ready=False)
+        self.assertEqual(out, "desde la pc")
+        self.assertEqual(pc.complete_calls, 1)
+        self.assertEqual(worker._last_llm_source, "PC")
+
+    def test_health_que_vuelve_manda_el_audio_del_turno(self) -> None:
+        class SlowLocal:
+            is_available = True
+
+            def generate(self, text, emotion=None, history=None, abort=None):
+                del text, emotion, history
+                for _ in range(40):
+                    if abort is not None and abort.is_set():
+                        return ""
+                    time.sleep(0.05)
+                return "3b:tarde"
+
+        class Later(FakePc):
+            def __init__(self) -> None:
+                super().__init__(health_ok=False, llm="no uses este")
+                self._n = 0
+                self.sent_wav: bytes | None = None
+
+            def probe_restored(self) -> bool:
+                self._n += 1
+                return self._n >= 2
+
+            def voice_turn(self, wav, messages, voice="topa", local_only=False):
+                del messages, voice, local_only
+                self.sent_wav = wav
+                return {"llm_text": "desde el audio", "spoken": "desde el audio", "wav_b64": None}
+
+        pc = Later()
+        worker = _worker(pc, local=SlowLocal())
+        worker._child_turn_wav = b"RIFFaudio"
+        out = worker._remote_or_local_llm("hola", None, [], pc_ready=False)
+        self.assertEqual(out, "desde el audio")
+        self.assertEqual(pc.sent_wav, b"RIFFaudio")
+        self.assertEqual(pc.complete_calls, 0)
+        self.assertEqual(worker._last_llm_source, "PC")
 
 
 def _wired_worker(pc: FakePc | None = None) -> AudioWorker:

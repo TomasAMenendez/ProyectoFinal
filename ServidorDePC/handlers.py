@@ -1,6 +1,7 @@
 """Rutas HTTP puras: se testean sin FastAPI ni GPU."""
 from __future__ import annotations
 
+import base64
 import io
 import json
 import time
@@ -16,11 +17,10 @@ def _emit(log_fn: LogFn | None, msg: str) -> None:
     log_fn(msg)
 
 
-def _clip(text: str, limit: int = 120) -> str:
-    t = (text or "").replace("\n", " ").strip()
-    if len(t) > limit:
-        return t[: limit - 1] + "…"
-    return t
+def _clip(text: str, limit: int | None = None) -> str:
+    """Deja el mensaje entero. Solo aplana saltos de línea para que el log sea una línea."""
+    del limit
+    return (text or "").replace("\n", " ").strip()
 
 
 def _opt_float(value: Any) -> float | None:
@@ -206,3 +206,134 @@ def handle_speech(
         return 500, {"error": "tts failed"}, "application/json"
     _emit(log_fn, f"[TTS] wav {ms:.0f} ms: {_wav_meta(bytes(wav))}")
     return 200, bytes(wav), "audio/wav"
+
+
+def _message_list(value: Any) -> list[dict[str, str]] | None:
+    if not isinstance(value, list):
+        return None
+    out: list[dict[str, str]] = []
+    for item in value:
+        if not isinstance(item, dict):
+            return None
+        role = str(item.get("role") or "").strip()
+        content = str(item.get("content") or "")
+        if role not in {"system", "user", "assistant"}:
+            return None
+        out.append({"role": role, "content": content})
+    return out
+
+
+def handle_voice_turn(
+    stt: Any,
+    llm: Any,
+    tts: Any,
+    token: str,
+    auth_header: str | None,
+    raw_body: bytes,
+    log_fn: LogFn | None = None,
+    peer: str | None = None,
+) -> tuple[int, dict[str, Any]]:
+    """STT, Gemma y TTS en la PC. La Pi recibe el texto con corchetes y el wav."""
+    if not _authorized(token, auth_header):
+        return 401, {"error": "unauthorized"}
+    try:
+        payload = json.loads((raw_body or b"").decode("utf-8") or "{}")
+    except (json.JSONDecodeError, UnicodeDecodeError):
+        return 400, {"error": "invalid json"}
+    if not isinstance(payload, dict):
+        return 400, {"error": "invalid json"}
+    messages = _message_list(payload.get("messages") or [])
+    if messages is None:
+        return 400, {"error": "messages required"}
+    wav_b64 = str(payload.get("wav_b64") or "")
+    voice = payload.get("voice")
+    local_only = payload.get("local_only") is True
+    language = str(payload.get("language") or "es")
+    who = peer or "?"
+    transcript = ""
+    avg_logprob = None
+    no_speech_prob = None
+    if wav_b64:
+        try:
+            wav = base64.b64decode(wav_b64, validate=True)
+        except Exception:
+            return 400, {"error": "invalid wav"}
+        status, body = handle_transcribe(
+            stt,
+            llm,
+            token,
+            auth_header,
+            wav,
+            "audio/wav",
+            language,
+            log_fn=log_fn,
+            peer=peer,
+        )
+        if status != 200:
+            return status, body
+        transcript = str(body.get("text") or "")
+        avg_logprob = body.get("avg_logprob")
+        no_speech_prob = body.get("no_speech_prob")
+        if not transcript.strip():
+            return 200, {
+                "text": "",
+                "avg_logprob": avg_logprob,
+                "no_speech_prob": no_speech_prob,
+                "llm_text": "",
+                "spoken": "",
+                "wav_b64": None,
+            }
+        messages = [*messages, {"role": "user", "content": transcript}]
+    elif not any(item["role"] == "user" and item["content"].strip() for item in messages):
+        return 400, {"error": "messages required"}
+    if not getattr(llm, "ready", False):
+        return 200, {
+            "text": transcript,
+            "avg_logprob": avg_logprob,
+            "no_speech_prob": no_speech_prob,
+            "llm_text": "",
+            "spoken": "",
+            "wav_b64": None,
+        }
+    user_text = ""
+    for item in reversed(messages):
+        if item["role"] == "user":
+            user_text = item["content"]
+            break
+    _emit(log_fn, f"[LLM] prompt recibido de {who}: {len(messages)} mensajes")
+    t0 = time.perf_counter()
+    try:
+        content = llm.complete(messages)
+    except Exception as exc:
+        _emit(log_fn, f"[LLM] falló: {exc}")
+        content = ""
+    ms = (time.perf_counter() - t0) * 1000.0
+    raw = str(content or "")
+    _emit(log_fn, f'[LLM] respuesta {ms:.0f} ms: "{_clip(raw)}"')
+    from reply_clean import keep_for_pi, spoken_for_tts
+
+    kept = keep_for_pi(raw, user_text)
+    spoken, tts_line = spoken_for_tts(raw, user_text)
+    wav_out: str | None = None
+    if tts_line and getattr(tts, "ready", False):
+        _emit(
+            log_fn,
+            f'[TTS] texto de {who}: "{_clip(tts_line)}" voice={voice or "topa"} local_only={local_only}',
+        )
+        try:
+            audio = tts.synthesize(tts_line, voice=voice, local_only=local_only)
+        except TypeError:
+            try:
+                audio = tts.synthesize(tts_line, voice=voice)
+            except TypeError:
+                audio = tts.synthesize(tts_line)
+        if isinstance(audio, (bytes, bytearray)) and audio:
+            wav_out = base64.b64encode(bytes(audio)).decode("ascii")
+    return 200, {
+        "text": transcript,
+        "avg_logprob": avg_logprob,
+        "no_speech_prob": no_speech_prob,
+        "llm_text": kept,
+        "spoken": spoken,
+        "wav_b64": wav_out,
+    }

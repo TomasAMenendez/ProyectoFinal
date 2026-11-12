@@ -398,7 +398,7 @@ def is_clear_keyword_intent(text: str) -> str | None:
     ):
         return "play_piedra_papel"
     if re.search(
-        r"juego de sombras|juguem\w*.{0,24}sombra|adivin[áa](?:r)?.{0,16}(sombra|silueta)|juego de siluetas",
+        r"juego de sombras|juguem\w*.{0,24}sombra|jugar a (?:las? )?sombras?|adivin[áa](?:r)?.{0,16}(sombra|silueta)|juego de siluetas",
         normalized,
     ) or (
         re.search(r"\bsombras?\b", normalized) and len(normalized.split()) <= 4
@@ -411,7 +411,7 @@ def is_clear_keyword_intent(text: str) -> str | None:
     ):
         return "play_contar"
     if re.search(
-        r"\bveo[\s\-]?veo\b|adivin[áa](?:r)?.{0,12}objeto|vamos a adivinar|juguem\w*.{0,24}adivin",
+        r"\bveo[\s\-]?veo\b|adivin[áa](?:r)?.{0,12}objeto|vamos a adivinar|juguem\w*.{0,24}adivin|jugar a adivinar|quiero adivinar",
         normalized,
     ):
         return "play_veo_veo"

@@ -27,11 +27,12 @@ _PICTOGRAM_BY_TRANSITION = {
 }
 
 # SG90 a 50 Hz, pulso 1–2 ms: 5 % ≈ 0°, 7.5 % ≈ 90°, 10 % ≈ 180°.
-# El reposo es 0°. Duty 0 apaga el pulso y el servo no se mueve.
-# Los dos brazos suben con el mismo pulso (10 % ≈ 180°).
+# El reposo es 0°: los dos brazos miran hacia abajo. Duty 0 apaga el pulso.
+# Están montados en espejo: el mismo pulso los gira para lados opuestos.
+# El derecho recibe el pulso simétrico para que los dos suban igual.
 SERVO_REST_DUTY = 5.0
-SERVO_LEFT_UP_DUTY = 10.0
-SERVO_RIGHT_UP_DUTY = 10.0
+SERVO_LEFT_UP_DUTY = 2.5
+SERVO_RIGHT_UP_DUTY = 7.5
 
 
 def pictogram_for_routine(transition_to: str) -> str | None:
@@ -328,14 +329,30 @@ class PhysicalCompanion:
             return ActuatorResult(ok=True, simulated=True, message=str(exc))
 
     def arms_down(self) -> None:
-        """Vuelve los brazos a 0° (pulso de 1 ms) y después corta la señal."""
+        """Vuelve los dos brazos hacia abajo (0°) y corta la señal.
+
+        Mientras se mueven, ``on_arms_down(True)`` puede mutear el micrófono.
+        Al terminar, ``on_arms_down(False)`` lo vuelve a abrir.
+        """
         if not self.pins.servos_ready:
             return
+        hook = getattr(self, "on_arms_down", None)
+        if callable(hook):
+            try:
+                hook(True)
+            except Exception:
+                pass
         try:
             self._lower_servos()
             log_action("HW", "brazos abajo")
         except Exception as exc:
             log_action("HW", f"no pude bajar los brazos: {exc}")
+        finally:
+            if callable(hook):
+                try:
+                    hook(False)
+                except Exception:
+                    pass
 
     def _hug_body(self) -> ActuatorResult:
         result = self.arms_up()

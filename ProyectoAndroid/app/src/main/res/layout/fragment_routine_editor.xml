@@ -116,6 +116,37 @@
                     android:layout_width="match_parent"
                     android:layout_height="wrap_content"
                     android:layout_marginTop="12dp"
+                    android:text="@string/routines_lead_label"
+                    android:textAppearance="@style/TextAppearance.Teo.Home.Body" />
+
+                <com.google.android.material.textfield.TextInputLayout
+                    android:id="@+id/input_lead"
+                    style="@style/Widget.Teo.Field"
+                    android:layout_width="match_parent"
+                    android:layout_height="wrap_content"
+                    android:layout_marginTop="6dp">
+
+                    <com.google.android.material.textfield.TextInputEditText
+                        android:id="@+id/edit_lead"
+                        android:layout_width="match_parent"
+                        android:layout_height="wrap_content"
+                        android:inputType="number"
+                        android:minHeight="56dp"
+                        android:textAppearance="@style/TextAppearance.Teo.Home.Body"
+                        android:textColor="@color/teo_text" />
+                </com.google.android.material.textfield.TextInputLayout>
+
+                <TextView
+                    android:layout_width="match_parent"
+                    android:layout_height="wrap_content"
+                    android:layout_marginTop="6dp"
+                    android:text="@string/routines_lead_help"
+                    android:textAppearance="@style/TextAppearance.Teo.Home.Secondary" />
+
+                <TextView
+                    android:layout_width="match_parent"
+                    android:layout_height="wrap_content"
+                    android:layout_marginTop="12dp"
                     android:text="@string/routines_message_label"
                     android:textAppearance="@style/TextAppearance.Teo.Home.Body" />
 

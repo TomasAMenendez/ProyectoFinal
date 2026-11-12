@@ -55,8 +55,12 @@ class RoutineEditorFragment : Fragment() {
             binding.editName.setText(current.name)
             binding.editTime.setText(current.time)
             binding.editMessage.setText(current.reminderMessage)
+            binding.editLead.setText(current.preReminderMinutes.toString())
         } else if (binding.editTime.text.isNullOrBlank()) {
             binding.editTime.setText("08:00")
+        }
+        if (current == null && binding.editLead.text.isNullOrBlank()) {
+            binding.editLead.setText("5")
         }
         renderPictogram()
         binding.btnPictogram.setOnClickListener {
@@ -95,6 +99,7 @@ class RoutineEditorFragment : Fragment() {
             time = binding.editTime.text?.toString().orEmpty(),
             message = binding.editMessage.text?.toString().orEmpty(),
             pictogramId = pictogramId,
+            leadMinutes = binding.editLead.text?.toString()?.trim()?.toIntOrNull() ?: -1,
         )
         val outcome = if (editMode) {
             RoutineDraft.forEdit(editing ?: return, fields)

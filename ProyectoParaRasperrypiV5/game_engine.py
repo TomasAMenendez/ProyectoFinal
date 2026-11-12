@@ -372,8 +372,7 @@ def apply_play_game_tag(
 ) -> bool:
     if payload.get("game_over"):
         return False
-    if not child_asked_for_play_game(user_text, param):
-        return False
+    del user_text
     kind = resolve_play_game_param(param)
     if kind is None:
         return False

@@ -11,6 +11,8 @@ from pathlib import Path
 PREFERRED_CAMERA_NEEDLES = ("cámara 0", "camara 0")
 PREFERRED_MIC_NEEDLES = ("usb pnp sound device",)
 PREFERRED_SPEAKER_NEEDLES = ("audio advantage microii", "microii")
+PREFERRED_MIC_FALLBACK_NEEDLES = ("hyperx cloud flight",)
+PREFERRED_SPEAKER_FALLBACK_NEEDLES = ("hyperx cloud flight",)
 
 
 def has_gui_display(env: Mapping[str, str] | None = None) -> bool:
@@ -49,11 +51,18 @@ def choose_ui_mode(*, debug: bool, gui: bool) -> str:
     return "headless"
 
 
-def preferred_option_index(labels: list[str], needles: tuple[str, ...]) -> int:
-    """Índice del primer label que matchea; 0 si ninguno."""
-    for i, label in enumerate(labels):
-        if _label_matches(label, needles):
-            return i
+def preferred_option_index(
+    labels: list[str],
+    needles: tuple[str, ...],
+    fallback: tuple[str, ...] = (),
+) -> int:
+    """Índice del primer label que matchea; si no hay, el de respaldo; si tampoco, 0."""
+    for grupo in (needles, fallback):
+        if not grupo:
+            continue
+        for i, label in enumerate(labels):
+            if _label_matches(label, grupo):
+                return i
     return 0
 
 
@@ -90,13 +99,21 @@ def pick_default_devices(
 
     real_mics = [(idx, name) for idx, name in microphones if idx >= 0]
     if real_mics:
-        mic_i = preferred_option_index([name for _, name in real_mics], PREFERRED_MIC_NEEDLES)
+        mic_i = preferred_option_index(
+            [name for _, name in real_mics],
+            PREFERRED_MIC_NEEDLES,
+            PREFERRED_MIC_FALLBACK_NEEDLES,
+        )
         mic: int | None = real_mics[mic_i][0]
     else:
         mic = None
 
     if outputs:
-        out_i = preferred_option_index([name for _, name in outputs], PREFERRED_SPEAKER_NEEDLES)
+        out_i = preferred_option_index(
+            [name for _, name in outputs],
+            PREFERRED_SPEAKER_NEEDLES,
+            PREFERRED_SPEAKER_FALLBACK_NEEDLES,
+        )
         out: int | None = outputs[out_i][0]
     else:
         out = None

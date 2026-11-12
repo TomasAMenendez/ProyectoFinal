@@ -30,6 +30,7 @@ from workers import (
     vad_log_label,
     vad_pre_roll_blocks,
     volume_counts_as_speech,
+    advance_expression_rounds,
 )
 
 
@@ -333,15 +334,14 @@ class TestEndpointingYCola(unittest.TestCase):
 
 
 class TestListenVolumeFloor(unittest.TestCase):
-    def test_piso_es_7(self) -> None:
-        self.assertEqual(LISTEN_VOLUME_FLOOR_PCT, 7)
+    def test_piso_es_5(self) -> None:
+        self.assertEqual(LISTEN_VOLUME_FLOOR_PCT, 5)
 
     def test_ruido_bajo_no_cuenta_como_voz(self) -> None:
-        self.assertFalse(volume_counts_as_speech(5))
-        self.assertFalse(volume_counts_as_speech(6))
+        self.assertFalse(volume_counts_as_speech(4))
 
-    def test_siete_o_mas_cuenta_como_voz(self) -> None:
-        self.assertTrue(volume_counts_as_speech(7))
+    def test_cinco_o_mas_cuenta_como_voz(self) -> None:
+        self.assertTrue(volume_counts_as_speech(5))
         self.assertTrue(volume_counts_as_speech(50))
 
     def test_corte_exige_piso_y_vad(self) -> None:
@@ -373,7 +373,7 @@ class TestListenVolumeFloor(unittest.TestCase):
 
     def test_energy_vad_umbrales_no_cambian(self) -> None:
         src = _WORKERS.read_text(encoding="utf-8")
-        self.assertIn("ENERGY_START = 0.012", src)
+        self.assertIn("ENERGY_START = 0.006", src)
         self.assertIn("ENERGY_CONTINUE = 0.006", src)
 
 
@@ -473,6 +473,24 @@ class TestActiveSpeechSeconds(unittest.TestCase):
             '"No te escuché bien, ¿me lo decís de nuevo?"',
             src[src.find("if low_confidence:") : src.find("if raw_text.strip():")],
         )
+
+
+class TestExpressionRounds(unittest.TestCase):
+    def test_una_cara_dura_tres_rondas_y_vuelve(self) -> None:
+        left, restore = advance_expression_rounds(0, "feliz")
+        self.assertEqual((left, restore), (2, False))
+        left, restore = advance_expression_rounds(left, None)
+        self.assertEqual((left, restore), (1, False))
+        left, restore = advance_expression_rounds(left, None)
+        self.assertEqual((left, restore), (0, True))
+
+    def test_otra_cara_reinicia_las_tres_rondas(self) -> None:
+        left, _restore = advance_expression_rounds(0, "triste")
+        left, restore = advance_expression_rounds(left, "enojado")
+        self.assertEqual((left, restore), (2, False))
+
+    def test_neutral_vuelve_en_esa_ronda(self) -> None:
+        self.assertEqual(advance_expression_rounds(2, "neutral"), (0, True))
 
 
 if __name__ == "__main__":

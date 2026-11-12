@@ -43,6 +43,7 @@ class RoutinePreviewHost(
                 showList()
             }
         },
+        onPlay = {},
     )
 
     val root: FrameLayout = FrameLayout(activity).apply {
@@ -100,6 +101,7 @@ class RoutinePreviewHost(
         editor.editName.setText(item?.name.orEmpty())
         editor.editTime.setText(item?.time ?: "08:00")
         editor.editMessage.setText(item?.reminderMessage.orEmpty())
+        editor.editLead.setText((item?.preReminderMinutes ?: 5).toString())
         pictogramId = item?.pictogramId
         renderPictogram()
         list.root.visibility = View.GONE
@@ -126,6 +128,7 @@ class RoutinePreviewHost(
             time = editor.editTime.text?.toString().orEmpty(),
             message = editor.editMessage.text?.toString().orEmpty(),
             pictogramId = pictogramId,
+            leadMinutes = editor.editLead.text?.toString()?.trim()?.toIntOrNull() ?: -1,
         )
         val current = editing
         val outcome = if (current == null) {

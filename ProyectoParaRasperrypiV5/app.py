@@ -72,7 +72,9 @@ from workers import (
 )
 from display_env import (
     PREFERRED_CAMERA_NEEDLES,
+    PREFERRED_MIC_FALLBACK_NEEDLES,
     PREFERRED_MIC_NEEDLES,
+    PREFERRED_SPEAKER_FALLBACK_NEEDLES,
     PREFERRED_SPEAKER_NEEDLES,
     choose_ui_mode,
     pick_default_devices,
@@ -81,10 +83,15 @@ from display_env import (
 )
 
 
-def _select_preferred_combo(combo: ttk.Combobox, labels: list[str], needles: tuple[str, ...]) -> None:
+def _select_preferred_combo(
+    combo: ttk.Combobox,
+    labels: list[str],
+    needles: tuple[str, ...],
+    fallback: tuple[str, ...] = (),
+) -> None:
     if not labels:
         return
-    combo.current(preferred_option_index(labels, needles))
+    combo.current(preferred_option_index(labels, needles, fallback))
 
 # Cloud services (modo nube)
 try:
@@ -408,7 +415,7 @@ class EyeModeApp(tk.Tk):
         )
         self._sel_mic_combo.grid(row=3, column=1, sticky="we", pady=8)
         if mic_values:
-            _select_preferred_combo(self._sel_mic_combo, mic_values, PREFERRED_MIC_NEEDLES)
+            _select_preferred_combo(self._sel_mic_combo, mic_values, PREFERRED_MIC_NEEDLES, PREFERRED_MIC_FALLBACK_NEEDLES)
 
         # Speaker
         tk.Label(self._setup_frame, text="🔊  Parlante:", **label_style).grid(
@@ -422,7 +429,7 @@ class EyeModeApp(tk.Tk):
         )
         self._sel_out_combo.grid(row=4, column=1, sticky="we", pady=8)
         if out_values:
-            _select_preferred_combo(self._sel_out_combo, out_values, PREFERRED_SPEAKER_NEEDLES)
+            _select_preferred_combo(self._sel_out_combo, out_values, PREFERRED_SPEAKER_NEEDLES, PREFERRED_SPEAKER_FALLBACK_NEEDLES)
 
         # --- Processing mode selector (#CLOUD-001) ---
         tk.Label(self._setup_frame, text="⚙️  Procesamiento:", **label_style).grid(
@@ -759,6 +766,7 @@ class EyeModeApp(tk.Tk):
         robot_state.routine_scheduler = self.routine_scheduler
         robot_state.speech_worker = self.speech_worker
         robot_state.audio_worker = self.audio_worker
+        robot_state.eye_display = self._eye_display
         self._volume_limit = int(robot_state.volume_limit)
         self._brightness = float(robot_state.brightness)
         if self.speech_worker is not None:
@@ -1190,9 +1198,9 @@ class EdgeAiDesktopApp(tk.Tk):
         if camera_values:
             _select_preferred_combo(self.camera_combo, camera_values, PREFERRED_CAMERA_NEEDLES)
         if microphone_values:
-            _select_preferred_combo(self.microphone_combo, microphone_values, PREFERRED_MIC_NEEDLES)
+            _select_preferred_combo(self.microphone_combo, microphone_values, PREFERRED_MIC_NEEDLES, PREFERRED_MIC_FALLBACK_NEEDLES)
         if output_values:
-            _select_preferred_combo(self.output_device_combo, output_values, PREFERRED_SPEAKER_NEEDLES)
+            _select_preferred_combo(self.output_device_combo, output_values, PREFERRED_SPEAKER_NEEDLES, PREFERRED_SPEAKER_FALLBACK_NEEDLES)
 
     def _selected_camera(self) -> int:
         if not self.camera_options:
@@ -1488,6 +1496,7 @@ class EdgeAiDesktopApp(tk.Tk):
         robot_state.routine_scheduler = self.routine_scheduler
         robot_state.speech_worker = self.speech_worker
         robot_state.audio_worker = self.audio_worker
+        robot_state.eye_display = self._eye_display
         self._volume_var.set(int(robot_state.volume_limit))
         if self.speech_worker is not None:
             self.speech_worker.set_volume_limit(int(robot_state.volume_limit))

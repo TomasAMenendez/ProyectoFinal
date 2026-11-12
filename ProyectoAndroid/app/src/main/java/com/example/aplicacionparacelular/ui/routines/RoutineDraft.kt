@@ -5,6 +5,7 @@ data class RoutineFields(
     val time: String,
     val message: String,
     val pictogramId: String? = null,
+    val leadMinutes: Int = 5,
 )
 
 sealed class RoutineOutcome {
@@ -37,6 +38,9 @@ object RoutineDraft {
         val time = normalizedTime(fields.time)
             ?: return RoutineOutcome.Invalid(formError = "Elegí una hora válida")
         val message = fields.message.trim().ifEmpty { automaticMessage(name) }
+        val lead = leadMinutes(fields.leadMinutes) ?: return RoutineOutcome.Invalid(
+            formError = "La anticipación tiene que ser entre 0 y 1440 minutos",
+        )
         return RoutineOutcome.Ready(
             RoutineItem(
                 id = id,
@@ -46,7 +50,7 @@ object RoutineDraft {
                 transitionFrom = "",
                 transitionTo = "",
                 successMessage = "¡Muy bien! ¡Lo lograste!",
-                preReminderMinutes = 5,
+                preReminderMinutes = lead,
                 enabled = true,
                 pictogramId = fields.pictogramId?.trim()?.ifEmpty { null },
             ),
@@ -58,11 +62,15 @@ object RoutineDraft {
         if (name.isEmpty()) return RoutineOutcome.Invalid(nameError = "El nombre es obligatorio")
         val time = normalizedTime(fields.time) ?: original.time
         val message = fields.message.trim().ifEmpty { original.reminderMessage }
+        val lead = leadMinutes(fields.leadMinutes) ?: return RoutineOutcome.Invalid(
+            formError = "La anticipación tiene que ser entre 0 y 1440 minutos",
+        )
         return RoutineOutcome.Ready(
             original.copy(
                 name = name,
                 time = time,
                 reminderMessage = message,
+                preReminderMinutes = lead,
                 pictogramId = fields.pictogramId?.trim()?.ifEmpty { null },
             ),
         )
@@ -72,6 +80,8 @@ object RoutineDraft {
         val slug = name.trim().lowercase().replace(" ", "_").ifEmpty { "rutina" }
         return "${slug}_$now"
     }
+
+    private fun leadMinutes(value: Int): Int? = if (value in 0..1440) value else null
 
     private fun normalizedTime(raw: String): String? {
         val text = raw.trim()

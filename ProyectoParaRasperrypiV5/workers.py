@@ -1260,7 +1260,7 @@ STT_SAMPLE_RATE = 16000
 PI_MIC_CAPTURE_RATE = 48000
 # ~16 s de bloques de 128 ms. 32 se llenaba y el VAD tomaba huecos por silencio.
 AUDIO_QUEUE_MAXSIZE = 128
-LISTEN_VOLUME_FLOOR_PCT = 7
+LISTEN_VOLUME_FLOOR_PCT = 5
 
 
 def vad_log_label(mode: str) -> str:
@@ -1274,6 +1274,21 @@ def volume_counts_as_speech(
 ) -> bool:
     """True si el % del medidor UI cuenta como voz para arrancar/cortar."""
     return int(volume_pct) >= int(floor_pct)
+
+
+EXPRESSION_ROUNDS = 3
+
+
+def advance_expression_rounds(left: int, new_expression: str | None) -> tuple[int, bool]:
+    """Una ida y vuelta. Una cara nueva dura 3 rondas y después vuelve a neutral."""
+    if new_expression == "neutral":
+        return 0, True
+    if new_expression:
+        left = EXPRESSION_ROUNDS
+    if left <= 0:
+        return 0, False
+    left -= 1
+    return left, left == 0
 
 
 def hop_volume_pcts(
@@ -1538,6 +1553,7 @@ class AudioWorker:
         try:
             from hardware import get_companion
             self.companion: Any = get_companion()
+            self.companion.on_arms_down = self._mute_mic_for_arms_down
         except Exception:
             self.companion = None
 
@@ -1803,6 +1819,7 @@ class AudioWorker:
         listen_seconds = 0.0
         speech_active = False
         audio_queue: queue.Queue[np.ndarray] = queue.Queue(maxsize=AUDIO_QUEUE_MAXSIZE)
+        self._mic_audio_queue = audio_queue
 
         # Wait for camera models to finish loading before loading Whisper
         # to avoid CPU contention from concurrent heavy model initialization.
@@ -2284,6 +2301,31 @@ class AudioWorker:
         if cap is not None:
             cap.set_muted(bool(muted))
 
+    def _mute_mic_for_arms_down(self, moving: bool) -> None:
+        """Cierra el micrófono mientras los servos bajan y lo abre al terminar."""
+        self._set_capture_muted(True)
+        if moving:
+            return
+        queue_ref = getattr(self, "_mic_audio_queue", None)
+        if queue_ref is not None:
+            self._drain_audio_queue(queue_ref)
+        self._set_capture_muted(False)
+
+    def _tick_llm_expression(self, going_to_sleep: bool) -> None:
+        """La cara pedida por el modelo dura 3 idas y vueltas y vuelve a neutral."""
+        if going_to_sleep:
+            self._llm_expression_left = 0
+            self._turn_expression = None
+            return
+        left, restore = advance_expression_rounds(
+            int(getattr(self, "_llm_expression_left", 0) or 0),
+            getattr(self, "_turn_expression", None),
+        )
+        self._llm_expression_left = left
+        self._turn_expression = None
+        if restore and self.eye_display is not None:
+            self.eye_display.set_expression("neutral")
+
     def _speak_conversational_keep_mic(
         self, text: str, audio_queue: queue.Queue, timeout: float = 60.0
     ) -> None:
@@ -2292,7 +2334,19 @@ class AudioWorker:
         if self.speech_worker is None or not str(text).strip():
             return
         self._set_capture_muted(False)
-        self.speech_worker.speak_and_wait(text, timeout=timeout, story=False)
+        wav = getattr(self, "_pc_wav_bytes", None)
+        spoken = str(getattr(self, "_pc_spoken", "") or "")
+        self._pc_wav_bytes = None
+        self._pc_spoken = None
+        if wav and spoken and text == spoken:
+            self.speech_worker.play_wav_and_wait(wav, timeout=timeout)
+        elif wav and spoken and text.startswith(spoken):
+            self.speech_worker.play_wav_and_wait(wav, timeout=timeout)
+            extra = text[len(spoken):].strip()
+            if extra:
+                self.speech_worker.speak_and_wait(extra, timeout=timeout, story=False)
+        else:
+            self.speech_worker.speak_and_wait(text, timeout=timeout, story=False)
         if keep_audio_queue_after_tts(is_music=False, is_story=False):
             self._echo_mute_until = 0.0
             self._kept_tts_mic_tail = True
@@ -2508,6 +2562,13 @@ class AudioWorker:
         pc_ready: bool,
     ) -> TranscriptionResult:
         self._last_stt_source = "PI"
+        self._child_turn_wav = None
+        try:
+            from pc_server_client import pcm_float32_to_wav_bytes
+
+            self._child_turn_wav = pcm_float32_to_wav_bytes(self._preprocess_audio(audio_segment))
+        except Exception:
+            self._child_turn_wav = None
         client = getattr(self, "pc_client", None)
         if pc_ready and client is not None:
             url = getattr(client, "base_url", "") or "servidor PC"
@@ -2518,12 +2579,36 @@ class AudioWorker:
 
                 pre = self._preprocess_audio(audio_segment)
                 wav = pcm_float32_to_wav_bytes(pre)
-                self._log_pc(
-                    f"[PC] enviando STT a {url} ({len(wav)} bytes, timeout {getattr(client, 'stt_timeout_s', 25):.0f}s)"
-                )
-                t0 = time.monotonic()
-                raw = client.transcribe(wav)
-                ms = (time.monotonic() - t0) * 1000.0
+                turn = getattr(client, "voice_turn", None)
+                packed = None
+                if callable(turn):
+                    self._log_pc(f"[PC] enviando turno a {url} ({len(wav)} bytes)")
+                    t0 = time.monotonic()
+                    packed = turn(
+                        wav,
+                        self._pc_turn_messages(),
+                        self._pc_turn_voice(),
+                        self._pc_turn_local_only(),
+                    )
+                    ms = (time.monotonic() - t0) * 1000.0
+                else:
+                    t0 = time.monotonic()
+                    packed = None
+                    ms = 0.0
+                if isinstance(packed, dict) and "text" in packed:
+                    self._pc_prefetch = packed
+                    raw = {
+                        "text": packed.get("text") or "",
+                        "avg_logprob": packed.get("avg_logprob"),
+                        "no_speech_prob": packed.get("no_speech_prob"),
+                    }
+                else:
+                    self._log_pc(
+                        f"[PC] enviando STT a {url} ({len(wav)} bytes, timeout {getattr(client, 'stt_timeout_s', 25):.0f}s)"
+                    )
+                    t0 = time.monotonic()
+                    raw = client.transcribe(wav)
+                    ms = (time.monotonic() - t0) * 1000.0
             except Exception:
                 raw = None
             if raw is not None:
@@ -2561,56 +2646,176 @@ class AudioWorker:
         emotion: dict[str, Any] | None,
         history: list[dict[str, str]],
         pc_ready: bool,
+        use_prefetch: bool = False,
     ) -> str:
         self._last_llm_source = "PI"
         client = getattr(self, "pc_client", None)
         if pc_ready and client is not None:
-            url = getattr(client, "base_url", "") or "servidor PC"
-            raw = None
-            ms = 0.0
-            try:
-                from child_profile import current_prompt_section
-                from fallback_llm import (
-                    FallbackLLM,
-                    _GEMMA_SYSTEM_PROMPT,
-                    drop_prompt_leak,
-                    drop_unsolicited_story_offer,
-                    scrub_veo_veo_speech,
-                )
-
-                messages = FallbackLLM._build_messages(
-                    user_text,
-                    emotion,
-                    history,
-                    profile_section=current_prompt_section(),
-                    system_prompt=_GEMMA_SYSTEM_PROMPT,
-                )
-                self._log_pc(
-                    f"[PC] enviando LLM a {url} (timeout {getattr(client, 'llm_timeout_s', 60):.0f}s)"
-                )
-                t0 = time.monotonic()
-                raw = client.complete(messages)
-                ms = (time.monotonic() - t0) * 1000.0
-            except Exception:
-                raw = None
-            if raw:
-                self._last_llm_source = "PC"
-                cleaned = FallbackLLM._clean_response(raw)
-                cleaned = drop_prompt_leak(
-                    user_text, drop_unsolicited_story_offer(user_text, cleaned)
-                )
-                cleaned = scrub_veo_veo_speech(cleaned)
-                self._log_pc(f'[PC] LLM ok {ms:.0f} ms: "{cleaned}"')
-                return cleaned
-            self._log_pc(
-                f"[PC] LLM falló en {ms:.0f} ms (timeout {getattr(client, 'llm_timeout_s', 60):.0f}s); uso 3B local"
+            cleaned = self._complete_on_pc(
+                user_text, emotion, history, client, use_prefetch=use_prefetch
             )
+            if cleaned:
+                return cleaned
+            self._log_pc("[PC] LLM no respondió; uso 3B local")
         local = self.fallback_llm
         if local is not None and getattr(local, "is_available", False):
             from conversation_memory import local_history
 
-            return local.generate(user_text, emotion, history=local_history(history)) or ""
+            hist = local_history(history)
+            probe = getattr(client, "probe_restored", None) if client is not None else None
+            if (
+                not callable(probe)
+                or not getattr(client, "base_url", "")
+                or not getattr(client, "token", "")
+            ):
+                return local.generate(user_text, emotion, history=hist) or ""
+            pc_back = threading.Event()
+            stop = threading.Event()
+
+            def _watch() -> None:
+                while not stop.is_set():
+                    if probe():
+                        self._log_pc("[PC] GET /health otra vez; descarto el LLM local")
+                        pc_back.set()
+                        return
+                    stop.wait(1.0)
+
+            watcher = threading.Thread(target=_watch, name="PcHealthWhileLocal", daemon=True)
+            watcher.start()
+            try:
+                local_text = local.generate(user_text, emotion, history=hist, abort=pc_back) or ""
+            finally:
+                stop.set()
+            if pc_back.is_set():
+                rescued = self._complete_on_pc(
+                    user_text,
+                    emotion,
+                    history,
+                    client,
+                    use_prefetch=False,
+                    child_wav=getattr(self, "_child_turn_wav", None),
+                )
+                if rescued:
+                    return rescued
+            return local_text
         return ""
+
+    def _pc_turn_voice(self) -> str:
+        worker = getattr(self, "speech_worker", None)
+        voice_fn = getattr(worker, "_pc_tts_voice", None)
+        if callable(voice_fn):
+            return str(voice_fn())
+        return "topa"
+
+    def _pc_turn_local_only(self) -> bool:
+        worker = getattr(self, "speech_worker", None)
+        flag = getattr(worker, "_pc_tts_local_only", None)
+        if callable(flag):
+            return bool(flag())
+        return False
+
+    def _pc_turn_messages(self, user_text: str = "", emotion: dict[str, Any] | None = None, history: list[dict[str, str]] | None = None) -> list[dict[str, str]]:
+        from child_profile import current_prompt_section
+        from fallback_llm import FallbackLLM, _GEMMA_SYSTEM_PROMPT
+
+        if emotion is None:
+            emotion = getattr(getattr(self, "intent_dispatcher", None), "current_emotion", None)
+        if history is None and getattr(self, "conversation_memory", None) is not None:
+            history = self.conversation_memory.messages()
+        messages = FallbackLLM._build_messages(
+            user_text,
+            emotion,
+            history or [],
+            profile_section=current_prompt_section(),
+            system_prompt=_GEMMA_SYSTEM_PROMPT,
+        )
+        if user_text == "" and messages and messages[-1].get("role") == "user":
+            messages = messages[:-1]
+        return messages
+
+    def _arm_pc_playback(self, packed: dict[str, Any]) -> None:
+        import base64
+
+        spoken = str(packed.get("spoken") or "").strip()
+        b64 = packed.get("wav_b64") or ""
+        wav = b""
+        if b64:
+            try:
+                wav = base64.b64decode(str(b64))
+            except Exception:
+                wav = b""
+        if spoken and wav:
+            self._pc_spoken = spoken
+            self._pc_wav_bytes = wav
+        else:
+            self._pc_spoken = None
+            self._pc_wav_bytes = None
+
+    def _complete_on_pc(
+        self,
+        user_text: str,
+        emotion: dict[str, Any] | None,
+        history: list[dict[str, str]],
+        client: Any,
+        use_prefetch: bool = False,
+        child_wav: bytes | None = None,
+    ) -> str:
+        if use_prefetch:
+            packed = getattr(self, "_pc_prefetch", None)
+            self._pc_prefetch = None
+            if isinstance(packed, dict) and str(packed.get("llm_text") or "").strip():
+                self._last_llm_source = "PC"
+                self._arm_pc_playback(packed)
+                text = str(packed.get("llm_text") or "")
+                self._log_pc(f'[PC] turno listo: "{text}"')
+                return text
+            if isinstance(packed, dict):
+                return ""
+        turn = getattr(client, "voice_turn", None)
+        if callable(turn):
+            if child_wav:
+                self._log_pc("[PC] GET /health volvió; mando el audio para que arme la respuesta")
+                messages = self._pc_turn_messages("", emotion, history)
+            else:
+                messages = self._pc_turn_messages(user_text, emotion, history)
+            packed = turn(
+                child_wav,
+                messages,
+                self._pc_turn_voice(),
+                self._pc_turn_local_only(),
+            )
+            if isinstance(packed, dict) and str(packed.get("llm_text") or "").strip():
+                self._last_llm_source = "PC"
+                self._arm_pc_playback(packed)
+                text = str(packed.get("llm_text") or "")
+                self._log_pc(f'[PC] respuesta con audio: "{text}"')
+                return text
+        url = getattr(client, "base_url", "") or "servidor PC"
+        raw = None
+        ms = 0.0
+        try:
+            messages = self._pc_turn_messages(user_text, emotion, history)
+            self._log_pc(
+                f"[PC] enviando LLM a {url} (timeout {getattr(client, 'llm_timeout_s', 60):.0f}s)"
+            )
+            t0 = time.monotonic()
+            raw = client.complete(messages)
+            ms = (time.monotonic() - t0) * 1000.0
+        except Exception:
+            raw = None
+        if not raw:
+            self._log_pc(
+                f"[PC] LLM falló en {ms:.0f} ms (timeout {getattr(client, 'llm_timeout_s', 60):.0f}s)"
+            )
+            return ""
+        self._last_llm_source = "PC"
+        from fallback_llm import FallbackLLM, drop_prompt_leak, scrub_veo_veo_speech
+
+        cleaned = scrub_veo_veo_speech(
+            drop_prompt_leak(user_text, FallbackLLM._clean_response(raw))
+        )
+        self._log_pc(f'[PC] LLM ok {ms:.0f} ms: "{cleaned}"')
+        return cleaned
 
     def _maybe_catalog_followup(
         self,
@@ -2647,16 +2852,11 @@ class AudioWorker:
         if not second:
             return ""
         _actions, spoken = self._parse_action_tags(second)
-        kept = [
-            item
-            for item in _actions
-            if item.get("action") not in {"PLAY_STORY", "PLAY_MUSIC"}
-        ]
-        if not kept:
+        if not _actions:
             return spoken or "¿Cuál querés?"
         tags = "".join(
             f" [{item['action']}:{item['param']}]" if item.get("param") else f" [{item['action']}]"
-            for item in kept
+            for item in _actions
         )
         return (spoken + tags).strip()
 
@@ -2664,6 +2864,7 @@ class AudioWorker:
         if audio_segment.size == 0:
             return
 
+        self._turn_expression = None
         self._sync_rps_hands()
         rps_now = self._take_rps_choice()
         if rps_now:
@@ -2715,6 +2916,9 @@ class AudioWorker:
                 raw_text = self.cloud_stt.transcribe(audio_segment)
                 save_named_transcript_wav(audio_segment, raw_text, sample_rate=16000)
             else:
+                self._pc_prefetch = None
+                self._pc_spoken = None
+                self._pc_wav_bytes = None
                 pc_ready = self._pc_ready_this_turn()
                 if not pc_ready:
                     why = getattr(self, "_pc_skip_reason", "") or "local"
@@ -3081,7 +3285,11 @@ class AudioWorker:
                     if _dlog:
                         _dlog.log_input("LLM_FALLBACK", f'text="{llm_user}"')
                     llm_response = self._remote_or_local_llm(
-                        llm_user, emotion_context, llm_history, pc_ready
+                        llm_user,
+                        emotion_context,
+                        llm_history,
+                        pc_ready,
+                        use_prefetch=not story_reflect,
                     )
                     if llm_response:
                         if story_reflect:
@@ -3307,6 +3515,7 @@ class AudioWorker:
                 intent_payload,
                 assistant_memory_text(response_text_raw, response_text),
             )
+            self._tick_llm_expression(bool(intent_payload.get("child_go_to_sleep")))
 
             # Reproducir archivo de música si fue solicitado
             music_to_play = intent_payload.get("play_music_file")
@@ -3508,6 +3717,7 @@ class AudioWorker:
                     expr = param.lower() if param else "neutral"
                     if expr in valid_expressions and self.eye_display is not None:
                         self.eye_display.set_expression(expr)
+                        self._turn_expression = expr
                         if _dlog:
                             _dlog.log_output("ACTION", f"EXPRESSION -> {expr}")
 
@@ -4052,6 +4262,11 @@ class _SpeechRequest:
         self.on_playback_cancel = on_playback_cancel
 
 
+class _PrimedWav:
+    def __init__(self, wav: bytes) -> None:
+        self.wav = wav
+
+
 class SpeechWorker:
     PIPER_MODEL_NAME = "es_AR-daniela-high"
     PIPER_MODEL_HF_PATH = "es/es_AR/daniela/high"
@@ -4291,6 +4506,27 @@ class SpeechWorker:
 
     def set_output_device(self, output_device_index: int | None) -> None:
         self._output_device_index = output_device_index
+
+    def play_wav_and_wait(self, wav: bytes, timeout: float = 60.0) -> None:
+        """Reproduce un wav que ya armó el servidor de PC."""
+        if not wav or not self._speech_allowed(False):
+            return
+        self._tts_is_story = False
+        self._idle_event.clear()
+        try:
+            self._queue.put_nowait(_PrimedWav(wav))
+        except queue.Full:
+            self._idle_event.set()
+            return
+        self._idle_event.wait(timeout=timeout)
+
+    def _play_primed_wav(self, wav: bytes) -> None:
+        pcm = self._wav_bytes_to_pcm(wav)
+        if pcm is None:
+            return
+        audio_array, sample_rate = pcm
+        self._log("TTS_PC (audio ya listo)")
+        self._play_wav_via_output_stream(audio_array, sample_rate, announce_start=True)
 
     def speak_and_wait(self, text: str, timeout: float = 30.0, *, story: bool = False, allow_when_asleep: bool = False) -> None:
         """Queue text for speaking and block until playback finishes."""
@@ -4639,6 +4875,8 @@ class SpeechWorker:
                         item.on_playback_start,
                         item.on_playback_cancel,
                     )
+                elif isinstance(item, _PrimedWav):
+                    self._play_primed_wav(item.wav)
                 else:
                     self._speak_queued_text(item)
                 self._log("Reproducción completada")
@@ -5207,7 +5445,7 @@ class SileroVadAdapter:
     CHUNK_SAMPLES = 512
     START_THRESHOLD = 0.50
     CONTINUE_THRESHOLD = 0.35
-    ENERGY_START = 0.012
+    ENERGY_START = 0.006
     ENERGY_CONTINUE = 0.006
 
     def __init__(self, sample_rate: int) -> None:

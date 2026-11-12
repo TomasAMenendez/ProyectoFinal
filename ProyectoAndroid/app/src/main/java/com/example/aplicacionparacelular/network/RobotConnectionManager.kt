@@ -402,6 +402,10 @@ object RobotConnectionManager {
         executeAsync({ RobotApiClient.postRoutines(routinesJson) }, onResult)
     }
 
+    fun playRoutine(id: String, onResult: (ApiResult<JSONObject>) -> Unit) {
+        executeAsync({ RobotApiClient.playRoutine(id) }, onResult)
+    }
+
     /**
      * Obtiene la lista de canciones del robot.
      */

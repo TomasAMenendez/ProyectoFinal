@@ -137,6 +137,11 @@
     <string name="routines_name_label">Nombre de la rutina</string>
     <string name="routines_name_required">El nombre es obligatorio</string>
     <string name="routines_time_label">Hora</string>
+    <string name="routines_play">Reproducir la rutina ahora</string>
+    <string name="routines_lead_label">Anticipación (minutos)</string>
+    <string name="routines_lead_help">TEO avisa esta cantidad de minutos antes y otra vez a la hora. Cero avisa solo a la hora.</string>
+    <string name="routines_lead_invalid">La anticipación tiene que ser entre 0 y 1440 minutos</string>
+    <string name="routines_playing">TEO está avisando la rutina</string>
     <string name="routines_message_label">Mensaje del recordatorio</string>
     <string name="routines_message_help">Si lo dejás vacío, se usará un mensaje automático</string>
     <string name="routines_create_note">La rutina se agregará activada</string>
